@@ -1,6 +1,6 @@
 # PROJ-1: Landing Page
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-02-28
 **Last Updated:** 2026-02-28
 
@@ -53,7 +53,77 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Komponenten-Struktur
+```
+app/page.tsx  (Server Component — lädt Tour-Daten serverseitig)
+│
+├── HeroSection
+│   ├── Logo (Logo_Wandervoegel.JPG, Next.js Image)
+│   └── TourStatusBadge  ("Unterwegs auf Etappe 3" | "Startet in X Tagen" | "—")
+│
+└── TourenBereich
+    ├── AktiveTourKarte  (große, prominente Karte links)
+    │   ├── Cover-Foto (vollflächig im Hintergrund)
+    │   ├── TourMeta  (Name, Zeitraum, km, Teilnehmerzahl)
+    │   └── TourNavigation  (Links: Planung · Tagebuch · Galerie · Karte)
+    │
+    ├── VergangeneTouren  (horizontale Reihe, 2–3 kompakte Karten)
+    │   └── TourKompaktKarte  × n  (Name, Datum, Cover-Foto)
+    │       └── TourNavigation  (nur: Tagebuch · Galerie · Karte)
+    │
+    └── "Weitere Touren →"  Button  (→ PROJ-19 Archiv)
+```
+
+Mobile-Ansicht: TourenBereich klappt vertikal — aktive Tour oben, vergangene Touren darunter gestapelt.
+
+### Datenmodell (Supabase — `tours` Tabelle)
+```
+Jede Tour hat:
+  id              — Eindeutige ID
+  name            — Tourname  ("Rota Vicentina 2026")
+  subtitle        — Untertitel  ("Fischerpfad, Portugal")
+  start_date      — Startdatum
+  end_date        — Enddatum
+  status          — "planned" | "active" | "archived"
+  cover_photo_url — URL zum Cover-Foto (Supabase Storage)
+  total_km        — Gesamtstrecke in km
+  participants    — Anzahl Teilnehmer
+  current_stage   — Aktuelle Etappe, nur bei Status "active"  ("Etappe 3")
+  description     — Kurzbeschreibung
+```
+
+Die Landing Page braucht nur Lese-Zugriff — kein Login, öffentlich.
+
+### Tech-Entscheidungen
+
+| Entscheidung | Warum |
+|---|---|
+| Server Component für die Hauptseite | Tour-Daten werden beim Seitenaufruf direkt vom Server geladen → schnelle LCP < 2.5s, kein Ladespinner |
+| Supabase als Datenbank | Tour-Daten müssen nur einmal erfasst werden und sind dann für alle sichtbar |
+| Next.js Image für Fotos | Automatische Bildoptimierung (WebP, lazy loading) ohne Konfiguration |
+| CSS Container Queries + Flexbox | Fluid Responsive ohne feste Breakpoints — Layout passt sich dynamisch an jeden Container an |
+| `hyphens: auto` + `lang="de"` am HTML-Element | Browser trennt deutsche Wörter automatisch korrekt |
+| Keine Client-Komponenten auf der Landing Page | Bessere Performance, kein JavaScript für reines Layout nötig |
+
+### URL-Struktur (Grundlage für spätere Features)
+```
+/                          Landing Page  (PROJ-1)
+/touren/[id]/planung       Reiseplanung  (PROJ-2, nur aktive Tour)
+/touren/[id]/tagebuch      Reisetagebuch  (PROJ-3)
+/touren/[id]/galerie       Fotogalerie  (PROJ-4)
+/touren/[id]/karte         Interaktive Karte  (PROJ-6)
+/archiv                    Tour-Archiv  (PROJ-19)
+```
+
+### Pakete
+Keine neuen Pakete nötig — `@supabase/supabase-js` und Next.js sind bereits im Template enthalten.
+
+### Abgrenzung
+- Countdown → PROJ-13
+- Live-Status-Update (Realtime) → PROJ-9
+- Foto-Upload → PROJ-4/PROJ-5
+- Vollständige Archiv-Seite → PROJ-19
 
 ## QA Test Results
 _To be added by /qa_
