@@ -6,9 +6,9 @@
 
 Die erste Tour: **Rota Vicentina / Fischerpfad, Portugal — Juni 2026**.
 
-**Zwei Perspektiven, eine Plattform:**
-- **Wanderer** nutzen die PWA unterwegs zum Dokumentieren (Fotos, GPS, Kommentare) und die Landing Page zur Reiseplanung und als Archiv/Galerie.
-- **Follower** verfolgen die Tour auf ihrem iPhone via PWA (Live-Karte, Tagebuch, Fotos) und können kommentieren. Updates werden per WhatsApp geteilt.
+**Zwei Kanäle, zwei Zielgruppen:**
+- **Wanderer** nutzen die PWA unterwegs zum Dokumentieren (Fotos, GPS, Kommentare) und die Landing Page zur Reiseplanung und als Archiv/Galerie. Die Landing Page ist primär der Hub der Wandervögel.
+- **Follower (Friends & Family)** erhalten visuell aufbereitete Updates direkt per WhatsApp — Postkarten, Fotos mit Karten-Overlay, Tagesstatistiken. Jeder WhatsApp-Post enthält einen Rück-Link zur Plattform für Follower, die mehr sehen möchten. Wanderer können ihren Familien auch direkten Zugang zur Landing Page geben.
 
 **Zugang:** Komplett offen — kein Login, kein Account. Jeder mit dem Link kann alles sehen, kommentieren, Fotos hochladen und Inhalte erstellen.
 
@@ -20,11 +20,11 @@ Die erste Tour: **Rota Vicentina / Fischerpfad, Portugal — Juni 2026**.
 - Oft unterwegs mit schlechtem Empfang (Offline-Modus nötig)
 - Nutzen die Landing Page zur Planung und als Archiv
 
-### Follower (Familie, Freunde)
-- Verfolgen die Tour auf dem iPhone via PWA (Live-Karte, Tagebuch)
-- Erhalten Updates per WhatsApp-Link
-- Können kommentieren, Fotos hochladen und interagieren
-- Brauchen keinen Account — Link reicht
+### Follower (Friends & Family)
+- Erhalten visuelle Updates direkt in WhatsApp (Postkarten, Fotos mit Karte, Statistiken)
+- Können über den Rück-Link in die Plattform eintauchen (Tagebuch, Galerie, Karte)
+- Können kommentieren und interagieren
+- Brauchen keinen Account — kein Login nötig
 
 ## Core Features (Roadmap)
 
@@ -38,6 +38,7 @@ Die erste Tour: **Rota Vicentina / Fischerpfad, Portugal — Juni 2026**.
 | P0 (MVP) | Interaktive Karte — Landkarte mit Wanderer-Positionen, Foto-Fähnchen, Kommentar-Pins | Planned |
 | P0 (MVP) | Tages-Statistiken — km, Höhenmeter, Gehzeit | Planned |
 | P0 (MVP) | WhatsApp-Integration — Updates/Links teilen | Planned |
+| P0 (MVP) | Kostenteiler — Gemeinsame Ausgaben erfassen und abrechnen (nur PWA) | Planned |
 | P1 | Live-Ticker — Automatische Updates für Follower | Planned |
 | P1 | Push-Benachrichtigungen | Planned |
 | P1 | Tages-Zusammenfassung (auto-generiert) | Planned |
@@ -79,6 +80,9 @@ Die Karte ist ein zentrales Element der Plattform — keine nackte Koordinatenan
 - **Budget:** Kostenlose Tiers von Supabase und Vercel wo möglich
 - **Geräte:** iPhone (PWA) für Wanderer und Follower, Desktop als Ergänzung
 - **Kein Login:** Komplett offener Zugang über geteilten Link
+- **Sprache:** Deutsch mit korrekten Umlauten (ä, ö, ü) und Silbentrennung
+- **Responsive:** Fluid Responsive Design — dynamische Anpassung an jede Bildschirmgrösse (keine festen Breakpoints)
+- **Foto-Upload:** Ausschliesslich über mobile PWA (PWA-Kamera + Mediathek-Import), kein Desktop-Upload
 
 ## Non-Goals
 

@@ -14,14 +14,29 @@
 - Als Follower möchte ich auf der Landing Page den aktuellen Status der Tour sehen (läuft gerade, Etappe X), damit ich sofort informiert bin.
 - Als Besucher möchte ich vergangene Touren als Archiv sehen, damit ich alte Erlebnisse nachstöbern kann.
 
+## Layout-Konzept (Touren-Bereich)
+```
+┌──────────────────┬────────────┬────────────┬──────┐
+│                  │            │            │      │
+│  Nächste Tour    │ Vergangene │ Vergangene │ Mehr │
+│  ROTA VICENTINA  │  Tour 1    │  Tour 2    │  →   │
+│  (gross, prominent) │ (kleiner)  │ (kleiner)  │      │
+│                  │            │            │      │
+└──────────────────┴────────────┴────────────┴──────┘
+```
+
 ## Acceptance Criteria
-- [ ] Hero-Bereich zeigt Titel "Die Wandervögel" mit aktuellem Tour-Status (z.B. "Unterwegs auf Etappe 3")
-- [ ] Navigation führt zu: Reiseplanung, Tagebuch, Galerie, Karte
-- [ ] Aktuelle Tour wird prominent hervorgehoben (Rota Vicentina)
-- [ ] Seite ist vollständig responsiv (Mobile 375px, Tablet 768px, Desktop 1440px)
+- [ ] Hero-Bereich zeigt Logo "Die Wandervögel" (Logo_Wandervoegel.JPG) mit aktuellem Tour-Status (z.B. "Unterwegs auf Etappe 3")
+- [ ] Navigation der nächsten/aktiven Tour führt zu: Reiseplanung, Tagebuch, Galerie, Karte
+- [ ] Navigation vergangener Touren führt nur zu: Tagebuch, Galerie, Karte (keine Planung)
+- [ ] Touren-Bereich: Nächste/aktuelle Tour gross links, 2-3 vergangene Touren kleiner daneben, "Weitere"-Button ganz rechts
+- [ ] Nächste Tour zeigt: Tourname, Zeitraum, Teilnehmerzahl, Strecke (km), Cover-Foto, Status
+- [ ] Vergangene Touren zeigen: Tourname, Datum, Cover-Foto (kompakte Karten)
+- [ ] "Weitere"-Button führt zum Tour-Archiv (PROJ-19)
+- [ ] Fluid Responsive Design — dynamische Anpassung an jede Bildschirmgrösse (relative Einheiten, CSS Container Queries, Flexbox/Grid)
+- [ ] Auf Mobile: Touren untereinander statt nebeneinander (nächste Tour oben, vergangene darunter)
 - [ ] Ladezeit unter 3 Sekunden
 - [ ] Seite funktioniert ohne Login — öffentlich zugänglich
-- [ ] Tour-Übersicht zeigt: Tourname, Zeitraum, Teilnehmerzahl, Strecke (km)
 
 ## Edge Cases
 - Was passiert, wenn noch keine Tour aktiv ist? → Zeige "Nächste Tour: Rota Vicentina, Juni 2026" mit Countdown
@@ -30,7 +45,8 @@
 
 ## Technical Requirements
 - Performance: Largest Contentful Paint < 2.5s
-- Mobile-first Design
+- Fluid Responsive Design (keine festen Breakpoints, dynamische Anpassung)
+- Sprache: Deutsch mit korrekter Silbentrennung (CSS hyphens) und Umlauten (ä, ö, ü)
 - PWA-fähig (wird in PROJ-5 ausgebaut)
 
 ---

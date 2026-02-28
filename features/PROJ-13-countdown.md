@@ -15,7 +15,7 @@
 - [ ] Countdown zeigt Tage, Stunden, Minuten bis zum Tourstart
 - [ ] Countdown verschwindet wenn die Tour gestartet hat
 - [ ] Startdatum ist konfigurierbar (nicht hard-coded)
-- [ ] Countdown ist prominent auf der Landing Page platziert
+- [ ] Countdown ist prominent auf der Landing Page und in der PWA (Mobiltelefon) sichtbar
 - [ ] Ansprechendes visuelles Design
 
 ## Edge Cases

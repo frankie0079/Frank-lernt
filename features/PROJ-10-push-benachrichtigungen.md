@@ -9,21 +9,19 @@
 - Requires: PROJ-9 (Live-Ticker) — Ticker-Events als Trigger
 
 ## User Stories
-- Als Follower möchte ich Push-Benachrichtigungen erhalten wenn eine neue Etappe startet oder endet, damit ich nichts verpasse.
-- Als Follower möchte ich eine Benachrichtigung erhalten wenn neue Fotos hochgeladen werden, damit ich sie mir sofort anschauen kann.
+- Als Follower möchte ich einmal am Tag eine Push-Benachrichtigung erhalten wenn die Tages-Summary bereit ist, damit ich den Tag nacherleben kann.
 - Als Follower möchte ich Push-Benachrichtigungen ein- und ausschalten können, damit ich nicht gestört werde.
 
 ## Acceptance Criteria
-- [ ] Push-Benachrichtigung beim Start einer Etappe
-- [ ] Push-Benachrichtigung beim Ende einer Etappe (mit Tages-Statistiken)
-- [ ] Push-Benachrichtigung bei neuen Fotos (Batch, nicht für jedes einzelne Foto)
-- [ ] Nutzer kann Benachrichtigungen in den App-Einstellungen ein-/ausschalten
-- [ ] Benachrichtigung enthält Link direkt zum relevanten Inhalt
+- [ ] Push-Benachrichtigung nur einmal am Tag: wenn die Tages-Summary erstellt und versendet wurde
+- [ ] Benachrichtigung enthält: Etappenname, kurze Statistik, Link zur Summary auf der Plattform
+- [ ] Keine Push-Benachrichtigungen für einzelne Fotos, Kommentare oder Etappen-Starts
+- [ ] Nutzer kann Benachrichtigungen ein-/ausschalten
 - [ ] Funktioniert auf iPhone (iOS Web Push ab iOS 16.4 mit installierten PWAs)
 
 ## Edge Cases
 - Was wenn der Nutzer die Benachrichtigungs-Permission ablehnt? → App funktioniert weiterhin, keine Benachrichtigungen
-- Was wenn viele Ereignisse gleichzeitig passieren? → Batch-Benachrichtigung statt Einzelbenachrichtigungen
+- Was wenn keine Summary an einem Tag erstellt wird? → Keine Benachrichtigung
 - Was wenn iOS Push nicht unterstützt wird? → Graceful Degradation, Feature nicht anzeigen
 
 ## Technical Requirements

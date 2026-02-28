@@ -15,7 +15,8 @@
 - Als Besucher möchte ich eine Gesamtstatistik der Tour sehen (alle km, alle Höhenmeter, Gehzeit total), damit ich den Umfang der Reise verstehe.
 
 ## Acceptance Criteria
-- [ ] Automatische Berechnung aus GPS-Track: Distanz (km), Aufstieg (Hm), Abstieg (Hm), Gehzeit (h:mm)
+- [ ] Automatische Berechnung aus GPS-Track: Distanz (km), Aufstieg (Hm), Abstieg (Hm), Gehzeit (h:mm), Durchschnittsgeschwindigkeit (km/h)
+- [ ] Temperatur wird angezeigt (aktuell via Wetter-API für die Tour-Region)
 - [ ] Statistiken pro Tagesetappe werden im Tagebucheintrag angezeigt
 - [ ] Gesamtstatistik der Tour wird auf der Landing Page angezeigt (kumuliert)
 - [ ] Manuelle Eingabe/Korrektur der Statistiken möglich

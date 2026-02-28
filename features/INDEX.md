@@ -33,7 +33,8 @@
 | PROJ-19 | Tour-Archiv | Planned | [PROJ-19-tour-archiv.md](PROJ-19-tour-archiv.md) | 2026-02-28 |
 | PROJ-20 | Kulinarik-Tagebuch | Planned | [PROJ-20-kulinarik-tagebuch.md](PROJ-20-kulinarik-tagebuch.md) | 2026-02-28 |
 | PROJ-21 | Export als PDF-Fotobuch | Planned | [PROJ-21-export-pdf.md](PROJ-21-export-pdf.md) | 2026-02-28 |
+| PROJ-22 | Kostenteiler | Planned | [PROJ-22-kostenteiler.md](PROJ-22-kostenteiler.md) | 2026-02-28 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-22
+## Next Available ID: PROJ-23
