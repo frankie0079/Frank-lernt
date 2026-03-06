@@ -9,6 +9,9 @@
 - **Fonts:** Caveat (Google Font, Handschrift) via `next/font/google` — CSS-Variable `--font-caveat`
 - **Backend:** Supabase (PostgreSQL + Storage) — angebunden, Tabellen + RLS + Storage Bucket live
 - **Deployment:** Vercel
+- **PWA:** Serwist (next-pwa Nachfolger) — Service Worker, App-Shell Caching
+- **Karten:** Leaflet + react-leaflet + OpenStreetMap (kostenlos, kein API-Key)
+- **Foto-Verarbeitung:** browser-image-compression + exifr (EXIF-Extraktion)
 - **Validation:** Zod + react-hook-form
 - **State:** React useState / Context API
 - **Bilder:** Unsplash (remote patterns in next.config.ts), Next.js Image
@@ -18,37 +21,63 @@
 ```
 src/
   app/
-    page.tsx            Landing Page (Server Component)
-    layout.tsx          Root Layout (Caveat Font, lang="de", hyphens)
-    globals.css         Custom Color Theme (Teal/Amber)
+    page.tsx              Landing Page (Server Component)
+    layout.tsx            Root Layout (Caveat Font, PWA Meta Tags, lang="de")
+    globals.css           Custom Color Theme (Teal/Amber)
+    sw.ts                 Serwist Service Worker (App-Shell Caching)
     api/
       tours/
-        route.ts              GET /api/tours — Alle Touren
+        route.ts                GET /api/tours — Alle Touren
         [id]/
-          route.ts            GET /api/tours/[id] — Einzelne Tour
-          diary/route.ts      GET/POST — Tagebucheinträge
-          photos/route.ts     GET/POST — Foto-Metadaten
+          route.ts              GET /api/tours/[id] — Einzelne Tour
+          diary/route.ts        GET/POST — Tagebucheinträge
+          photos/route.ts       GET/POST — Foto-Metadaten
+    touren/[id]/
+      layout.tsx            Shared Tour Layout (Header + Tabs + Back-Link)
+      tagebuch/page.tsx     Reisetagebuch (PROJ-3)
+      galerie/page.tsx      Fotogalerie (PROJ-4)
+      karte/page.tsx        Interaktive Karte (PROJ-6)
   components/
-    ui/                 shadcn/ui components (NEVER recreate these)
-    hero-section.tsx    Hero mit Logo, Titel, handgeschriebenem Zitat
-    touren-bereich.tsx  Touren-Übersicht (aktive + vergangene)
+    ui/                     shadcn/ui components (NEVER recreate these)
+    # Landing Page (PROJ-1)
+    hero-section.tsx        Hero mit Logo, Titel, handgeschriebenem Zitat
+    touren-bereich.tsx      Touren-Übersicht (aktive + vergangene)
     aktive-tour-karte.tsx   Große Karte für aktive/nächste Tour
     tour-kompakt-karte.tsx  Kompakte Karte für vergangene Touren
     tour-navigation.tsx     Navigation (Planung/Tagebuch/Galerie/Karte)
-  hooks/                Custom React hooks
+    # Tour Layout (shared)
+    tour-header.tsx         Tour-Name + Status-Badge (Server Component)
+    tour-tabs.tsx           Tab-Navigation: Tagebuch/Galerie/Karte (Client)
+    # Reisetagebuch (PROJ-3)
+    tagebuch-client.tsx     Tagebuch-Liste, FAB, Optimistic UI
+    diary-entry-form.tsx    Formular: Titel, Inhalt, Datum, GPS, Autor
+    # Fotogalerie (PROJ-4)
+    galerie-client.tsx      Foto-Grid + Lightbox + Upload-Sheet
+    photo-grid.tsx          CSS-Grid mit Thumbnails (lazy loading)
+    photo-lightbox.tsx      Fullscreen-Overlay, Swipe, Keyboard-Nav
+    photo-upload-sheet.tsx  Bottom Sheet: Kamera/Mediathek, Kompression, Progress
+    # Interaktive Karte (PROJ-6)
+    karte-client.tsx        Dynamic Import Wrapper (SSR disabled)
+    leaflet-map.tsx         Leaflet-Karte mit Foto/Tagebuch-Markern
+    # WhatsApp (PROJ-8)
+    share-button.tsx        Web Share API + wa.me Fallback
+  hooks/                    Custom React hooks
   lib/
-    database.types.ts   Auto-generierte Supabase-Typen (Tables, TablesInsert)
-    types.ts            App-Typen (Tour, DiaryEntry, Photo) — basiert auf DB-Typen
-    mock-data.ts        Mock-Touren (Rota Vicentina + 2 vergangene) — Fallback
-    supabase.ts         Typed Supabase Client (createClient<Database>)
-    utils.ts            Utility-Funktionen (cn)
-features/               Feature specifications (PROJ-X-name.md)
-  INDEX.md              Feature status overview (22 Features, PROJ-1 bis PROJ-22)
+    database.types.ts       Auto-generierte Supabase-Typen (Tables, TablesInsert)
+    types.ts                App-Typen (Tour, DiaryEntry, Photo) — basiert auf DB-Typen
+    mock-data.ts            Mock-Touren (Rota Vicentina + 2 vergangene) — Fallback
+    supabase.ts             Typed Supabase Client (createClient<Database>)
+    photo-upload.ts         EXIF-Extraktion, Kompression, Supabase Storage Upload
+    utils.ts                Utility-Funktionen (cn)
+features/                   Feature specifications (PROJ-X-name.md)
+  INDEX.md                  Feature status overview (22 Features, PROJ-1 bis PROJ-22)
 docs/
-  PRD.md                Product Requirements Document
-  production/           Production guides (Sentry, security, performance)
+  PRD.md                    Product Requirements Document
+  production/               Production guides (Sentry, security, performance)
 public/
-  Logo_Wandervoegel.JPG Gruppen-Logo
+  Logo_Wandervoegel.JPG     Gruppen-Logo
+  manifest.json             PWA Manifest (standalone, teal theme)
+  icons/                    PWA Icons (192, 512, maskable, apple-touch)
 ```
 
 ## Design-Entscheidungen
@@ -60,15 +89,20 @@ public/
 - **Sprache:** Deutsch mit `lang="de"`, CSS `hyphens: auto` für Silbentrennung
 - **Supabase live:** Tabellen (tours, diary_entries, photos), RLS (public read+insert), Storage Bucket (photos)
 - **Mock-Daten als Fallback:** Landing Page nutzt noch `mock-data.ts`, Tour-Daten existieren parallel in Supabase
+- **PWA installierbar:** Serwist Service Worker, manifest.json, iOS Meta Tags (apple-mobile-web-app-capable)
+- **Optimistic UI:** Tagebuch-Einträge erscheinen sofort (pending state + error rollback)
+- **Client-side Bildverarbeitung:** Kompression (1920px/1MB) + Thumbnail (400px) + EXIF vor Upload
+- **Leaflet statt Mapbox:** Kostenlos, kein API-Key, OpenStreetMap-Tiles
+- **Turbopack inkompatibel:** Serwist erfordert `--webpack` Flag in dev/build Scripts
 
 ## URL-Struktur
 
 ```
 /                          Landing Page (PROJ-1) ✅
 /touren/[id]/planung       Reiseplanung (PROJ-2, nur aktive Tour)
-/touren/[id]/tagebuch      Reisetagebuch (PROJ-3) — Backend ready
-/touren/[id]/galerie       Fotogalerie (PROJ-4) — Backend ready
-/touren/[id]/karte         Interaktive Karte (PROJ-6) — Backend ready
+/touren/[id]/tagebuch      Reisetagebuch (PROJ-3) ✅
+/touren/[id]/galerie       Fotogalerie (PROJ-4) ✅
+/touren/[id]/karte         Interaktive Karte (PROJ-6) ✅
 /archiv                    Tour-Archiv (PROJ-19)
 
 API:
@@ -102,8 +136,8 @@ All features tracked in `features/INDEX.md`. Every skill reads it at start and u
 ## Build & Test Commands
 
 ```bash
-npm run dev        # Development server (localhost:3000)
-npm run build      # Production build
+npm run dev        # Development server (localhost:3000) — nutzt --webpack wegen Serwist
+npm run build      # Production build — nutzt --webpack wegen Serwist
 npm run lint       # ESLint
 npm run start      # Production server
 ```
@@ -126,12 +160,38 @@ npm run start      # Production server
 - QA bestanden (11/11), Security Headers konfiguriert
 - Vercel auto-deploy via GitHub verbunden
 
-**PROJ-3, 4, 5, 6, 8 (Sri Lanka Test-MVP):** In Progress
-- Architektur designed (Tech Design in jeder Feature-Spec)
-- Supabase Backend live (Schema, RLS, Storage, API-Routes)
-- Frontend steht als nächstes an (`/frontend`)
-- Scope: PWA + Tagebuch + Galerie + Karte + WhatsApp Share
-- Ziel: Feldtest auf iPhone in Sri Lanka (März 2026)
+**PROJ-5 (PWA Setup):** In Progress — Frontend komplett
+- Serwist Service Worker (App-Shell Caching)
+- manifest.json + PWA-Icons (generiert aus Logo)
+- iOS Meta Tags (apple-mobile-web-app-capable, black-translucent)
+- Installierbar auf iPhone als Standalone-App
+
+**PROJ-3 (Reisetagebuch):** In Progress — Frontend + Backend komplett
+- Tagebuch-Liste mit Einträgen (Datum, Titel, Inhalt, Autor)
+- FAB + Sheet-Formular zum Erstellen
+- Optimistic UI (sofortige Anzeige, Error Rollback mit Toast)
+- GPS-Button (Geolocation API)
+- ShareButton pro Eintrag
+
+**PROJ-4 (Fotogalerie):** In Progress — Frontend + Backend komplett
+- Photo-Grid (CSS Grid, lazy loading, Thumbnails)
+- Lightbox (Fullscreen, Swipe, Keyboard-Navigation, Share)
+- Upload-Sheet (Kamera + Mediathek, 20MB-Limit, Kompression)
+- EXIF-Extraktion (GPS, Datum) vor Kompression
+- Progress-Bar beim Upload
+
+**PROJ-6 (Interaktive Karte):** In Progress — Frontend + Backend komplett
+- Leaflet + OpenStreetMap (dynamic import, SSR disabled)
+- Foto-Marker (Teal, Kamera-Icon) + Tagebuch-Marker (Amber, Buch-Icon)
+- Popups mit Foto-Preview bzw. Tagebuch-Text
+- Auto-fitBounds, Legende, Empty State
+
+**PROJ-8 (WhatsApp Share):** In Progress — Frontend komplett
+- ShareButton-Komponente (Web Share API + wa.me Fallback)
+- Eingebaut in Lightbox, Tagebuch-Einträge, Karte
+- OG Meta Tags (generateMetadata) für Link-Previews
+
+**Nächste Schritte:** `/qa` (Test gegen Acceptance Criteria) → `/deploy` (Vercel)
 
 **Alle anderen Features (PROJ-2, 7, 9-22):** Planned — Specs vorhanden, noch nicht begonnen
 

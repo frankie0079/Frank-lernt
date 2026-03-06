@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
+import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+
+const deleteSchema = z.object({
+  entry_id: z.string().uuid(),
+});
 
 const diaryEntrySchema = z.object({
   title: z.string().min(1).max(200),
@@ -35,9 +40,26 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      { status: 429 }
+    );
+  }
+
   const { id } = await params;
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Ungültiges JSON" },
+      { status: 400 }
+    );
+  }
+
   const parsed = diaryEntrySchema.safeParse(body);
 
   if (!parsed.success) {
@@ -58,4 +80,49 @@ export async function POST(
   }
 
   return NextResponse.json(data, { status: 201 });
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      { status: 429 }
+    );
+  }
+
+  const { id } = await params;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Ungültiges JSON" },
+      { status: 400 }
+    );
+  }
+
+  const parsed = deleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Ungültige Eingabe", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await supabase
+    .from("diary_entries")
+    .delete()
+    .eq("id", parsed.data.entry_id)
+    .eq("tour_id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
 }

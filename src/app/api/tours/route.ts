@@ -5,7 +5,8 @@ export async function GET() {
   const { data, error } = await supabase
     .from("tours")
     .select("*")
-    .order("start_date", { ascending: false });
+    .order("start_date", { ascending: false })
+    .limit(50);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

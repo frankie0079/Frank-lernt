@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
+import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+
+const supabaseUrlPrefix = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
+const supabaseUrl = z.string().url().refine(
+  (url) => url.startsWith(supabaseUrlPrefix),
+  "URL muss von Supabase stammen"
+);
 
 const photoMetadataSchema = z.object({
   storage_path: z.string().min(1),
-  full_url: z.string().url(),
-  thumbnail_url: z.string().url().nullable().optional(),
+  full_url: supabaseUrl,
+  thumbnail_url: supabaseUrl.nullable().optional(),
   caption: z.string().max(500).nullable().optional(),
   author_name: z.string().max(100).default("Anonym"),
   gps_lat: z.number().min(-90).max(90).nullable().optional(),
@@ -39,9 +47,26 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      { status: 429 }
+    );
+  }
+
   const { id } = await params;
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Ungültiges JSON" },
+      { status: 400 }
+    );
+  }
+
   const parsed = photoMetadataSchema.safeParse(body);
 
   if (!parsed.success) {

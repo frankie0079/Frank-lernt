@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, MapPin, Calendar, User, Loader2 } from "lucide-react";
+import { Plus, MapPin, Calendar, User, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +10,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { DiaryEntry } from "@/lib/types";
 import { DiaryEntryForm } from "@/components/diary-entry-form";
 import { ShareButton } from "@/components/share-button";
@@ -55,6 +66,27 @@ export function TagebuchClient({ tourId, tourName, initialEntries }: TagebuchCli
     );
   }, []);
 
+  // Delete entry
+  const handleDelete = useCallback(async (entryId: string) => {
+    const previous = entries;
+    setEntries((prev) => prev.filter((e) => e.id !== entryId));
+
+    try {
+      const res = await fetch(`/api/tours/${tourId}/diary`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry_id: entryId }),
+      });
+      if (!res.ok) {
+        throw new Error("Löschen fehlgeschlagen");
+      }
+      showToast("Eintrag gelöscht", "success");
+    } catch {
+      setEntries(previous);
+      showToast("Eintrag konnte nicht gelöscht werden", "error");
+    }
+  }, [entries, tourId, showToast]);
+
   // Server error: remove optimistic entry and show error
   const handleServerError = useCallback((tempId: string, errorMessage: string) => {
     setPendingIds((prev) => {
@@ -79,6 +111,7 @@ export function TagebuchClient({ tourId, tourName, initialEntries }: TagebuchCli
               entry={entry}
               tourName={tourName}
               isPending={pendingIds.has(entry.id)}
+              onDelete={handleDelete}
             />
           ))}
         </div>
@@ -163,9 +196,10 @@ interface DiaryEntryCardProps {
   entry: DiaryEntry;
   tourName: string;
   isPending?: boolean;
+  onDelete: (id: string) => void;
 }
 
-function DiaryEntryCard({ entry, tourName, isPending }: DiaryEntryCardProps) {
+function DiaryEntryCard({ entry, tourName, isPending, onDelete }: DiaryEntryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isLong = entry.content.length > 200;
   const displayText = isExpanded || !isLong
@@ -190,11 +224,40 @@ function DiaryEntryCard({ entry, tourName, isPending }: DiaryEntryCardProps) {
             )}
           </div>
           {!isPending && (
-            <ShareButton
-              title={`${entry.title} — ${tourName}`}
-              text={`${entry.title} — Tagebuch von ${tourName}`}
-              url={typeof window !== "undefined" ? window.location.href : ""}
-            />
+            <div className="flex items-center gap-1 shrink-0">
+              <ShareButton
+                title={`${entry.title} — ${tourName}`}
+                text={`${entry.title} — Tagebuch von ${tourName}`}
+                url={typeof window !== "undefined" ? window.location.href : ""}
+              />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label="Eintrag löschen"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      &quot;{entry.title}&quot; wird unwiderruflich gelöscht.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(entry.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Löschen
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
