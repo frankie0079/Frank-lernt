@@ -1,6 +1,6 @@
 # PROJ-1: Landing Page
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-28
 **Last Updated:** 2026-03-06
 
@@ -159,4 +159,8 @@ Keine neuen Pakete nötig — `@supabase/supabase-js` und Next.js sind bereits i
 - Kein XSS-Risiko (React escaping, kein dangerouslySetInnerHTML)
 
 ## Deployment
-_To be added by /deploy_
+
+**Date:** 2026-03-06
+**Production URL:** https://die-wandervoegel.vercel.app
+**Platform:** Vercel (auto-deploy from GitHub on push to main)
+**Security Headers:** X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS

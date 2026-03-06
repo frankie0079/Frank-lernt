@@ -95,12 +95,12 @@ npm run start      # Production server
 
 ## Aktueller Stand
 
-**PROJ-1 (Landing Page):** In Progress — Frontend gebaut, QA steht aus
+**PROJ-1 (Landing Page):** Deployed — https://die-wandervoegel.vercel.app
 - Hero Section, Touren-Bereich, alle Komponenten implementiert
 - Mock-Daten für 3 Touren (1 geplant, 2 archiviert)
 - Schreibschrift (Caveat) für Zitat im Hero
-- Noch nicht committet: Caveat-Font-Änderung (layout.tsx + hero-section.tsx)
-- **Nächster Schritt:** `/qa` laufen lassen, dann committen
+- QA bestanden (11/11), Security Headers konfiguriert
+- Vercel auto-deploy via GitHub verbunden
 
 **Alle anderen Features (PROJ-2 bis PROJ-22):** Planned — Specs vorhanden, noch nicht begonnen
 
