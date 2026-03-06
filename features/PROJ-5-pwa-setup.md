@@ -59,7 +59,48 @@ Die PWA ist das zentrale Werkzeug für **alle Wanderer unterwegs**. Sie ermögli
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Scope: Sri Lanka Test-MVP
+Installierbare PWA mit App-Shell-Caching. Kein Offline-Modus, kein Hintergrund-GPS — das kommt für Portugal.
+
+### Component Structure
+```
+PWA Infrastructure (keine eigene Seite — erweitert die bestehende App)
+├── Web App Manifest (/public/manifest.json)
+│   ├── App-Name: "Die Wandervögel"
+│   ├── Icons: 192px + 512px (teal-themed)
+│   ├── Theme Color: Teal
+│   └── Display: standalone (kein Browser-Chrome)
+├── Service Worker (via Serwist)
+│   └── Cacht App-Shell (HTML, CSS, JS) für schnellen Start
+├── Layout-Erweiterung (layout.tsx)
+│   ├── <link rel="manifest">
+│   ├── iOS-Meta-Tags (apple-mobile-web-app-capable etc.)
+│   └── Viewport für Vollbild-Modus
+└── Tour-Seiten-Layout (/touren/[id]/layout.tsx)
+    ├── Tour-Header (Name + Untertitel)
+    ├── Tab-Navigation (Tagebuch / Galerie / Karte)
+    └── {children} — Seiteninhalt
+```
+
+### Data Model
+PWA ist reine Infrastruktur — kein eigenes Datenmodell.
+
+### Tech Decisions
+- **Serwist** statt next-pwa → Moderner Nachfolger, aktiv maintained, Next.js 16 kompatibel
+- **Standalone Display** → Browser-UI verschwindet nach Installation, fühlt sich nativ an
+- **iOS Meta-Tags** → Apple unterstützt Standard-Manifest nicht vollständig, braucht eigene Tags
+- **Tour-Layout** als shared Next.js Layout → Header + Navigation nur einmal rendern
+
+### Dependencies
+- `@serwist/next` — Service Worker Integration für Next.js
+- `serwist` — Service Worker Runtime
+
+### Skipped for Sri Lanka (kommt für Portugal)
+- IndexedDB Offline-Queue
+- Background Sync API
+- Hintergrund-GPS-Tracking (alle 30 Sek.)
+- Akku-Management
 
 ## QA Test Results
 _To be added by /qa_

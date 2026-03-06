@@ -73,7 +73,61 @@ Vergangene Touren (vor der App) können nachträglich als Tagebuch erfasst werde
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Scope: Sri Lanka Test-MVP
+Einfache Tagebuch-Liste mit Einträgen. Kein Seitenumblättern, keine Kommentare, keine Realtime-Updates — das kommt für Portugal.
+
+### Component Structure
+```
+/touren/[id]/tagebuch
+├── Tagebuch-Seite (Server Component + Client Islands)
+│   ├── Eintrag-Liste (chronologisch, neueste zuerst)
+│   │   └── Tagebuch-Karte (pro Eintrag)
+│   │       ├── Datum + Titel
+│   │       ├── Text (gekürzt, bei Tap expandierbar)
+│   │       ├── Foto-Thumbnails (falls vorhanden)
+│   │       └── Autor + GPS-Badge
+│   ├── "Neuer Eintrag" FAB (Floating Action Button, Mobile)
+│   └── Empty State ("Noch keine Einträge — starte dein Tagebuch!")
+└── Eintrag-Formular (shadcn Sheet, gleitet von unten)
+    ├── Titel (Input)
+    ├── Text (Textarea)
+    ├── Foto hinzufügen (Kamera oder Mediathek)
+    ├── GPS erfassen (Button, Geolocation API)
+    ├── Name (Input, optional, default "Anonym")
+    └── Speichern / Abbrechen
+```
+
+### Data Model
+```
+Jeder Tagebuch-Eintrag hat:
+- Eindeutige ID (UUID)
+- Tour-Zuordnung (welche Tour)
+- Datum (Wandertag)
+- Titel (z.B. "Tag 3: Von Zambujeira nach Odeceixe")
+- Text (Beschreibung des Tages)
+- Autor-Name (optional, default "Anonym")
+- GPS-Position (optional, Breitengrad + Längengrad)
+- Erstellungszeitpunkt
+
+Gespeichert in: Supabase PostgreSQL (Tabelle: diary_entries)
+```
+
+### Tech Decisions
+- **Server Component + Client Islands** → Seite lädt schnell, nur Formulare sind interaktiv
+- **Sheet (shadcn)** für das Formular → Gleitet von unten rein, nativ-Feeling auf Mobile
+- **Optimistic UI** → Eintrag erscheint sofort in der Liste, Server-Sync im Hintergrund
+- **Card (shadcn)** für Einträge → Konsistentes Design mit der Landing Page
+
+### Dependencies
+Keine zusätzlichen — nutzt vorhandene shadcn-Komponenten (Card, Sheet, Button, Input, Textarea)
+
+### Skipped for Sri Lanka (kommt für Portugal)
+- Seitenumblätter-Animation (turn.js / StPageFlip)
+- Realtime-Updates via Supabase Realtime
+- Kommentar-System
+- Auto-generierte Tages-Summaries
+- Retroaktive Tagebücher
 
 ## QA Test Results
 _To be added by /qa_

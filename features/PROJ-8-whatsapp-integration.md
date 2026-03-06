@@ -117,7 +117,44 @@ Eine jederzeit erweiterbare Bibliothek mit kreativen Assets für die Summary-Gen
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Scope: Sri Lanka Test-MVP
+Share-Button für Tagebuch-Einträge und Fotos per WhatsApp. Schöne Link-Vorschau dank Open Graph Meta-Tags. Kein Video, keine Musik, keine Content-Box — kommt für Portugal.
+
+### Component Structure
+```
+WhatsApp-Integration (kein eigene Seite — erweitert bestehende Komponenten)
+├── Share-Button (wiederverwendbare Komponente)
+│   ├── Erscheint bei jedem Tagebuch-Eintrag
+│   ├── Erscheint bei jedem Foto in der Lightbox
+│   ├── Nutzt Web Share API (natives Share-Sheet auf Mobile)
+│   └── Fallback: WhatsApp-Deep-Link (wa.me) auf Desktop
+├── Open Graph Meta-Tags (dynamisch pro Seite)
+│   ├── /touren/[id]/tagebuch → Tour-Name + Beschreibung + Cover-Foto
+│   ├── /touren/[id]/galerie → Tour-Name + Foto-Anzahl + Cover-Foto
+│   └── Einzelne Einträge/Fotos → Titel + Vorschaubild
+└── Rück-Link
+    └── Jeder geteilte Link führt direkt zur richtigen Seite
+```
+
+### Data Model
+Kein eigenes Datenmodell — nutzt bestehende Tour/Eintrag/Foto-Daten für Meta-Tags.
+
+### Tech Decisions
+- **Web Share API** → Natives Share-Sheet auf iPhone, WhatsApp ist ein Tap entfernt
+- **Open Graph Meta-Tags** → WhatsApp zeigt automatisch Titel, Beschreibung und Vorschaubild
+- **Dynamische Metadata** via Next.js `generateMetadata()` → Pro Tour/Eintrag eigene Vorschau
+- **Fallback auf Desktop** → `https://wa.me/?text=...` Deep-Link wenn Web Share API nicht verfügbar
+
+### Dependencies
+Keine zusätzlichen — nutzt native Browser-APIs und Next.js Metadata API.
+
+### Skipped for Sri Lanka (kommt für Portugal)
+- Tages-Summary Generator
+- Video/Diashow mit Musik
+- Content-Box (Medienbibliothek)
+- Postkarten-Generator (Foto + Overlay)
+- Automatische Archivierung im Tagebuch
 
 ## QA Test Results
 _To be added by /qa_

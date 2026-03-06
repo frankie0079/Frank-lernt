@@ -14,12 +14,12 @@
 |----|---------|--------|------|---------|
 | PROJ-1 | Landing Page — Tourenübersicht, Navigation | Deployed | [PROJ-1-landing-page.md](PROJ-1-landing-page.md) | 2026-02-28 |
 | PROJ-2 | Reiseplanung — Flüge, Hotels, Mietwagen, Routen | Planned | [PROJ-2-reiseplanung.md](PROJ-2-reiseplanung.md) | 2026-02-28 |
-| PROJ-3 | Reisetagebuch — Tageseinträge, Kommentare, Fotos | Planned | [PROJ-3-reisetagebuch.md](PROJ-3-reisetagebuch.md) | 2026-02-28 |
-| PROJ-4 | Fotogalerie — Upload, Anzeige, Lightbox | Planned | [PROJ-4-fotogalerie.md](PROJ-4-fotogalerie.md) | 2026-02-28 |
-| PROJ-5 | PWA — GPS-Tracking, Quick-Capture, Offline-Modus | Planned | [PROJ-5-pwa-setup.md](PROJ-5-pwa-setup.md) | 2026-02-28 |
-| PROJ-6 | Interaktive Karte — Wanderer-Punkte, Fähnchen, Pins, Route | Planned | [PROJ-6-interaktive-karte.md](PROJ-6-interaktive-karte.md) | 2026-02-28 |
+| PROJ-3 | Reisetagebuch — Tageseinträge, Kommentare, Fotos | In Progress | [PROJ-3-reisetagebuch.md](PROJ-3-reisetagebuch.md) | 2026-02-28 |
+| PROJ-4 | Fotogalerie — Upload, Anzeige, Lightbox | In Progress | [PROJ-4-fotogalerie.md](PROJ-4-fotogalerie.md) | 2026-02-28 |
+| PROJ-5 | PWA — GPS-Tracking, Quick-Capture, Offline-Modus | In Progress | [PROJ-5-pwa-setup.md](PROJ-5-pwa-setup.md) | 2026-02-28 |
+| PROJ-6 | Interaktive Karte — Wanderer-Punkte, Fähnchen, Pins, Route | In Progress | [PROJ-6-interaktive-karte.md](PROJ-6-interaktive-karte.md) | 2026-02-28 |
 | PROJ-7 | Tages-Statistiken — km, Höhenmeter, Gehzeit | Planned | [PROJ-7-tages-statistiken.md](PROJ-7-tages-statistiken.md) | 2026-02-28 |
-| PROJ-8 | WhatsApp-Integration — Links & Updates teilen | Planned | [PROJ-8-whatsapp-integration.md](PROJ-8-whatsapp-integration.md) | 2026-02-28 |
+| PROJ-8 | WhatsApp-Integration — Links & Updates teilen | In Progress | [PROJ-8-whatsapp-integration.md](PROJ-8-whatsapp-integration.md) | 2026-02-28 |
 | PROJ-9 | Live-Ticker — Echtzeit-Updates für Follower | Planned | [PROJ-9-live-ticker.md](PROJ-9-live-ticker.md) | 2026-02-28 |
 | PROJ-10 | Push-Benachrichtigungen | Planned | [PROJ-10-push-benachrichtigungen.md](PROJ-10-push-benachrichtigungen.md) | 2026-02-28 |
 | PROJ-11 | Tages-Zusammenfassung (auto-generiert) | Planned | [PROJ-11-tages-zusammenfassung.md](PROJ-11-tages-zusammenfassung.md) | 2026-02-28 |

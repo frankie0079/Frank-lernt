@@ -71,7 +71,70 @@ Fotos werden automatisch der richtigen Tour zugeordnet.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Scope: Sri Lanka Test-MVP
+Foto-Upload (Kamera + Mediathek), Grid-Galerie, Lightbox mit Swipe. Kein Filter nach Tag, kein Batch-Upload-Fortschritt — kommt für Portugal.
+
+### Component Structure
+```
+/touren/[id]/galerie
+├── Galerie-Seite
+│   ├── Foto-Grid (responsive, 2-4 Spalten je Bildschirmbreite)
+│   │   └── Foto-Thumbnail (pro Bild)
+│   │       ├── Komprimiertes Vorschaubild (Lazy Loading)
+│   │       ├── Caption-Overlay (falls vorhanden)
+│   │       └── Tap → öffnet Lightbox
+│   ├── Lightbox (shadcn Dialog, fullscreen)
+│   │   ├── Grosses Bild
+│   │   ├── Swipe links/rechts (vorheriges/nächstes)
+│   │   ├── Caption + Datum + Autor
+│   │   └── Schliessen-Button
+│   ├── "Fotos hochladen" FAB (Floating Action Button, Mobile)
+│   └── Empty State ("Noch keine Fotos — halte deine Erlebnisse fest!")
+└── Upload-Flow (shadcn Sheet)
+    ├── "Foto aufnehmen" (öffnet Kamera via capture="environment")
+    ├── "Aus Mediathek wählen" (Datei-Auswahl, mehrere möglich)
+    ├── Vorschau der gewählten Fotos
+    ├── Caption + Name (optional)
+    ├── Upload-Fortschrittsbalken
+    └── GPS + Datum werden automatisch aus EXIF gelesen
+```
+
+### Data Model
+```
+Jedes Foto hat:
+- Eindeutige ID (UUID)
+- Tour-Zuordnung (welche Tour)
+- Speicherpfad in Supabase Storage
+- Thumbnail-URL (400px Breite)
+- Vollbild-URL (max. 1920px Breite)
+- Bildunterschrift (optional)
+- Autor-Name (optional, default "Anonym")
+- GPS-Position (aus EXIF, falls vorhanden)
+- Aufnahme-Zeitpunkt (aus EXIF, falls vorhanden)
+- Bildmasse (Breite × Höhe)
+
+Gespeichert in:
+- Metadaten → Supabase PostgreSQL (Tabelle: photos)
+- Bilddateien → Supabase Storage (Bucket: "photos", öffentlich)
+```
+
+### Tech Decisions
+- **Client-seitige Komprimierung** vor Upload → Spart Datenvolumen unterwegs, schnellerer Upload
+- **EXIF-Auslesen im Browser** → GPS + Aufnahmedatum automatisch, ohne Serverlast
+- **Supabase Storage** direkt vom Browser → Kein eigener API-Endpoint für Upload nötig
+- **CSS Grid mit auto-fill** → Responsive Spaltenanzahl ohne Breakpoints
+- **Lightbox via shadcn Dialog** → Kein Extra-Paket, touch-freundlich
+- **Thumbnails client-seitig** → Beim Upload wird eine kleine Version erzeugt und separat hochgeladen
+
+### Dependencies
+- `browser-image-compression` — Fotos vor Upload komprimieren (spart Mobile-Daten)
+- `exifr` — GPS + Datum aus EXIF-Daten auslesen
+
+### Skipped for Sri Lanka (kommt für Portugal)
+- Filter nach Tag/Etappe
+- HEIF-Konvertierung
+- Detaillierter Batch-Upload mit pro-Foto-Fortschritt
 
 ## QA Test Results
 _To be added by /qa_

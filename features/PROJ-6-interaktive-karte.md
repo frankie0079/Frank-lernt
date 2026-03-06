@@ -46,7 +46,48 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Scope: Sri Lanka Test-MVP
+Karte mit Foto-Pins und Tagebuch-Markern. Keine Live-Tracking, keine Routen-Linien — kommt für Portugal.
+
+### Component Structure
+```
+/touren/[id]/karte
+├── Karten-Seite
+│   ├── Leaflet Map (nimmt meisten Platz ein)
+│   │   ├── OpenStreetMap Tiles (kostenlos, kein API-Key)
+│   │   ├── Foto-Marker (kleine Thumbnail-Icons)
+│   │   │   └── Tap → Popup mit Bild + Caption
+│   │   ├── Tagebuch-Marker (Pin-Icons)
+│   │   │   └── Tap → Popup mit Titel + Text-Ausschnitt
+│   │   └── Zoom/Pan (Touch-Gesten auf Mobile)
+│   ├── Legende (Foto-Marker vs. Tagebuch-Marker)
+│   └── Empty State ("Noch keine GPS-Daten vorhanden")
+└── Keine Eingabe-UI — Karte ist rein zum Anschauen
+```
+
+### Data Model
+Keine eigene Tabelle — liest GPS-Daten aus:
+- `photos` (gps_lat, gps_lng) → Foto-Marker
+- `diary_entries` (gps_lat, gps_lng) → Tagebuch-Marker
+
+### Tech Decisions
+- **Leaflet + OpenStreetMap** statt Mapbox → Komplett kostenlos, kein API-Key, keine Nutzungslimits
+- **react-leaflet** → React-Wrapper, deklarative Komponenten statt imperativer API
+- **Dynamic Import** (next/dynamic) → Leaflet wird nur geladen wenn die Karten-Seite aktiv ist (grosses Bundle)
+- **Karte zentriert automatisch** auf Bounding Box aller Marker (fitBounds)
+
+### Dependencies
+- `leaflet` — Karten-Bibliothek
+- `react-leaflet` — React-Integration
+- `@types/leaflet` — TypeScript-Typen
+
+### Skipped for Sri Lanka (kommt für Portugal)
+- Echtzeit Wanderer-Positionen
+- Gelaufene Route als farbige Linie
+- Geplante Route als gestrichelte Linie
+- Marker-Clustering (bei 100+ Pins)
+- Offline-Karten-Cache
 
 ## QA Test Results
 _To be added by /qa_
