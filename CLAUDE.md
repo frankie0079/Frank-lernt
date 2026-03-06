@@ -30,7 +30,7 @@ src/
         route.ts                GET /api/tours — Alle Touren
         [id]/
           route.ts              GET /api/tours/[id] — Einzelne Tour
-          diary/route.ts        GET/POST — Tagebucheinträge
+          diary/route.ts        GET/POST/DELETE — Tagebucheinträge
           photos/route.ts       GET/POST — Foto-Metadaten
     touren/[id]/
       layout.tsx            Shared Tour Layout (Header + Tabs + Back-Link)
@@ -68,6 +68,7 @@ src/
     mock-data.ts            Mock-Touren (Rota Vicentina + 2 vergangene) — Fallback
     supabase.ts             Typed Supabase Client (createClient<Database>)
     photo-upload.ts         EXIF-Extraktion, Kompression, Supabase Storage Upload
+    rate-limit.ts           In-Memory Rate-Limiter (20 req/min pro IP)
     utils.ts                Utility-Funktionen (cn)
 features/                   Feature specifications (PROJ-X-name.md)
   INDEX.md                  Feature status overview (22 Features, PROJ-1 bis PROJ-22)
@@ -94,6 +95,8 @@ public/
 - **Client-side Bildverarbeitung:** Kompression (1920px/1MB) + Thumbnail (400px) + EXIF vor Upload
 - **Leaflet statt Mapbox:** Kostenlos, kein API-Key, OpenStreetMap-Tiles
 - **Turbopack inkompatibel:** Serwist erfordert `--webpack` Flag in dev/build Scripts
+- **Rate-Limiting:** In-Memory, 20 POST/DELETE-Requests pro Minute pro IP
+- **URL-Validierung:** Foto-URLs werden gegen Supabase-Domain validiert (kein externes Injection)
 
 ## URL-Struktur
 
@@ -108,8 +111,8 @@ public/
 API:
 /api/tours                 GET — Alle Touren
 /api/tours/[id]            GET — Einzelne Tour
-/api/tours/[id]/diary      GET/POST — Tagebucheinträge (Zod-validiert)
-/api/tours/[id]/photos     GET/POST — Foto-Metadaten (Zod-validiert)
+/api/tours/[id]/diary      GET/POST/DELETE — Tagebucheinträge (Zod-validiert, Rate-Limited)
+/api/tours/[id]/photos     GET/POST — Foto-Metadaten (Zod-validiert, Rate-Limited, URL-Domain-Check)
 ```
 
 ## Development Workflow
@@ -146,7 +149,7 @@ npm run start      # Production server
 
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
 - **Tabellen:** `tours` (TEXT PK, Slug-IDs), `diary_entries` (UUID PK), `photos` (UUID PK)
-- **RLS:** Aktiviert — Public SELECT + INSERT (kein Auth, bewusst offen)
+- **RLS:** Aktiviert — Public SELECT + INSERT + DELETE auf diary_entries (kein Auth, bewusst offen)
 - **Storage:** Bucket `photos` (public, 20MB Limit)
 - **Typen:** Auto-generiert in `src/lib/database.types.ts`
 - **Seed-Daten:** 3 Touren (rota-vicentina-2026, dolomiten-2025, kungsleden-2024)
@@ -160,38 +163,40 @@ npm run start      # Production server
 - QA bestanden (11/11), Security Headers konfiguriert
 - Vercel auto-deploy via GitHub verbunden
 
-**PROJ-5 (PWA Setup):** In Progress — Frontend komplett
+**PROJ-5 (PWA Setup):** QA bestanden — Ready for Deploy
 - Serwist Service Worker (App-Shell Caching)
 - manifest.json + PWA-Icons (generiert aus Logo)
 - iOS Meta Tags (apple-mobile-web-app-capable, black-translucent)
 - Installierbar auf iPhone als Standalone-App
 
-**PROJ-3 (Reisetagebuch):** In Progress — Frontend + Backend komplett
+**PROJ-3 (Reisetagebuch):** QA bestanden — Ready for Deploy
 - Tagebuch-Liste mit Einträgen (Datum, Titel, Inhalt, Autor)
-- FAB + Sheet-Formular zum Erstellen
+- FAB + Sheet-Formular zum Erstellen + Löschen (AlertDialog)
 - Optimistic UI (sofortige Anzeige, Error Rollback mit Toast)
 - GPS-Button (Geolocation API)
 - ShareButton pro Eintrag
+- Rate-Limiting (20 req/min), JSON try/catch
 
-**PROJ-4 (Fotogalerie):** In Progress — Frontend + Backend komplett
+**PROJ-4 (Fotogalerie):** QA bestanden — Ready for Deploy
 - Photo-Grid (CSS Grid, lazy loading, Thumbnails)
 - Lightbox (Fullscreen, Swipe, Keyboard-Navigation, Share)
 - Upload-Sheet (Kamera + Mediathek, 20MB-Limit, Kompression)
 - EXIF-Extraktion (GPS, Datum) vor Kompression
 - Progress-Bar beim Upload
+- URL-Domain-Validierung (nur Supabase-URLs), Rate-Limiting, JSON try/catch
 
-**PROJ-6 (Interaktive Karte):** In Progress — Frontend + Backend komplett
+**PROJ-6 (Interaktive Karte):** QA bestanden — Ready for Deploy
 - Leaflet + OpenStreetMap (dynamic import, SSR disabled)
 - Foto-Marker (Teal, Kamera-Icon) + Tagebuch-Marker (Amber, Buch-Icon)
 - Popups mit Foto-Preview bzw. Tagebuch-Text
 - Auto-fitBounds, Legende, Empty State
 
-**PROJ-8 (WhatsApp Share):** In Progress — Frontend komplett
+**PROJ-8 (WhatsApp Share):** QA bestanden — Ready for Deploy
 - ShareButton-Komponente (Web Share API + wa.me Fallback)
 - Eingebaut in Lightbox, Tagebuch-Einträge, Karte
 - OG Meta Tags (generateMetadata) für Link-Previews
 
-**Nächste Schritte:** `/qa` (Test gegen Acceptance Criteria) → `/deploy` (Vercel)
+**Nächste Schritte:** `/deploy` (Vercel) — alle Features production-ready
 
 **Alle anderen Features (PROJ-2, 7, 9-22):** Planned — Specs vorhanden, noch nicht begonnen
 
