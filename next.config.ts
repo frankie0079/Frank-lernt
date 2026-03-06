@@ -1,11 +1,20 @@
-import type { NextConfig } from "next";
+import withSerwistInit from "@serwist/next";
 
-const nextConfig: NextConfig = {
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+});
+
+export default withSerwist({
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
       },
     ],
   },
@@ -25,6 +34,4 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-};
-
-export default nextConfig;
+});

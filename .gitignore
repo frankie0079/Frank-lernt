@@ -38,4 +38,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# serwist (generated service worker)
+public/sw.js
+public/sw.js.map
+public/serwist-worker-*.js
+public/serwist-worker-*.js.map
+
 .mcp.json
