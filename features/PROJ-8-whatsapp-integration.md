@@ -1,8 +1,8 @@
 # PROJ-8: WhatsApp-Integration — Tages-Summary für Friends & Family
 
-## Status: Planned
+## Status: Deployed
 **Created:** 2026-02-28
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-03-06
 
 ## Dependencies
 - Requires: PROJ-3 (Reisetagebuch) — Summary wird als Tagebuchseite archiviert
@@ -316,4 +316,6 @@ Testing below covers only the **implemented Sri Lanka Test-MVP scope** as define
 - **Recommendation:** Deploy. The 3 low-severity bugs are UX improvements for the next sprint (deeper link context in shared URLs).
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://die-wandervoegel.vercel.app
+- **Deployed:** 2026-03-06
+- **Git Tag:** v1.8.0-PROJ-8

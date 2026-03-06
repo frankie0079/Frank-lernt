@@ -1,6 +1,6 @@
 # PROJ-3: Reisetagebuch — Digitales Buch zum Durchblättern
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-28
 **Last Updated:** 2026-03-06
 
@@ -319,4 +319,6 @@ Testing below covers only the **implemented Sri Lanka Test-MVP scope** as define
 - **Recommendation:** Fix the 3 medium bugs before deployment. BUG-3 (rate limiting) and BUG-4 (deletion) are particularly important since the site has no authentication.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://die-wandervoegel.vercel.app/touren/rota-vicentina-2026/tagebuch
+- **Deployed:** 2026-03-06
+- **Git Tag:** v1.3.0-PROJ-3

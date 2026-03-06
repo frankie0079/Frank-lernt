@@ -1,6 +1,6 @@
 # PROJ-4: Fotogalerie
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-28
 **Last Updated:** 2026-03-06
 
@@ -344,4 +344,6 @@ Gespeichert in:
 - **Recommendation:** Fix BUG-2 (restrict full_url to Supabase domain) and BUG-1/BUG-4 (JSON handling, rate limiting) before deployment.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://die-wandervoegel.vercel.app/touren/rota-vicentina-2026/galerie
+- **Deployed:** 2026-03-06
+- **Git Tag:** v1.4.0-PROJ-4

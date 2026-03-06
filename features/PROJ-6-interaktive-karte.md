@@ -1,6 +1,6 @@
 # PROJ-6: Interaktive Karte
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-28
 **Last Updated:** 2026-03-06
 
@@ -270,4 +270,6 @@ Testing below covers only the **implemented Sri Lanka Test-MVP scope** as define
 - **Recommendation:** Deploy. BUG-1 is resolved by fixing PROJ-4 BUG-2. The 3 low-severity bugs are cosmetic or future-proofing concerns.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://die-wandervoegel.vercel.app/touren/rota-vicentina-2026/karte
+- **Deployed:** 2026-03-06
+- **Git Tag:** v1.6.0-PROJ-6

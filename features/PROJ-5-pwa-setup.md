@@ -1,6 +1,6 @@
 # PROJ-5: PWA — GPS-Tracking, Quick-Capture, Offline-Modus
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-28
 **Last Updated:** 2026-03-06
 
@@ -214,4 +214,6 @@ PWA ist reine Infrastruktur — kein eigenes Datenmodell.
 - **Recommendation:** Deploy. The 2 low-severity manifest issues can be fixed in the next sprint.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://die-wandervoegel.vercel.app
+- **Deployed:** 2026-03-06
+- **Git Tag:** v1.5.0-PROJ-5
