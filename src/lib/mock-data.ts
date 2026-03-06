@@ -15,6 +15,7 @@ export const mockTours: Tour[] = [
     current_stage: null,
     description:
       "Entlang der wilden Atlantikküste Portugals — von Santiago do Cacém bis zum Kap São Vicente.",
+    created_at: "2026-02-28T00:00:00Z",
   },
   {
     id: "dolomiten-2025",
@@ -30,6 +31,7 @@ export const mockTours: Tour[] = [
     current_stage: null,
     description:
       "Von den Pragser Dolomiten bis nach Belluno — zehn Tage über spektakuläre Pässe und durch stille Täler.",
+    created_at: "2025-06-01T00:00:00Z",
   },
   {
     id: "kungsleden-2024",
@@ -45,5 +47,6 @@ export const mockTours: Tour[] = [
     current_stage: null,
     description:
       "Durch die arktische Wildnis Nordschweden — Mitternachtssonne, Rentiere und endlose Weite.",
+    created_at: "2024-07-01T00:00:00Z",
   },
 ];
