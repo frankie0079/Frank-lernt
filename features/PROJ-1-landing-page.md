@@ -1,8 +1,8 @@
 # PROJ-1: Landing Page
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-02-28
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-03-06
 
 ## Dependencies
 - None (Fundament für alle anderen Features)
@@ -126,7 +126,37 @@ Keine neuen Pakete nötig — `@supabase/supabase-js` und Next.js sind bereits i
 - Vollständige Archiv-Seite → PROJ-19
 
 ## QA Test Results
-_To be added by /qa_
+
+**Date:** 2026-03-06 | **Result:** PASS (all bugs fixed)
+
+### Build & Lint
+- `npm run build`: PASS (static generation, TypeScript clean)
+- `npm run lint`: PASS (only pre-existing shadcn/ui sidebar.tsx warning)
+
+### Acceptance Criteria (11/11 PASS)
+- [x] Hero zeigt Logo + Tour-Status Badge
+- [x] Navigation aktive Tour: Planung, Tagebuch, Galerie, Karte
+- [x] Navigation vergangene Touren: nur Tagebuch, Galerie, Karte
+- [x] Layout: Aktive Tour gross links, 2-3 vergangene daneben
+- [x] Aktive Tour: Name, Zeitraum, Teilnehmer, km, Foto, Status
+- [x] Vergangene Touren: Name, Datum, Cover-Foto
+- [x] "Weitere"-Button zum Archiv
+- [x] Responsive Design (Grid-Fallback 1 Spalte auf Mobile)
+- [x] Mobile: Touren untereinander
+- [x] Ladezeit < 3s (statisch generiert)
+- [x] Öffentlich ohne Login
+
+### Bugs Found & Fixed
+| # | Severity | Bug | Fix |
+|---|----------|-----|-----|
+| B1 | MEDIUM | TourStatusBadge definiert aber nicht in Hero eingebunden | Badge in HeroSection eingefügt |
+| B2 | MEDIUM | ESLint broken (`.eslintrc.json` inkompatibel mit ESLint 9) | Migration zu `eslint.config.mjs` + `package.json` lint-Script |
+| I1 | LOW | `aria-label` auf `<nav>` fehlte | `aria-label` auf TourNavigation hinzugefügt |
+
+### Security
+- Keine Secrets im Code, `.env.local` korrekt in `.gitignore`
+- Keine User-Inputs (read-only Landing Page)
+- Kein XSS-Risiko (React escaping, kein dangerouslySetInnerHTML)
 
 ## Deployment
 _To be added by /deploy_

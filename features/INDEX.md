@@ -12,7 +12,7 @@
 
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
-| PROJ-1 | Landing Page — Tourenübersicht, Navigation | In Progress | [PROJ-1-landing-page.md](PROJ-1-landing-page.md) | 2026-02-28 |
+| PROJ-1 | Landing Page — Tourenübersicht, Navigation | In Review | [PROJ-1-landing-page.md](PROJ-1-landing-page.md) | 2026-02-28 |
 | PROJ-2 | Reiseplanung — Flüge, Hotels, Mietwagen, Routen | Planned | [PROJ-2-reiseplanung.md](PROJ-2-reiseplanung.md) | 2026-02-28 |
 | PROJ-3 | Reisetagebuch — Tageseinträge, Kommentare, Fotos | Planned | [PROJ-3-reisetagebuch.md](PROJ-3-reisetagebuch.md) | 2026-02-28 |
 | PROJ-4 | Fotogalerie — Upload, Anzeige, Lightbox | Planned | [PROJ-4-fotogalerie.md](PROJ-4-fotogalerie.md) | 2026-02-28 |

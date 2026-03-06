@@ -17,7 +17,7 @@ export function TourNavigation({ tourId, showPlanung }: TourNavigationProps) {
   ];
 
   return (
-    <nav className="flex flex-wrap gap-2">
+    <nav aria-label={`Navigation für Tour ${tourId}`} className="flex flex-wrap gap-2">
       {links.map((link) => (
         <Button key={link.href} variant="outline" size="sm" className="border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-colors text-sm px-3" asChild>
           <Link href={link.href}>{link.label}</Link>

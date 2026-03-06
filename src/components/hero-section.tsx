@@ -75,6 +75,7 @@ export function HeroSection({ activeTour }: HeroSectionProps) {
         <p className="max-w-lg text-2xl text-white/90 drop-shadow sm:text-3xl font-[family-name:var(--font-caveat)]">
           Einfach mal die Schnauze halten — Du Vögel
         </p>
+        <TourStatusBadge tour={activeTour} />
       </div>
     </section>
   );
