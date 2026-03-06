@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      audio_notes: {
+        Row: {
+          audio_url: string
+          author_name: string
+          created_at: string
+          diary_entry_id: string
+          duration_seconds: number | null
+          id: string
+          storage_path: string
+          tour_id: string
+        }
+        Insert: {
+          audio_url: string
+          author_name?: string
+          created_at?: string
+          diary_entry_id: string
+          duration_seconds?: number | null
+          id?: string
+          storage_path: string
+          tour_id: string
+        }
+        Update: {
+          audio_url?: string
+          author_name?: string
+          created_at?: string
+          diary_entry_id?: string
+          duration_seconds?: number | null
+          id?: string
+          storage_path?: string
+          tour_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_notes_diary_entry_id_fkey"
+            columns: ["diary_entry_id"]
+            isOneToOne: false
+            referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_notes_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diary_entries: {
         Row: {
           author_name: string
@@ -58,6 +106,7 @@ export type Database = {
           author_name: string
           caption: string | null
           created_at: string
+          diary_entry_id: string | null
           full_url: string
           gps_lat: number | null
           gps_lng: number | null
@@ -73,6 +122,7 @@ export type Database = {
           author_name?: string
           caption?: string | null
           created_at?: string
+          diary_entry_id?: string | null
           full_url: string
           gps_lat?: number | null
           gps_lng?: number | null
@@ -88,6 +138,7 @@ export type Database = {
           author_name?: string
           caption?: string | null
           created_at?: string
+          diary_entry_id?: string | null
           full_url?: string
           gps_lat?: number | null
           gps_lng?: number | null
@@ -100,6 +151,13 @@ export type Database = {
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "photos_diary_entry_id_fkey"
+            columns: ["diary_entry_id"]
+            isOneToOne: false
+            referencedRelation: "diary_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "photos_tour_id_fkey"
             columns: ["tour_id"]

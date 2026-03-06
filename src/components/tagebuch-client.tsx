@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { Plus, MapPin, Calendar, User, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,6 +110,7 @@ export function TagebuchClient({ tourId, tourName, initialEntries }: TagebuchCli
             <DiaryEntryCard
               key={entry.id}
               entry={entry}
+              tourId={tourId}
               tourName={tourName}
               isPending={pendingIds.has(entry.id)}
               onDelete={handleDelete}
@@ -194,12 +196,13 @@ function BookIcon({ className }: { className?: string }) {
 
 interface DiaryEntryCardProps {
   entry: DiaryEntry;
+  tourId: string;
   tourName: string;
   isPending?: boolean;
   onDelete: (id: string) => void;
 }
 
-function DiaryEntryCard({ entry, tourName, isPending, onDelete }: DiaryEntryCardProps) {
+function DiaryEntryCard({ entry, tourId, tourName, isPending, onDelete }: DiaryEntryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isLong = entry.content.length > 200;
   const displayText = isExpanded || !isLong
@@ -218,7 +221,18 @@ function DiaryEntryCard({ entry, tourName, isPending, onDelete }: DiaryEntryCard
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg leading-snug">{entry.title}</CardTitle>
+            <CardTitle className="text-lg leading-snug">
+              {isPending ? (
+                entry.title
+              ) : (
+                <Link
+                  href={`/touren/${tourId}/tagebuch/${entry.id}`}
+                  className="hover:text-primary transition-colors"
+                >
+                  {entry.title}
+                </Link>
+              )}
+            </CardTitle>
             {isPending && (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" aria-label="Wird gespeichert" />
             )}
@@ -278,7 +292,7 @@ function DiaryEntryCard({ entry, tourName, isPending, onDelete }: DiaryEntryCard
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
+        <p className="text-sm text-foreground whitespace-pre-line leading-relaxed break-words">
           {displayText}
         </p>
         {isLong && (

@@ -31,10 +31,12 @@ src/
         [id]/
           route.ts              GET /api/tours/[id] — Einzelne Tour
           diary/route.ts        GET/POST/DELETE — Tagebucheinträge
+          diary/[entryId]/route.ts  GET/DELETE — Einzeleintrag + Media
           photos/route.ts       GET/POST — Foto-Metadaten
     touren/[id]/
       layout.tsx            Shared Tour Layout (Header + Tabs + Back-Link)
       tagebuch/page.tsx     Reisetagebuch (PROJ-3)
+      tagebuch/[entryId]/page.tsx  Einzeleintrag-Detail (PROJ-23)
       galerie/page.tsx      Fotogalerie (PROJ-4)
       karte/page.tsx        Interaktive Karte (PROJ-6)
   components/
@@ -48,9 +50,10 @@ src/
     # Tour Layout (shared)
     tour-header.tsx         Tour-Name + Status-Badge (Server Component)
     tour-tabs.tsx           Tab-Navigation: Tagebuch/Galerie/Karte (Client)
-    # Reisetagebuch (PROJ-3)
-    tagebuch-client.tsx     Tagebuch-Liste, FAB, Optimistic UI
+    # Reisetagebuch (PROJ-3 + PROJ-23)
+    tagebuch-client.tsx     Tagebuch-Liste, FAB, Optimistic UI, Links zu Detailseiten
     diary-entry-form.tsx    Formular: Titel, Inhalt, Datum, GPS, Autor
+    diary-entry-detail.tsx  Einzeleintrag-Ansicht: Hero-Foto, Text, Fotos, Audio, GPS (PROJ-23)
     # Fotogalerie (PROJ-4)
     galerie-client.tsx      Foto-Grid + Lightbox + Upload-Sheet
     photo-grid.tsx          CSS-Grid mit Thumbnails (lazy loading)
@@ -104,6 +107,7 @@ public/
 /                          Landing Page (PROJ-1) ✅
 /touren/[id]/planung       Reiseplanung (PROJ-2, nur aktive Tour)
 /touren/[id]/tagebuch      Reisetagebuch (PROJ-3) ✅
+/touren/[id]/tagebuch/[entryId]  Einzeleintrag-Detail (PROJ-23) 🚧
 /touren/[id]/galerie       Fotogalerie (PROJ-4) ✅
 /touren/[id]/karte         Interaktive Karte (PROJ-6) ✅
 /archiv                    Tour-Archiv (PROJ-19)
@@ -112,6 +116,7 @@ API:
 /api/tours                 GET — Alle Touren
 /api/tours/[id]            GET — Einzelne Tour
 /api/tours/[id]/diary      GET/POST/DELETE — Tagebucheinträge (Zod-validiert, Rate-Limited)
+/api/tours/[id]/diary/[entryId]  GET/DELETE — Einzeleintrag mit Photos + Audio (PROJ-23) 🚧
 /api/tours/[id]/photos     GET/POST — Foto-Metadaten (Zod-validiert, Rate-Limited, URL-Domain-Check)
 ```
 
@@ -148,9 +153,9 @@ npm run start      # Production server
 ## Supabase
 
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
-- **Tabellen:** `tours` (TEXT PK, Slug-IDs), `diary_entries` (UUID PK), `photos` (UUID PK)
-- **RLS:** Aktiviert — Public SELECT + INSERT + DELETE auf diary_entries (kein Auth, bewusst offen)
-- **Storage:** Bucket `photos` (public, 20MB Limit)
+- **Tabellen:** `tours` (TEXT PK, Slug-IDs), `diary_entries` (UUID PK), `photos` (UUID PK, FK diary_entry_id nullable), `audio_notes` (UUID PK, FK diary_entry_id)
+- **RLS:** Aktiviert — Public SELECT + INSERT + DELETE auf allen Tabellen (kein Auth, bewusst offen)
+- **Storage:** Bucket `photos` (public, 20MB Limit), Bucket `audio` (public, 20MB Limit)
 - **Typen:** Auto-generiert in `src/lib/database.types.ts`
 - **Seed-Daten:** 3 Touren (rota-vicentina-2026, dolomiten-2025, kungsleden-2024)
 
@@ -196,7 +201,17 @@ npm run start      # Production server
 - Eingebaut in Lightbox, Tagebuch-Einträge, Karte
 - OG Meta Tags (generateMetadata) für Link-Previews
 
-**Nächste Schritte:** `/deploy` (Vercel) — alle Features production-ready
+**PROJ-23 (Multimodales Kollaboratives Tagebuch):** In Progress — Phase 1 abgeschlossen
+- Redesign des Tagebuchs: multimodal (Text + Fotos + Audio + Karte), kollaborativ, KI-Zusammenfassungen
+- Phase 1 DONE: DB-Migrationen (photos.diary_entry_id, audio_notes Tabelle, audio Bucket), Einzeleintrag-Detailseite, API-Route, klickbare Titel in Liste
+- Phase 2 TODO: Multimodales Formular (Fotos + Audio im Eintrag)
+- Phase 3 TODO: Echtzeit-Sync (Supabase Realtime)
+- Phase 4 TODO: Selektives Sharing + OG-Images
+- Phase 5 TODO: KI-Zusammenfassung (Claude API)
+- Phase 6 TODO: Visual Polish
+- Plan-Datei: `.claude/plans/eager-questing-petal.md`
+
+**Nächste Schritte:** PROJ-23 Phase 2 (multimodales Formular)
 
 **Alle anderen Features (PROJ-2, 7, 9-22):** Planned — Specs vorhanden, noch nicht begonnen
 
