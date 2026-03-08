@@ -15,14 +15,14 @@ import {
 import { Camera, Loader2, User, AlertCircle } from "lucide-react";
 
 interface AvatarUploadProps {
-  userId: string;
+  memberId: string;
   currentAvatarUrl: string | null;
   displayName: string | null;
   onUploadComplete: (url: string) => void;
 }
 
 export function AvatarUpload({
-  userId,
+  memberId,
   currentAvatarUrl,
   displayName,
   onUploadComplete,
@@ -77,7 +77,7 @@ export function AvatarUpload({
 
         // Upload to Supabase Storage
         const supabase = createSupabaseBrowserClient();
-        const filePath = `${userId}/avatar.jpg`;
+        const filePath = `${memberId}/avatar.jpg`;
 
         const { error: uploadError } = await supabase.storage
           .from("avatars")
@@ -100,11 +100,11 @@ export function AvatarUpload({
         const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
         setPreviewUrl(urlWithCacheBuster);
 
-        // Update profile in database
+        // Update member in database
         const { error: updateError } = await supabase
-          .from("profiles")
+          .from("members")
           .update({ avatar_url: publicUrl })
-          .eq("id", userId);
+          .eq("id", memberId);
 
         if (updateError) {
           throw new Error(
@@ -125,7 +125,7 @@ export function AvatarUpload({
         }
       }
     },
-    [userId, onUploadComplete]
+    [memberId, onUploadComplete]
   );
 
   return (

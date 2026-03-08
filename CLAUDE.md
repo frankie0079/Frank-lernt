@@ -21,11 +21,11 @@
 - **Slideshow:** Canvas API + MediaRecorder (client-side MP4/WebM)
 - **PDF:** @react-pdf/renderer (client-side)
 - **Validation:** Zod + react-hook-form
-- **Auth:** Supabase Auth (Magic Link)
+- **Auth:** Token-basierte Links (kein Supabase Auth, kein Login nötig)
 
 ## Architektur-Entscheidungen (v2)
 
-- **Auth statt anonym:** Supabase Auth (Magic Link), Rollen (Organisator, Tages-Admin, Teilnehmer)
+- **Token-Links statt Login:** Organisator erstellt Mitglieder, jeder bekommt einen persönlichen Link per WhatsApp. Kein Passwort, keine E-Mail, kein Supabase Auth.
 - **Events statt Tours:** Neues Datenmodell mit Events, Agenda, Teilnehmer, Content-Pool
 - **Kostenlos:** Web Speech API statt Whisper, Canvas+MediaRecorder statt Remotion, manuelles Kuratieren statt Claude API
 - **Client-side Rendering:** Slideshow + PDF werden im Browser generiert (kein Server nötig)
@@ -35,12 +35,12 @@
 ## v2 Datenmodell (geplant)
 
 ```
-auth.users (Supabase Auth built-in)
-events (id, name, description, cover_photo, dates, created_by)
-event_members (event_id, user_id, role: organizer|admin|member)
+members (id, name, token, role: organizer|admin|member, avatar_url, created_at, updated_at) ← LIVE
+events (id, name, description, cover_photo, dates, created_by) ← geplant
+event_members (event_id, member_id, role) ← geplant
 agenda_items (event_id, title, date, daily_admin_id, sort_order)
 content_items (event_id, agenda_item_id, author_id, type: photo|video|text|voice, media_url, transcript, gps)
-reactions (content_item_id, user_id, emoji)
+reactions (content_item_id, member_id, emoji)
 comments (content_item_id, author_id, text)
 daily_reports (event_id, agenda_item_id, curated_by, selected_content_ids, slideshow_url, status)
 ```
@@ -48,7 +48,8 @@ daily_reports (event_id, agenda_item_id, curated_by, selected_content_ids, slide
 ## v2 URL-Struktur (geplant)
 
 ```
-/login                     Login (Magic Link)
+/login                     Info-Seite ("Du brauchst einen Link")
+/join/[token]              Persönlicher Link → Cookie → /events
 /events                    Meine Events (geschützt)
 /events/new                Event erstellen (geschützt)
 /events/[id]               Event-Dashboard (geschützt)
@@ -56,10 +57,11 @@ daily_reports (event_id, agenda_item_id, curated_by, selected_content_ids, slide
 /events/[id]/pool          Content-Pool — Karteikarten (geschützt)
 /events/[id]/admin         Tages-Admin Workflow (geschützt)
 /events/[id]/book          Post-Event Tagebuch (geschützt)
-/join/[token]              Einladungslink → Login → Event beitreten
+/profile                   Profil bearbeiten (Name + Avatar)
 /e/[slug]                  Öffentliche Event-Seite (kein Login)
 
 API:
+/api/members               GET (Liste) + POST (Mitglied anlegen, nur Organisator)
 /api/events                CRUD Events
 /api/events/[id]/content   CRUD Content-Items
 /api/events/[id]/reports   CRUD Daily Reports
@@ -114,25 +116,32 @@ npm run start      # Production server
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
 - **v1 Tabellen (live):** `tours`, `diary_entries`, `photos`, `audio_notes`
 - **v2 Tabellen (geplant):** `events`, `event_members`, `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
-- **Auth:** Frontend fertig, Backend-Setup pending (PROJ-24)
-- **v2 Tabellen (pending):** `profiles` (PROJ-24)
-- **Storage Buckets (live):** `photos`, `audio` (public, 20MB)
-- **Storage Buckets (geplant):** `avatars` (PROJ-24), `media`, `slideshows`
+- **Auth:** Token-basierte Links (kein Supabase Auth)
+- **v2 Tabellen (live):** `members` (Token-Auth, RLS enabled)
+- **Storage Buckets (live):** `photos`, `audio` (public, 20MB), `avatars` (public, 2MB, JPEG/PNG/WebP)
+- **Storage Buckets (geplant):** `media`, `slideshows`
 
 ## Aktueller Stand
 
-**PROJ-24: Auth & User-Accounts — In Progress (Architecture ✅, Frontend ✅, Backend pending)**
+**PROJ-24: Auth & User-Accounts — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
 
 Fertiggestellt:
-- Architecture Design + Tech-Entscheidungen dokumentiert
-- Frontend: Login-Page (Magic Link), Auth-Callback, Profile-Page (Avatar + Display-Name), AuthProvider, Middleware
-- Neue Dateien: `src/lib/supabase/` (client, server, middleware), `src/middleware.ts`, `src/components/auth-provider.tsx`, `src/components/login-form.tsx`, `src/components/avatar-upload.tsx`, `src/components/display-name-form.tsx`, `src/app/login/`, `src/app/auth/callback/`, `src/app/profile/`, `src/app/events/`
-- Dependency: `@supabase/ssr` installiert
+- Token-basiertes Auth-System (kein Supabase Auth, kein Magic Link)
+- `members` Tabelle in Supabase (RLS enabled, auto-updated_at Trigger)
+- Organisator (Frank) angelegt mit persönlichem Token
+- `/join/[token]` Route: Link klicken → Cookie setzen → eingeloggt
+- `/login` Info-Seite: "Du brauchst einen Einladungslink"
+- `/profile` Seite: Avatar + Anzeigename bearbeiten
+- `/events` Seite: Dashboard mit Profil-Avatar
+- `POST /api/members`: Organisator kann Mitglieder anlegen (Zod-validiert)
+- `GET /api/members`: Mitgliederliste abrufen
+- Middleware: Token-Cookie prüfen, ungültige Tokens löschen
+- AuthProvider: `useAuth()` Hook mit `member`, `signOut()`, `refreshMember()`
 
 Noch offen für PROJ-24:
-- `/backend`: `profiles` Tabelle + RLS Policies, `avatars` Storage Bucket, Supabase Auth Magic Link Konfiguration
+- `/qa`: Tests + Security Audit
 
-**Nächster Schritt:** `/backend` für PROJ-24 (DB-Schema, RLS, Storage)
+**Nächster Schritt:** `/qa` für PROJ-24
 
 Danach Build-Reihenfolge:
 1. ~~**PROJ-24: Auth**~~ ← In Progress

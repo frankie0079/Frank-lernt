@@ -1,68 +1,61 @@
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // Refresh session - important for Server Components
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
 
-  // Protected routes: /events/*, /profile, /join/*
-  const isProtected =
-    pathname.startsWith("/events") ||
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/join");
-
-  // Public routes: /login, /auth/callback, /e/*, /, /touren/*
+  // Public routes: no auth needed
   const isPublic =
     pathname === "/" ||
-    pathname === "/login" ||
-    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/join/") ||
     pathname.startsWith("/e/") ||
     pathname.startsWith("/touren");
 
-  if (isProtected && !user) {
+  if (isPublic) {
+    return NextResponse.next({ request });
+  }
+
+  // Check for member_token cookie
+  const token = request.cookies.get("member_token")?.value;
+
+  // Login page: redirect to /events if already authenticated
+  if (pathname === "/login") {
+    if (token) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/events";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next({ request });
+  }
+
+  // Protected routes: require valid token
+  if (!token) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  // Redirect logged-in users away from login page
-  if (pathname === "/login" && user) {
+  // Validate token against database
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data: member } = await supabase
+    .from("members")
+    .select("id")
+    .eq("token", token)
+    .single();
+
+  if (!member) {
+    // Invalid token: clear cookie and redirect to login
     const url = request.nextUrl.clone();
-    url.pathname = "/events";
-    return NextResponse.redirect(url);
+    url.pathname = "/login";
+    const response = NextResponse.redirect(url);
+    response.cookies.delete("member_token");
+    return response;
   }
 
-  return supabaseResponse;
+  return NextResponse.next({ request });
 }

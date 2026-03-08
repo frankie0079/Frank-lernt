@@ -9,31 +9,29 @@ import {
   type ReactNode,
 } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
 
-interface Profile {
+export interface Member {
   id: string;
-  display_name: string | null;
+  name: string | null;
+  token: string;
+  role: "organizer" | "admin" | "member";
   avatar_url: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  profile: Profile | null;
+  member: Member | null;
   loading: boolean;
-  signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  signOut: () => void;
+  refreshMember: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
-  session: null,
-  profile: null,
+  member: null,
   loading: true,
-  signOut: async () => {},
-  refreshProfile: async () => {},
+  signOut: () => {},
+  refreshMember: async () => {},
 });
 
 export function useAuth() {
@@ -44,85 +42,63 @@ export function useAuth() {
   return context;
 }
 
+function getMemberToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)member_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function clearMemberToken() {
+  document.cookie = "member_token=; path=/; max-age=0";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
   const supabase = createSupabaseBrowserClient();
 
-  const fetchProfile = useCallback(
-    async (userId: string) => {
+  const fetchMember = useCallback(
+    async (token: string) => {
       const { data } = await supabase
-        .from("profiles")
+        .from("members")
         .select("*")
-        .eq("id", userId)
+        .eq("token", token)
         .single();
 
-      setProfile(data);
+      setMember(data);
+      return data;
     },
     [supabase]
   );
 
-  const refreshProfile = useCallback(async () => {
-    if (user) {
-      await fetchProfile(user.id);
+  const refreshMember = useCallback(async () => {
+    const token = getMemberToken();
+    if (token) {
+      await fetchMember(token);
     }
-  }, [user, fetchProfile]);
+  }, [fetchMember]);
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
+  const signOut = useCallback(() => {
+    clearMemberToken();
+    setMember(null);
     window.location.href = "/login";
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
-    // Get initial session
-    const initAuth = async () => {
-      const {
-        data: { session: initialSession },
-      } = await supabase.auth.getSession();
-
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-
-      if (initialSession?.user) {
-        await fetchProfile(initialSession.user.id);
+    const init = async () => {
+      const token = getMemberToken();
+      if (token) {
+        await fetchMember(token);
       }
-
       setLoading(false);
     };
 
-    initAuth();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-
-      if (newSession?.user) {
-        await fetchProfile(newSession.user.id);
-      } else {
-        setProfile(null);
-      }
-
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase, fetchProfile]);
+    init();
+  }, [fetchMember]);
 
   return (
-    <AuthContext.Provider
-      value={{ user, session, profile, loading, signOut, refreshProfile }}
-    >
+    <AuthContext.Provider value={{ member, loading, signOut, refreshMember }}>
       {children}
     </AuthContext.Provider>
   );

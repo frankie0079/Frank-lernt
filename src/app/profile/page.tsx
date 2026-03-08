@@ -13,11 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { LogOut, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const { user, profile, loading, signOut, refreshProfile } = useAuth();
+  const { member, loading, signOut, refreshMember } = useAuth();
 
   if (loading) {
     return (
@@ -36,9 +37,15 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
+  if (!member) {
     return null; // Middleware redirects to /login
   }
+
+  const roleLabels: Record<string, string> = {
+    organizer: "Organisator",
+    admin: "Admin",
+    member: "Teilnehmer",
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-background px-4 py-8">
@@ -57,26 +64,28 @@ export default function ProfilePage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Mein Profil</CardTitle>
             <CardDescription>
-              {user.email}
+              <Badge variant="secondary" className="mt-1">
+                {roleLabels[member.role] ?? member.role}
+              </Badge>
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {/* Avatar Upload */}
             <AvatarUpload
-              userId={user.id}
-              currentAvatarUrl={profile?.avatar_url ?? null}
-              displayName={profile?.display_name ?? null}
-              onUploadComplete={() => refreshProfile()}
+              memberId={member.id}
+              currentAvatarUrl={member.avatar_url}
+              displayName={member.name}
+              onUploadComplete={() => refreshMember()}
             />
 
             <Separator />
 
             {/* Display Name Form */}
             <DisplayNameForm
-              userId={user.id}
-              currentName={profile?.display_name ?? null}
-              onSaveComplete={() => refreshProfile()}
+              memberId={member.id}
+              currentName={member.name}
+              onSaveComplete={() => refreshMember()}
             />
 
             <Separator />

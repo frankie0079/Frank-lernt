@@ -20,13 +20,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 
 interface DisplayNameFormProps {
-  userId: string;
+  memberId: string;
   currentName: string | null;
   onSaveComplete: (name: string | null) => void;
 }
 
 export function DisplayNameForm({
-  userId,
+  memberId,
   currentName,
   onSaveComplete,
 }: DisplayNameFormProps) {
@@ -55,9 +55,9 @@ export function DisplayNameForm({
         values.display_name?.trim() || null;
 
       const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ display_name: displayName })
-        .eq("id", userId);
+        .from("members")
+        .update({ name: displayName })
+        .eq("id", memberId);
 
       if (updateError) {
         throw new Error(updateError.message);

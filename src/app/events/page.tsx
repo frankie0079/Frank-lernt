@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +14,7 @@ import { Plus, User, CalendarDays } from "lucide-react";
 import Link from "next/link";
 
 export default function EventsPage() {
-  const { user, profile, loading } = useAuth();
+  const { member, loading } = useAuth();
 
   if (loading) {
     return (
@@ -32,13 +31,13 @@ export default function EventsPage() {
     );
   }
 
-  if (!user) {
+  if (!member) {
     return null; // Middleware redirects to /login
   }
 
-  const displayName = profile?.display_name ?? "Anonym";
-  const initials = profile?.display_name
-    ? profile.display_name
+  const displayName = member.name ?? "Anonym";
+  const initials = member.name
+    ? member.name
         .split(" ")
         .map((n) => n[0])
         .join("")
@@ -55,7 +54,7 @@ export default function EventsPage() {
           <Link href="/profile" aria-label="Profil bearbeiten">
             <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-border hover:ring-primary transition-all">
               <AvatarImage
-                src={profile?.avatar_url ?? undefined}
+                src={member.avatar_url ?? undefined}
                 alt={displayName}
               />
               <AvatarFallback className="bg-primary/10 text-primary text-sm">
