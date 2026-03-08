@@ -2,97 +2,105 @@
 
 ## Vision
 
-**Die Wandervögel** — Eine Reisebegleiter-Plattform für unsere Wandergruppe (2-8 Teilnehmer) und ihre Follower (Familie, Freunde). Ersetzt umständliche Tools wie Komoot durch eine zentrale Plattform, die Reiseplanung, Live-Tracking, Reisetagebuch und Fotogalerie vereint.
+**EventDocs** — Eine kollaborative Event-Dokumentations-Plattform für Gruppen von 5–50 Personen. Teilnehmer erstellen während des Events gemeinsam multimodalen Content (Fotos, Videos, Sprachmemos, Texte) in Echtzeit. Ein täglicher Admin kuratiert daraus eine Slideshow, die per WhatsApp geteilt wird. Nach dem Event entsteht ein digitales Tagebuch mit PDF-Export für den Fotobuch-Druck.
 
-Die erste Tour: **Rota Vicentina / Fischerpfad, Portugal — Juni 2026**.
+Erste Anwendung: Wandergruppen und Reise-Events.
 
-**Zwei Kanäle, zwei Zielgruppen:**
-- **Wanderer** nutzen die PWA unterwegs zum Dokumentieren (Fotos, GPS, Kommentare) und die Landing Page zur Reiseplanung und als Archiv/Galerie. Die Landing Page ist primär der Hub der Wandervögel.
-- **Follower (Friends & Family)** erhalten visuell aufbereitete Updates direkt per WhatsApp — Postkarten, Fotos mit Karten-Overlay, Tagesstatistiken. Jeder WhatsApp-Post enthält einen Rück-Link zur Plattform für Follower, die mehr sehen möchten. Wanderer können ihren Familien auch direkten Zugang zur Landing Page geben.
+## Zwei Bereiche
 
-**Zugang:** Komplett offen — kein Login, kein Account. Jeder mit dem Link kann alles sehen, kommentieren, Fotos hochladen und Inhalte erstellen.
+**PWA (Mobile)** = Eingabe-Instrument während des Events
+- Erzeugt Content in Echtzeit (Foto, Video, Text, Sprachmemo)
+- Content-Pool für alle Teilnehmer sichtbar (Realtime)
+- Tages-Admin kuratiert täglich eine Slideshow
+- WhatsApp-Export der Slideshow (iOS Share Sheet)
+- Mobile-first, iPhone-optimiert
+
+**Landing Page (Desktop & Mobile)** = digitales Langzeit-Tagebuch
+- Veröffentlichte Tagesberichte öffentlich sichtbar
+- Kuratierbares Post-Event Tagebuch
+- PDF-Export für Fotobuch-Druck
+- Dauerhaft abrufbar
 
 ## Target Users
 
-### Wanderer (2-8 Teilnehmer)
-- Brauchen ein einfaches Tool zum Dokumentieren unterwegs (ein Tap = Foto + GPS)
-- Wollen Reiseinfos gebündelt an einem Ort (Flug, Hotel, Route)
-- Oft unterwegs mit schlechtem Empfang (Offline-Modus nötig)
-- Nutzen die Landing Page zur Planung und als Archiv
+### Organisator (1 pro Event)
+- Erstellt das Event, lädt Teilnehmer ein
+- Legt Agenda und tägliche Admins fest
+- Hat Vollzugriff auf alle Inhalte
+
+### Tages-Admin (1 pro Tag, rotiert)
+- Kuratiert täglich den Content-Pool
+- Generiert und versendet die Tages-Slideshow
+- Entscheidet was auf die Landing Page kommt
+
+### Teilnehmer (5–50 pro Event)
+- Dokumentiert das Event mit Foto, Video, Text, Sprachmemo
+- Reagiert auf Beiträge anderer (Emojis, Kommentare)
+- Lädt sich nach dem Event das PDF-Tagebuch herunter
 
 ### Follower (Friends & Family)
-- Erhalten visuelle Updates direkt in WhatsApp (Postkarten, Fotos mit Karte, Statistiken)
-- Können über den Rück-Link in die Plattform eintauchen (Tagebuch, Galerie, Karte)
-- Können kommentieren und interagieren
-- Brauchen keinen Account — kein Login nötig
+- Besuchen die öffentliche Event-Seite
+- Sehen Tagesberichte + Slideshows
+- Erhalten WhatsApp-Updates vom Tages-Admin
 
 ## Core Features (Roadmap)
 
-| Priority | Feature | Status |
-|----------|---------|--------|
-| P0 (MVP) | Landing Page — Tourenübersicht, Planung, Archiv, Galerie | Planned |
-| P0 (MVP) | Reiseplanung — Flüge, Hotels, Mietwagen, Routen | Planned |
-| P0 (MVP) | Reisetagebuch — Tagestouren, Kommentare, Fotos | Planned |
-| P0 (MVP) | Fotogalerie | Planned |
-| P0 (MVP) | PWA — GPS-Tracking, Quick-Capture, Offline-Modus | Planned |
-| P0 (MVP) | Interaktive Karte — Landkarte mit Wanderer-Positionen, Foto-Fähnchen, Kommentar-Pins | Planned |
-| P0 (MVP) | Tages-Statistiken — km, Höhenmeter, Gehzeit | Planned |
-| P0 (MVP) | WhatsApp-Integration — Updates/Links teilen | Planned |
-| P0 (MVP) | Kostenteiler — Gemeinsame Ausgaben erfassen und abrechnen (nur PWA) | Planned |
-| P1 | Live-Ticker — Automatische Updates für Follower | Planned |
-| P1 | Push-Benachrichtigungen | Planned |
-| P1 | Tages-Zusammenfassung (auto-generiert) | Planned |
-| P1 | Abstimmungen / Polls | Planned |
-| P1 | Countdown vor der Reise | Planned |
-| P1 | Sprach-Notizen (Audio-Kommentare) | Planned |
-| P1 | Interaktive Gesamtkarte mit Foto-Pins (alle Etappen) | Planned |
-| P2 | Wetter-Widget | Planned |
-| P2 | Auto-Zusammenfassung nach der Reise | Planned |
-| P2 | Highlight-Galerie (Voting) | Planned |
-| P2 | Tour-Archiv | Planned |
-| P2 | Kulinarik-Tagebuch | Planned |
-| P2 | Export als PDF-Fotobuch | Planned |
-
-## Karten-Konzept
-
-Die Karte ist ein zentrales Element der Plattform — keine nackte Koordinatenanzeige, sondern eine **grafische Landkarte** (Mapbox oder Leaflet):
-- **Wanderer-Punkte** — Echtzeit-Position der Wanderer als kleine Marker auf der Karte
-- **Foto-Fähnchen** — Wo ein Foto aufgenommen wurde, erscheint ein Fähnchen. Klick/Tap zeigt das Foto
-- **Kommentar-Pins** — Wo ein Kommentar geschrieben wurde, erscheint ein Pin. Klick/Tap zeigt den Kommentar
-- **Gelaufene Route** — Die bereits gelaufene Strecke als farbige Linie auf der Karte
-- **Geplante Route** — Die geplante Tagesetappe als gestrichelte Linie
-- Die Karte muss auf Mobilgeräten (PWA) genauso gut funktionieren wie auf Desktop
+| Priority | Feature | Status | ID |
+|----------|---------|--------|-----|
+| P0 (MVP) | Auth & User-Accounts | Planned | PROJ-24 |
+| P0 (MVP) | Event-Erstellung & -Verwaltung | Planned | PROJ-25 |
+| P0 (MVP) | Teilnehmer-Einladung | Planned | PROJ-26 |
+| P0 (MVP) | Wanderer-Screen (Eingabe) | Planned | PROJ-27 |
+| P0 (MVP) | Content-Pool (Realtime-Karteikarten) | Planned | PROJ-28 |
+| P0 (MVP) | Video-Aufnahme (bis 90s) | Planned | PROJ-29 |
+| P0 (MVP) | Sprachmemo + Transkription | Planned | PROJ-30 |
+| P1 | Likes & Emoji-Reactions | Planned | PROJ-31 |
+| P1 | Kommentar-Threads | Planned | PROJ-32 |
+| P1 | Tages-Admin Kurations-Workflow | Planned | PROJ-33 |
+| P1 | Slideshow-Generierung & WhatsApp-Export | Planned | PROJ-34 |
+| P1 | Öffentliche Event-Seite | Planned | PROJ-35 |
+| P2 | Post-Event Tagebuch | Planned | PROJ-36 |
+| P2 | PDF-Export (Fotobuch-Druck) | Planned | PROJ-37 |
 
 ## Success Metrics
 
-- Alle Teilnehmer nutzen die PWA aktiv während der Tour
-- Follower verfolgen die Tour regelmässig via PWA auf dem iPhone
-- Mindestens 80% der Tagesetappen mit Fotos und Kommentaren dokumentiert
-- Offline-Modus funktioniert zuverlässig auf dem Fischerpfad
-- Follower kommentieren und interagieren ohne technische Hürden
+- Alle Teilnehmer nutzen die PWA aktiv während des Events
+- Täglich wird eine Slideshow generiert und per WhatsApp geteilt
+- Follower besuchen die öffentliche Event-Seite
+- Nach dem Event wird das Tagebuch als PDF heruntergeladen
+
+## Technical Stack
+
+- **Framework:** Next.js 16 (App Router), React 19, TypeScript
+- **Styling:** Tailwind CSS + shadcn/ui
+- **Backend:** Supabase (Auth + PostgreSQL + Storage + Realtime)
+- **PWA:** Serwist (Service Worker, Offline)
+- **Karten:** Leaflet + OpenStreetMap
+- **Slideshow:** Canvas API + MediaRecorder (client-side, kostenlos)
+- **Transkription:** Web Speech API (kostenlos, Browser-nativ)
+- **PDF:** @react-pdf/renderer (client-side)
+- **Deployment:** Vercel
 
 ## Constraints
 
-- **Timeline:** MVP fertig bis Ende Mai 2026 (Tour startet Juni)
-- **Tech Stack:** Next.js + Supabase + Vercel (PWA statt native App)
-- **Karten:** Mapbox GL JS oder Leaflet + OpenStreetMap
-- **Team:** 1 Entwickler + AI-Unterstützung
-- **Budget:** Kostenlose Tiers von Supabase und Vercel wo möglich
-- **Geräte:** iPhone (PWA) für Wanderer und Follower, Desktop als Ergänzung
-- **Kein Login:** Komplett offener Zugang über geteilten Link
-- **Sprache:** Deutsch mit korrekten Umlauten (ä, ö, ü) und Silbentrennung
-- **Responsive:** Fluid Responsive Design — dynamische Anpassung an jede Bildschirmgrösse (keine festen Breakpoints)
-- **Foto-Upload:** Ausschliesslich über mobile PWA (PWA-Kamera + Mediathek-Import), kein Desktop-Upload
+- **Authentifizierung:** Supabase Auth (Magic Link)
+- **Kosten:** Free Tiers wo möglich (Supabase, Vercel)
+- **Keine bezahlten APIs:** Web Speech API statt Whisper, Canvas statt Remotion Lambda
+- **Gruppe:** 5–50 Personen pro Event
+- **Geräte:** iPhone PWA (Hauptgerät), Desktop als Ergänzung
+- **Offline:** PWA Background Sync für Content-Uploads
 
 ## Non-Goals
 
-- Keine native iOS/Android App (PWA ist ausreichend)
-- Keine Badges / Achievements / Gamification
-- Keine Spotify-Integration
-- Keine Packlisten oder Checklisten pro Teilnehmer
-- Keine Info-Karten (Notfallnummern etc.)
-- Kein Login / Authentifizierung / Rollensystem
+- Keine native iOS/Android App (PWA ausreichend)
+- Kein echtes Video-Editing (nur einfache Slideshow)
+- Kein Livestreaming
+- Keine Bezahlfunktionen
+- Keine öffentliche Registrierung (Einladung durch Organisator)
+- Kein automatisches KI-Kuratieren (manuell durch Admin)
 
 ---
 
-Use `/requirements` to create detailed feature specifications for each item in the roadmap above.
+## Legacy (v1 — Wandervögel)
+
+Die ursprüngliche anonyme Wandertagebuch-App (PROJ-1 bis PROJ-23) wurde durch diese neue Vision ersetzt. Der Tech-Stack (Next.js, Supabase, shadcn/ui) und wiederverwendbare Komponenten (Foto-Pipeline, Leaflet-Karte, PWA-Basis, Share-Button) fließen in die neue App ein.
