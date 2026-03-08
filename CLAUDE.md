@@ -114,16 +114,28 @@ npm run start      # Production server
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
 - **v1 Tabellen (live):** `tours`, `diary_entries`, `photos`, `audio_notes`
 - **v2 Tabellen (geplant):** `events`, `event_members`, `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
-- **Auth:** Noch nicht aktiviert (v2 Phase 1: PROJ-24)
+- **Auth:** Frontend fertig, Backend-Setup pending (PROJ-24)
+- **v2 Tabellen (pending):** `profiles` (PROJ-24)
 - **Storage Buckets (live):** `photos`, `audio` (public, 20MB)
-- **Storage Buckets (geplant):** `media`, `slideshows`
+- **Storage Buckets (geplant):** `avatars` (PROJ-24), `media`, `slideshows`
 
 ## Aktueller Stand
 
-**v2 Requirements abgeschlossen** — 14 Feature-Specs (PROJ-24 bis PROJ-37)
+**PROJ-24: Auth & User-Accounts — In Progress (Architecture ✅, Frontend ✅, Backend pending)**
 
-Empfohlene Build-Reihenfolge:
-1. **PROJ-24: Auth** ← Foundation, alles baut darauf auf
+Fertiggestellt:
+- Architecture Design + Tech-Entscheidungen dokumentiert
+- Frontend: Login-Page (Magic Link), Auth-Callback, Profile-Page (Avatar + Display-Name), AuthProvider, Middleware
+- Neue Dateien: `src/lib/supabase/` (client, server, middleware), `src/middleware.ts`, `src/components/auth-provider.tsx`, `src/components/login-form.tsx`, `src/components/avatar-upload.tsx`, `src/components/display-name-form.tsx`, `src/app/login/`, `src/app/auth/callback/`, `src/app/profile/`, `src/app/events/`
+- Dependency: `@supabase/ssr` installiert
+
+Noch offen für PROJ-24:
+- `/backend`: `profiles` Tabelle + RLS Policies, `avatars` Storage Bucket, Supabase Auth Magic Link Konfiguration
+
+**Nächster Schritt:** `/backend` für PROJ-24 (DB-Schema, RLS, Storage)
+
+Danach Build-Reihenfolge:
+1. ~~**PROJ-24: Auth**~~ ← In Progress
 2. **PROJ-25: Event-Erstellung**
 3. **PROJ-26: Teilnehmer-Einladung**
 4. **PROJ-27: Wanderer-Screen** (Eingabe: Foto/Video/Text/Sprache)
@@ -133,10 +145,6 @@ Empfohlene Build-Reihenfolge:
 8. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
 9. **PROJ-35: Öffentliche Event-Seite**
 10. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
-
-**Nächster Schritt:** `/architecture` für PROJ-24 (Auth & User-Accounts)
-
-**Plan-Datei:** `.claude/plans/eager-questing-petal.md`
 
 ## Product Context
 

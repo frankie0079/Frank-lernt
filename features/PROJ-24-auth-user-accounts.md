@@ -1,6 +1,6 @@
 # PROJ-24: Auth & User-Accounts
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-08
 **Last Updated:** 2026-03-08
 
@@ -49,7 +49,84 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Übersicht
+Foundation-Feature: Supabase Auth (Magic Link) + `profiles` Tabelle + Route-Schutz via Middleware. Alle v2-Features bauen darauf auf.
+
+### Komponenten-Struktur
+
+```
+App Shell (Layout-Level)
++-- AuthProvider (wraps entire app — session state)
+|
+/login
++-- LoginPage
+    +-- EmailInputForm (shadcn: Input + Button)
+    +-- Confirmation State ("Magic Link wurde gesendet")
+    +-- ErrorAlert (abgelaufen, kein Internet)
+    +-- "Neuen Link anfordern" Button
+
+/auth/callback (unsichtbarer Redirect-Handler)
++-- Session-Verarbeitung → weiterleiten zu /events
+
+/profile (geschützt)
++-- ProfilePage
+    +-- AvatarUpload
+    |   +-- Avatar (shadcn: Avatar — bereits installiert)
+    |   +-- Upload-Button + client-side Kompression
+    |   +-- Fehlermeldungen (zu groß, falsches Format)
+    +-- DisplayNameForm (shadcn: Input + Form)
+    |   +-- Zeichenzähler (max 50)
+    |   +-- Speichern-Button
+    +-- AbmeldenButton
+
+Middleware (serverseitig, unsichtbar)
++-- Schützt /events/*, /join/* → Redirect zu /login
++-- Öffentlich: /e/*, /login, /auth/callback
+```
+
+### Datenmodell
+
+**Supabase Auth (built-in):**
+- Benutzer-ID (UUID), Email, Session-Token (LocalStorage), Auto-Refresh
+
+**`profiles` Tabelle:**
+- ID = Auth-User-UUID (kein separater Key)
+- display_name (Text, max 50 Zeichen, optional → Fallback "Anonym")
+- avatar_url (Link zu Supabase Storage)
+- created_at (Zeitstempel)
+- Sicherheit: Lesen für alle, Schreiben nur für Besitzer (RLS)
+
+**Storage Bucket `avatars`:**
+- Öffentlich lesbar, authentifiziertes Schreiben
+- Pfad: `{user-id}/avatar.jpg` (überschreibt bei Update)
+
+### Tech-Entscheidungen
+
+| Entscheidung | Warum |
+|---|---|
+| Magic Link statt Passwort | Kein Passwort-Vergessen-Flow, kein Sicherheitsrisiko |
+| `@supabase/ssr` Package | Für Next.js App Router: Server Components + Middleware + Client sync |
+| Middleware für Route-Schutz | Zentraler Auth-Check, läuft vor dem Seitenrendering |
+| `profiles` Tabelle | auth.users nicht direkt im Browser zugänglich (Security) |
+| Avatar-Kompression im Browser | Spart Storage-Kosten, schnellere Ladezeiten |
+| shadcn Avatar Komponente | Bereits installiert, Wiederverwendung in PROJ-28/32/33 |
+
+### Neue Routen
+- `/login` — Magic Link anfordern (öffentlich)
+- `/auth/callback` — Supabase verarbeitet Link-Klick (öffentlich)
+- `/profile` — Name + Avatar bearbeiten (geschützt)
+
+### Dependencies
+- `@supabase/ssr` — Server-Side Auth für App Router (ggf. neu installieren)
+- `@supabase/supabase-js` — Supabase Client (bereits v1)
+- `browser-image-compression` — Avatar-Kompression (bereits v1)
+- `zod` + `react-hook-form` — Profil-Validierung (bereits installiert)
+
+### Wiederverwendung v1
+- `src/lib/photo-upload.ts` — Kompression + Upload für Avatar
+- `src/components/ui/avatar.tsx` — shadcn Avatar (bereits installiert)
+- `src/components/ui/form.tsx` — shadcn Form für Display-Name
 
 ## QA Test Results
 _To be added by /qa_

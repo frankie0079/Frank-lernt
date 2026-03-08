@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Caveat } from "next/font/google";
+import { AuthProvider } from "@/components/auth-provider";
 import "./globals.css";
 
 const caveat = Caveat({
@@ -8,14 +9,14 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Die Wandervögel — Gemeinsam unterwegs",
+  title: "EventDocs — Gemeinsam dokumentieren",
   description:
-    "Reisebegleiter-Plattform für unsere Wandergruppe. Tourenübersicht, Reisetagebuch, Fotogalerie und interaktive Karte.",
+    "Kollaborative Event-Dokumentation. Fotos, Videos, Sprachmemos und Texte in Echtzeit teilen.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Wandervögel",
+    title: "EventDocs",
   },
 };
 
@@ -37,7 +38,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
       <body className={`${caveat.variable} antialiased hyphens-auto`}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
