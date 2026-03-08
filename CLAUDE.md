@@ -1,141 +1,100 @@
-# Die Wandervögel — Reisebegleiter-Plattform
+# EventDocs — Kollaborative Event-Dokumentations-Plattform
 
-> Eine Plattform für unsere Wandergruppe (2-8 Teilnehmer) und ihre Follower. Ersetzt umständliche Tools durch zentrale Reiseplanung, Live-Tracking, Reisetagebuch und Fotogalerie. Erste Tour: Rota Vicentina / Fischerpfad, Portugal — Juni 2026.
+> Gruppen von 5–50 Personen dokumentieren Events gemeinsam in Echtzeit (Fotos, Videos, Sprachmemos, Texte). Ein täglicher Admin kuratiert daraus eine Slideshow für WhatsApp. Nach dem Event: digitales Tagebuch + PDF-Export.
+
+## Zwei Bereiche
+
+- **PWA (Mobile)** = Eingabe-Instrument während des Events (Echtzeit, iPhone-first)
+- **Landing Page (Desktop+Mobile)** = digitales Langzeit-Tagebuch, öffentlich, PDF-Export
 
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router), React 19, TypeScript
-- **Styling:** Tailwind CSS + shadcn/ui (copy-paste components)
-- **Fonts:** Caveat (Google Font, Handschrift) via `next/font/google` — CSS-Variable `--font-caveat`
-- **Backend:** Supabase (PostgreSQL + Storage) — angebunden, Tabellen + RLS + Storage Bucket live
-- **Deployment:** Vercel
-- **PWA:** Serwist (next-pwa Nachfolger) — Service Worker, App-Shell Caching
-- **Karten:** Leaflet + react-leaflet + OpenStreetMap (kostenlos, kein API-Key)
-- **Foto-Verarbeitung:** browser-image-compression + exifr (EXIF-Extraktion)
+- **Styling:** Tailwind CSS + shadcn/ui (35 Komponenten installiert)
+- **Backend:** Supabase (Auth + PostgreSQL + Storage + Realtime)
+- **Deployment:** Vercel (auto-deploy via GitHub)
+- **PWA:** Serwist (Service Worker, App-Shell Caching)
+- **Karten:** Leaflet + react-leaflet + OpenStreetMap (kostenlos)
+- **Foto-Verarbeitung:** browser-image-compression + exifr (EXIF)
+- **Video:** MediaRecorder API (Browser-nativ, bis 90s)
+- **Transkription:** Web Speech API (kostenlos, Browser-nativ)
+- **Slideshow:** Canvas API + MediaRecorder (client-side MP4/WebM)
+- **PDF:** @react-pdf/renderer (client-side)
 - **Validation:** Zod + react-hook-form
-- **State:** React useState / Context API
-- **Bilder:** Unsplash (remote patterns in next.config.ts), Next.js Image
+- **Auth:** Supabase Auth (Magic Link)
 
-## Project Structure
+## Architektur-Entscheidungen (v2)
 
-```
-src/
-  app/
-    page.tsx              Landing Page (Server Component)
-    layout.tsx            Root Layout (Caveat Font, PWA Meta Tags, lang="de")
-    globals.css           Custom Color Theme (Teal/Amber)
-    sw.ts                 Serwist Service Worker (App-Shell Caching)
-    api/
-      tours/
-        route.ts                GET /api/tours — Alle Touren
-        [id]/
-          route.ts              GET /api/tours/[id] — Einzelne Tour
-          diary/route.ts        GET/POST/DELETE — Tagebucheinträge
-          diary/[entryId]/route.ts  GET/DELETE — Einzeleintrag + Media
-          photos/route.ts       GET/POST — Foto-Metadaten
-    touren/[id]/
-      layout.tsx            Shared Tour Layout (Header + Tabs + Back-Link)
-      tagebuch/page.tsx     Reisetagebuch (PROJ-3)
-      tagebuch/[entryId]/page.tsx  Einzeleintrag-Detail (PROJ-23)
-      galerie/page.tsx      Fotogalerie (PROJ-4)
-      karte/page.tsx        Interaktive Karte (PROJ-6)
-  components/
-    ui/                     shadcn/ui components (NEVER recreate these)
-    # Landing Page (PROJ-1)
-    hero-section.tsx        Hero mit Logo, Titel, handgeschriebenem Zitat
-    touren-bereich.tsx      Touren-Übersicht (aktive + vergangene)
-    aktive-tour-karte.tsx   Große Karte für aktive/nächste Tour
-    tour-kompakt-karte.tsx  Kompakte Karte für vergangene Touren
-    tour-navigation.tsx     Navigation (Planung/Tagebuch/Galerie/Karte)
-    # Tour Layout (shared)
-    tour-header.tsx         Tour-Name + Status-Badge (Server Component)
-    tour-tabs.tsx           Tab-Navigation: Tagebuch/Galerie/Karte (Client)
-    # Reisetagebuch (PROJ-3 + PROJ-23)
-    tagebuch-client.tsx     Tagebuch-Liste, FAB, Optimistic UI, Links zu Detailseiten
-    diary-entry-form.tsx    Formular: Titel, Inhalt, Datum, GPS, Autor
-    diary-entry-detail.tsx  Einzeleintrag-Ansicht: Hero-Foto, Text, Fotos, Audio, GPS (PROJ-23)
-    # Fotogalerie (PROJ-4)
-    galerie-client.tsx      Foto-Grid + Lightbox + Upload-Sheet
-    photo-grid.tsx          CSS-Grid mit Thumbnails (lazy loading)
-    photo-lightbox.tsx      Fullscreen-Overlay, Swipe, Keyboard-Nav
-    photo-upload-sheet.tsx  Bottom Sheet: Kamera/Mediathek, Kompression, Progress
-    # Interaktive Karte (PROJ-6)
-    karte-client.tsx        Dynamic Import Wrapper (SSR disabled)
-    leaflet-map.tsx         Leaflet-Karte mit Foto/Tagebuch-Markern
-    # WhatsApp (PROJ-8)
-    share-button.tsx        Web Share API + wa.me Fallback
-  hooks/                    Custom React hooks
-  lib/
-    database.types.ts       Auto-generierte Supabase-Typen (Tables, TablesInsert)
-    types.ts                App-Typen (Tour, DiaryEntry, Photo) — basiert auf DB-Typen
-    mock-data.ts            Mock-Touren (Rota Vicentina + 2 vergangene) — Fallback
-    supabase.ts             Typed Supabase Client (createClient<Database>)
-    photo-upload.ts         EXIF-Extraktion, Kompression, Supabase Storage Upload
-    rate-limit.ts           In-Memory Rate-Limiter (20 req/min pro IP)
-    utils.ts                Utility-Funktionen (cn)
-features/                   Feature specifications (PROJ-X-name.md)
-  INDEX.md                  Feature status overview (22 Features, PROJ-1 bis PROJ-22)
-docs/
-  PRD.md                    Product Requirements Document
-  production/               Production guides (Sentry, security, performance)
-public/
-  Logo_Wandervoegel.JPG     Gruppen-Logo
-  manifest.json             PWA Manifest (standalone, teal theme)
-  icons/                    PWA Icons (192, 512, maskable, apple-touch)
-```
-
-## Design-Entscheidungen
-
-- **Farbschema:** Teal (Primary `hsl(174 62% 38%)`) + Amber (Accent `hsl(38 90% 55%)`) — Natur/Wandern-Thema
-- **Kein Login:** Komplett öffentlich, kein Auth nötig
-- **Server Components:** Landing Page ist rein serverseitig gerendert (kein Client-JS)
-- **Fluid Responsive:** Dynamische Anpassung ohne feste Breakpoints (CSS Container Queries, Flexbox/Grid)
-- **Sprache:** Deutsch mit `lang="de"`, CSS `hyphens: auto` für Silbentrennung
-- **Supabase live:** Tabellen (tours, diary_entries, photos), RLS (public read+insert), Storage Bucket (photos)
-- **Mock-Daten als Fallback:** Landing Page nutzt noch `mock-data.ts`, Tour-Daten existieren parallel in Supabase
-- **PWA installierbar:** Serwist Service Worker, manifest.json, iOS Meta Tags (apple-mobile-web-app-capable)
-- **Optimistic UI:** Tagebuch-Einträge erscheinen sofort (pending state + error rollback)
-- **Client-side Bildverarbeitung:** Kompression (1920px/1MB) + Thumbnail (400px) + EXIF vor Upload
-- **Leaflet statt Mapbox:** Kostenlos, kein API-Key, OpenStreetMap-Tiles
+- **Auth statt anonym:** Supabase Auth (Magic Link), Rollen (Organisator, Tages-Admin, Teilnehmer)
+- **Events statt Tours:** Neues Datenmodell mit Events, Agenda, Teilnehmer, Content-Pool
+- **Kostenlos:** Web Speech API statt Whisper, Canvas+MediaRecorder statt Remotion, manuelles Kuratieren statt Claude API
+- **Client-side Rendering:** Slideshow + PDF werden im Browser generiert (kein Server nötig)
+- **Supabase Realtime:** Content-Pool synchronisiert live zwischen allen Geräten
 - **Turbopack inkompatibel:** Serwist erfordert `--webpack` Flag in dev/build Scripts
-- **Rate-Limiting:** In-Memory, 20 POST/DELETE-Requests pro Minute pro IP
-- **URL-Validierung:** Foto-URLs werden gegen Supabase-Domain validiert (kein externes Injection)
 
-## URL-Struktur
+## v2 Datenmodell (geplant)
 
 ```
-/                          Landing Page (PROJ-1) ✅
-/touren/[id]/planung       Reiseplanung (PROJ-2, nur aktive Tour)
-/touren/[id]/tagebuch      Reisetagebuch (PROJ-3) ✅
-/touren/[id]/tagebuch/[entryId]  Einzeleintrag-Detail (PROJ-23) 🚧
-/touren/[id]/galerie       Fotogalerie (PROJ-4) ✅
-/touren/[id]/karte         Interaktive Karte (PROJ-6) ✅
-/archiv                    Tour-Archiv (PROJ-19)
+auth.users (Supabase Auth built-in)
+events (id, name, description, cover_photo, dates, created_by)
+event_members (event_id, user_id, role: organizer|admin|member)
+agenda_items (event_id, title, date, daily_admin_id, sort_order)
+content_items (event_id, agenda_item_id, author_id, type: photo|video|text|voice, media_url, transcript, gps)
+reactions (content_item_id, user_id, emoji)
+comments (content_item_id, author_id, text)
+daily_reports (event_id, agenda_item_id, curated_by, selected_content_ids, slideshow_url, status)
+```
+
+## v2 URL-Struktur (geplant)
+
+```
+/login                     Login (Magic Link)
+/events                    Meine Events (geschützt)
+/events/new                Event erstellen (geschützt)
+/events/[id]               Event-Dashboard (geschützt)
+/events/[id]/capture       Wanderer-Screen — 4 Buttons (geschützt)
+/events/[id]/pool          Content-Pool — Karteikarten (geschützt)
+/events/[id]/admin         Tages-Admin Workflow (geschützt)
+/events/[id]/book          Post-Event Tagebuch (geschützt)
+/join/[token]              Einladungslink → Login → Event beitreten
+/e/[slug]                  Öffentliche Event-Seite (kein Login)
 
 API:
-/api/tours                 GET — Alle Touren
-/api/tours/[id]            GET — Einzelne Tour
-/api/tours/[id]/diary      GET/POST/DELETE — Tagebucheinträge (Zod-validiert, Rate-Limited)
-/api/tours/[id]/diary/[entryId]  GET/DELETE — Einzeleintrag mit Photos + Audio (PROJ-23) 🚧
-/api/tours/[id]/photos     GET/POST — Foto-Metadaten (Zod-validiert, Rate-Limited, URL-Domain-Check)
+/api/events                CRUD Events
+/api/events/[id]/content   CRUD Content-Items
+/api/events/[id]/reports   CRUD Daily Reports
 ```
+
+## v1 Code (Wiederverwendbar)
+
+Der bestehende v1-Code bleibt im Repo. Folgende Teile werden in v2 wiederverwendet:
+
+| Komponente | Dateien | Wiederverwendung |
+|------------|---------|------------------|
+| Foto-Pipeline | `src/lib/photo-upload.ts` | EXIF → Kompression → Upload |
+| Karte | `src/components/leaflet-map.tsx`, `karte-client.tsx` | GPS-Marker auf Event-Karte |
+| PWA-Basis | `src/app/sw.ts`, `public/manifest.json` | Service Worker anpassen |
+| Share-Button | `src/components/share-button.tsx` | Web Share API + wa.me |
+| Photo-Grid | `src/components/photo-grid.tsx`, `photo-lightbox.tsx` | Content-Pool Foto-Ansicht |
+| Rate-Limiting | `src/lib/rate-limit.ts` | API-Schutz |
+| shadcn/ui | `src/components/ui/` (35 Komponenten) | Gesamte UI |
 
 ## Development Workflow
 
-1. `/requirements` - Create feature spec from idea
-2. `/architecture` - Design tech architecture (PM-friendly, no code)
-3. `/frontend` - Build UI components (shadcn/ui first!)
-4. `/backend` - Build APIs, database, RLS policies
-5. `/qa` - Test against acceptance criteria + security audit
-6. `/deploy` - Deploy to Vercel + production-ready checks
+1. `/requirements` — Feature-Spec schreiben ✅ (14 Specs: PROJ-24 bis PROJ-37)
+2. `/architecture` — Tech-Design (PM-friendly, kein Code)
+3. `/frontend` — UI-Komponenten (shadcn/ui first!)
+4. `/backend` — APIs, DB-Schema, RLS Policies
+5. `/qa` — Tests gegen Acceptance Criteria + Security Audit
+6. `/deploy` — Vercel + Production-Ready Checks
 
 ## Feature Tracking
 
-All features tracked in `features/INDEX.md`. Every skill reads it at start and updates it when done. Feature specs live in `features/PROJ-X-name.md`.
+Alle Features in `features/INDEX.md`. v2 Features: PROJ-24 bis PROJ-37. v1 Features (PROJ-1 bis PROJ-23): Superseded.
 
 ## Key Conventions
 
-- **Feature IDs:** PROJ-1, PROJ-2, etc. (sequential, next: PROJ-23)
+- **Feature IDs:** PROJ-24+ (v2), Next: PROJ-38
 - **Commits:** `feat(PROJ-X): description`, `fix(PROJ-X): description`
 - **Single Responsibility:** One feature per spec file
 - **shadcn/ui first:** NEVER create custom versions of installed shadcn components
@@ -153,67 +112,31 @@ npm run start      # Production server
 ## Supabase
 
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
-- **Tabellen:** `tours` (TEXT PK, Slug-IDs), `diary_entries` (UUID PK), `photos` (UUID PK, FK diary_entry_id nullable), `audio_notes` (UUID PK, FK diary_entry_id)
-- **RLS:** Aktiviert — Public SELECT + INSERT + DELETE auf allen Tabellen (kein Auth, bewusst offen)
-- **Storage:** Bucket `photos` (public, 20MB Limit), Bucket `audio` (public, 20MB Limit)
-- **Typen:** Auto-generiert in `src/lib/database.types.ts`
-- **Seed-Daten:** 3 Touren (rota-vicentina-2026, dolomiten-2025, kungsleden-2024)
+- **v1 Tabellen (live):** `tours`, `diary_entries`, `photos`, `audio_notes`
+- **v2 Tabellen (geplant):** `events`, `event_members`, `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
+- **Auth:** Noch nicht aktiviert (v2 Phase 1: PROJ-24)
+- **Storage Buckets (live):** `photos`, `audio` (public, 20MB)
+- **Storage Buckets (geplant):** `media`, `slideshows`
 
 ## Aktueller Stand
 
-**PROJ-1 (Landing Page):** Deployed — https://die-wandervoegel.vercel.app
-- Hero Section, Touren-Bereich, alle Komponenten implementiert
-- Mock-Daten für 3 Touren (1 geplant, 2 archiviert)
-- Schreibschrift (Caveat) für Zitat im Hero
-- QA bestanden (11/11), Security Headers konfiguriert
-- Vercel auto-deploy via GitHub verbunden
+**v2 Requirements abgeschlossen** — 14 Feature-Specs (PROJ-24 bis PROJ-37)
 
-**PROJ-5 (PWA Setup):** QA bestanden — Ready for Deploy
-- Serwist Service Worker (App-Shell Caching)
-- manifest.json + PWA-Icons (generiert aus Logo)
-- iOS Meta Tags (apple-mobile-web-app-capable, black-translucent)
-- Installierbar auf iPhone als Standalone-App
+Empfohlene Build-Reihenfolge:
+1. **PROJ-24: Auth** ← Foundation, alles baut darauf auf
+2. **PROJ-25: Event-Erstellung**
+3. **PROJ-26: Teilnehmer-Einladung**
+4. **PROJ-27: Wanderer-Screen** (Eingabe: Foto/Video/Text/Sprache)
+5. **PROJ-28: Content-Pool** (Realtime-Karteikarten)
+6. **PROJ-29: Video-Aufnahme** + **PROJ-30: Sprachmemo**
+7. **PROJ-31: Reactions** + **PROJ-32: Kommentare**
+8. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
+9. **PROJ-35: Öffentliche Event-Seite**
+10. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
 
-**PROJ-3 (Reisetagebuch):** QA bestanden — Ready for Deploy
-- Tagebuch-Liste mit Einträgen (Datum, Titel, Inhalt, Autor)
-- FAB + Sheet-Formular zum Erstellen + Löschen (AlertDialog)
-- Optimistic UI (sofortige Anzeige, Error Rollback mit Toast)
-- GPS-Button (Geolocation API)
-- ShareButton pro Eintrag
-- Rate-Limiting (20 req/min), JSON try/catch
+**Nächster Schritt:** `/architecture` für PROJ-24 (Auth & User-Accounts)
 
-**PROJ-4 (Fotogalerie):** QA bestanden — Ready for Deploy
-- Photo-Grid (CSS Grid, lazy loading, Thumbnails)
-- Lightbox (Fullscreen, Swipe, Keyboard-Navigation, Share)
-- Upload-Sheet (Kamera + Mediathek, 20MB-Limit, Kompression)
-- EXIF-Extraktion (GPS, Datum) vor Kompression
-- Progress-Bar beim Upload
-- URL-Domain-Validierung (nur Supabase-URLs), Rate-Limiting, JSON try/catch
-
-**PROJ-6 (Interaktive Karte):** QA bestanden — Ready for Deploy
-- Leaflet + OpenStreetMap (dynamic import, SSR disabled)
-- Foto-Marker (Teal, Kamera-Icon) + Tagebuch-Marker (Amber, Buch-Icon)
-- Popups mit Foto-Preview bzw. Tagebuch-Text
-- Auto-fitBounds, Legende, Empty State
-
-**PROJ-8 (WhatsApp Share):** QA bestanden — Ready for Deploy
-- ShareButton-Komponente (Web Share API + wa.me Fallback)
-- Eingebaut in Lightbox, Tagebuch-Einträge, Karte
-- OG Meta Tags (generateMetadata) für Link-Previews
-
-**PROJ-23 (Multimodales Kollaboratives Tagebuch):** In Progress — Phase 1 abgeschlossen
-- Redesign des Tagebuchs: multimodal (Text + Fotos + Audio + Karte), kollaborativ, KI-Zusammenfassungen
-- Phase 1 DONE: DB-Migrationen (photos.diary_entry_id, audio_notes Tabelle, audio Bucket), Einzeleintrag-Detailseite, API-Route, klickbare Titel in Liste
-- Phase 2 TODO: Multimodales Formular (Fotos + Audio im Eintrag)
-- Phase 3 TODO: Echtzeit-Sync (Supabase Realtime)
-- Phase 4 TODO: Selektives Sharing + OG-Images
-- Phase 5 TODO: KI-Zusammenfassung (Claude API)
-- Phase 6 TODO: Visual Polish
-- Plan-Datei: `.claude/plans/eager-questing-petal.md`
-
-**Nächste Schritte:** PROJ-23 Phase 2 (multimodales Formular)
-
-**Alle anderen Features (PROJ-2, 7, 9-22):** Planned — Specs vorhanden, noch nicht begonnen
+**Plan-Datei:** `.claude/plans/eager-questing-petal.md`
 
 ## Product Context
 
