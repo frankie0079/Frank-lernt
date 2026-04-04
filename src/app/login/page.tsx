@@ -18,6 +18,11 @@ function LoginContent() {
   const redirect = searchParams.get("redirect");
   const hasInviteRedirect = redirect?.startsWith("/invite/");
 
+  // Store redirect in localStorage so /join/[token] can pick it up
+  if (typeof window !== "undefined" && redirect && redirect.startsWith("/")) {
+    localStorage.setItem("post_login_redirect", redirect);
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">

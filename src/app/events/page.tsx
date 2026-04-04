@@ -16,12 +16,23 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { EventData } from "@/lib/event-utils";
 import { Plus, User, CalendarDays, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function EventsPage() {
   const { member, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [events, setEvents] = useState<EventData[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check for pending redirect (e.g. from invite flow)
+  useEffect(() => {
+    const redirect = localStorage.getItem("post_login_redirect");
+    if (redirect && redirect.startsWith("/")) {
+      localStorage.removeItem("post_login_redirect");
+      router.replace(redirect);
+    }
+  }, [router]);
 
   const fetchEvents = useCallback(async () => {
     try {
