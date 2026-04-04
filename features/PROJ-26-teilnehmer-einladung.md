@@ -1,8 +1,8 @@
 # PROJ-26: Teilnehmer-Einladung & Member-Management
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-04
 
 ## Dependencies
 - Requires: PROJ-24 (Auth & User-Accounts) — Eingeladene Person muss eingeloggt sein, um beizutreten
@@ -51,7 +51,130 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### URL-Entscheidung: `/invite/[token]` statt `/join/[token]`
+
+Die Spec nennt `/join/[token]`, aber diese Route ist bereits für die **Mitglieder-Authentifizierung** (persönlicher Login-Link) belegt. Event-Einladungen bekommen eine eigene Route:
+
+```
+/invite/[token]   ← NEU: Event-Einladungslinks
+/join/[token]     ← BESTEHEND: Persönlicher Login-Link (bleibt unverändert)
+```
+
+Einladungslinks, die per WhatsApp geteilt werden, haben also das Format:
+`https://app.example.com/invite/[32-Zeichen-Token]`
+
+---
+
+### Component Structure
+
+```
+/events/[id]/settings  (neue Seite — nur Organisator)
++-- SettingsHeader (Zurück zu /events/[id])
++-- InvitationLinkCard
+|   +-- Link-Anzeige (URL + maskiert)
+|   +-- CopyButton (Web Clipboard API)
+|   +-- ShareButton (WhatsApp — bestehende Komponente!)
+|   +-- ExpiryBadge ("Gültig noch X Tage")
+|   +-- "Neuen Link generieren"-Button → AlertDialog (Bestätigung)
++-- EventMemberList
+    +-- MemberRow (×N)
+    |   +-- Avatar (shadcn)
+    |   +-- Anzeigename + Rolle-Badge (organizer | admin | member)
+    |   +-- Beitrittsdatum
+    |   +-- "Entfernen"-Button (deaktiviert für Organisator selbst)
+    +-- EmptyState (falls noch keine Mitglieder außer Organisator)
+
+/invite/[token]  (neue Server-Route — Redirect-Logik)
+  Eingeloggt + gültiger Token + kein Mitglied → Event beitreten → /events/[id]
+  Eingeloggt + bereits Mitglied          → Toast + /events/[id]
+  Eingeloggt + abgelaufener Token        → Fehlerseite
+  NICHT eingeloggt                       → /login?redirect=/invite/[token]
+
+/events/[id]  (bestehende Seite — minimale Ergänzung)
++-- [Organisator-only] "Einstellungen"-Tab oder Link → /events/[id]/settings
+```
+
+---
+
+### Neue Datenbank-Tabellen
+
+**`invitations`** — speichert aktive Einladungslinks pro Event
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| id | UUID PK | Primärschlüssel |
+| event_id | UUID FK → events | Welches Event |
+| token | TEXT UNIQUE | 32-Zeichen Zufallsstring (base64url) |
+| created_by | UUID FK → members | Wer hat den Link generiert |
+| expires_at | TIMESTAMPTZ | Ablaufzeit (7 Tage ab Erstellung) |
+| created_at | TIMESTAMPTZ | Erstellungszeitpunkt |
+
+Regel: Pro Event nur **ein aktiver Link** — bei "Neu generieren" wird der alte Datensatz überschrieben (UPSERT per event_id).
+
+**`event_members`** — wer ist in welchem Event
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| id | UUID PK | Primärschlüssel |
+| event_id | UUID FK → events CASCADE | Welches Event |
+| member_id | UUID FK → members CASCADE | Wer |
+| role | TEXT | 'organizer' \| 'admin' \| 'member' |
+| joined_at | TIMESTAMPTZ | Beitrittszeitpunkt |
+
+UNIQUE Constraint auf `(event_id, member_id)` — niemand kann doppelt beitreten.
+
+---
+
+### Neue API-Routen
+
+| Route | Methode | Wer darf | Was passiert |
+|-------|---------|----------|--------------|
+| `/api/events/[id]/invitations` | GET | Organisator | Aktuellen Einladungslink abrufen |
+| `/api/events/[id]/invitations` | POST | Organisator | Neuen Link generieren (alter wird invalidiert) |
+| `/api/events/[id]/members` | GET | Event-Mitglied | Teilnehmerliste abrufen |
+| `/api/events/[id]/members/[memberId]` | DELETE | Organisator | Mitglied entfernen (nicht sich selbst) |
+| `/api/invite/[token]` | POST | Eingeloggtes Mitglied | Event beitreten |
+
+---
+
+### Sicherheits-Logik
+
+- **Token-Generierung:** `crypto.randomBytes(24).toString('base64url')` → 32-Zeichen, kryptographisch sicher
+- **Ablauf-Prüfung:** Server prüft `expires_at > NOW()` bei jedem Beitrittsversuch
+- **Max-50-Grenze:** Vor dem Beitritt zählt der Server `COUNT(*) FROM event_members WHERE event_id = ?`
+- **Selbst-Entfernen:** Server prüft ob `member_id = requesting_member_id` → 403
+- **RLS (Row Level Security):**
+  - `invitations`: Nur Organisator darf INSERT/SELECT — `/invite`-Route nutzt Service-Role-Key
+  - `event_members`: SELECT für alle Event-Mitglieder, INSERT via `/invite`-Route, DELETE nur Organisator
+
+---
+
+### Wiederverwendete Komponenten
+
+| Komponente | Wo | Zweck |
+|------------|-----|-------|
+| `ShareButton` | `src/components/share-button.tsx` | WhatsApp-Teilen des Einladungslinks |
+| `Avatar` | shadcn/ui ✅ | Mitglieder-Avatar in der Liste |
+| `Badge` | shadcn/ui ✅ | Rollen-Badge (organizer/admin/member) |
+| `AlertDialog` | shadcn/ui ✅ | Bestätigung vor Link-Regenerierung und Mitglieder-Entfernung |
+| `Table` | shadcn/ui ✅ | Teilnehmerliste |
+| `Sheet` | shadcn/ui ✅ | ggf. Mobile-Ansicht der Member-Liste |
+
+---
+
+### Neue Komponenten
+
+| Komponente | Datei | Zweck |
+|------------|-------|-------|
+| `InvitationLinkCard` | `src/components/invitation-link-card.tsx` | Link anzeigen, kopieren, teilen, neu generieren |
+| `EventMemberList` | `src/components/event-member-list.tsx` | Tabelle aller Teilnehmer mit Entfernen-Aktion |
+
+---
+
+### Abhängigkeiten (neue Pakete)
+
+Keine neuen Pakete nötig — `crypto` ist Node.js-built-in, alle shadcn-Komponenten sind bereits installiert.
 
 ## QA Test Results
 _To be added by /qa_
