@@ -157,8 +157,7 @@ Fertiggestellt:
 - Event-Utilities: `src/lib/event-utils.ts` (Status, Datum-Formatierung)
 - Calendar-Komponente: `src/components/ui/calendar.tsx` (shadcn/ui)
 
-Noch offen für PROJ-25:
-- `/qa`: Tests + Security Audit
+QA für PROJ-25: 11/12 AC passed, 0 critical bugs. BUG-R2-1 (Tages-Admin UI) deferred to PROJ-26.
 
 **PROJ-26: Teilnehmer-Einladung & Member-Management — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
 
@@ -173,11 +172,11 @@ Fertiggestellt:
 - `DELETE /api/events/[id]/members/[memberId]`: Teilnehmer entfernen (nicht sich selbst)
 - `POST /api/invite/[token]`: Event beitreten (Token-Prüfung, Max 50, Duplikat-Check)
 - Login-Seite zeigt Kontext bei `/invite/`-Redirect
+- Redirect-Flow nach Login: localStorage-basiert (Login speichert Redirect, Events-Seite leitet weiter)
 
-Noch offen für PROJ-26:
-- `/qa`: Tests + Security Audit
+QA für PROJ-26: 9/11 AC passed, BUG-1 (Redirect) gefixt. Verbleibende Bugs sind Low/Medium (Race Condition, Rate Limiting) — akzeptabel für MVP.
 
-**Nächster Schritt:** `/qa` für PROJ-24, PROJ-25 und PROJ-26
+**Nächster Schritt:** `/architecture` für PROJ-27 (Wanderer-Screen)
 
 Danach Build-Reihenfolge:
 1. ~~**PROJ-24: Auth**~~ ← In Review
