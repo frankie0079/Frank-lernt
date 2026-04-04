@@ -115,9 +115,9 @@ npm run start      # Production server
 
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
 - **v1 Tabellen (live):** `tours`, `diary_entries`, `photos`, `audio_notes`
-- **v2 Tabellen (geplant):** `event_members`, `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
+- **v2 Tabellen (geplant):** `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
 - **Auth:** Token-basierte Links (kein Supabase Auth)
-- **v2 Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled)
+- **v2 Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`
 - **Storage Buckets (live):** `photos`, `audio` (public, 20MB), `avatars` (public, 2MB, JPEG/PNG/WebP)
 - **Storage Buckets (geplant):** `media`, `slideshows`
 
@@ -160,12 +160,29 @@ Fertiggestellt:
 Noch offen für PROJ-25:
 - `/qa`: Tests + Security Audit
 
-**Nächster Schritt:** `/qa` für PROJ-24 und PROJ-25
+**PROJ-26: Teilnehmer-Einladung & Member-Management — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
+
+Fertiggestellt:
+- `event_members` + `invitations` Tabellen in Supabase (RLS enabled)
+- `/invite/[token]` Route: Event-Einladungslink (nicht `/join/[token]` — das ist Member-Auth)
+- `/events/[id]/settings` Seite: Einladungslink-Verwaltung + Teilnehmerliste (nur Organisator)
+- `InvitationLinkCard`: Link anzeigen, kopieren, WhatsApp teilen, neu generieren
+- `EventMemberList`: Teilnehmer mit Avatar, Rolle-Badge, Beitrittsdatum, Entfernen-Button
+- `GET/POST /api/events/[id]/invitations`: Einladungslink abrufen/generieren
+- `GET /api/events/[id]/members`: Teilnehmerliste
+- `DELETE /api/events/[id]/members/[memberId]`: Teilnehmer entfernen (nicht sich selbst)
+- `POST /api/invite/[token]`: Event beitreten (Token-Prüfung, Max 50, Duplikat-Check)
+- Login-Seite zeigt Kontext bei `/invite/`-Redirect
+
+Noch offen für PROJ-26:
+- `/qa`: Tests + Security Audit
+
+**Nächster Schritt:** `/qa` für PROJ-24, PROJ-25 und PROJ-26
 
 Danach Build-Reihenfolge:
 1. ~~**PROJ-24: Auth**~~ ← In Review
 2. ~~**PROJ-25: Event-Erstellung**~~ ← In Review
-3. **PROJ-26: Teilnehmer-Einladung**
+3. ~~**PROJ-26: Teilnehmer-Einladung**~~ ← In Review
 4. **PROJ-27: Wanderer-Screen** (Eingabe: Foto/Video/Text/Sprache)
 5. **PROJ-28: Content-Pool** (Realtime-Karteikarten)
 6. **PROJ-29: Video-Aufnahme** + **PROJ-30: Sprachmemo**

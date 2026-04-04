@@ -17,6 +17,24 @@ export interface EventData {
   member_count?: number;
 }
 
+export interface EventMember {
+  id: string;
+  event_id: string;
+  member_id: string;
+  role: "organizer" | "admin" | "member";
+  joined_at: string;
+  member_name: string | null;
+  member_avatar_url: string | null;
+}
+
+export interface Invitation {
+  id: string;
+  event_id: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+}
+
 export interface AgendaItem {
   id: string;
   event_id: string;

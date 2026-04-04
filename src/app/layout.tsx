@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Caveat } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const caveat = Caveat({
@@ -39,6 +40,7 @@ export default function RootLayout({
       </head>
       <body className={`${caveat.variable} antialiased hyphens-auto`}>
         <AuthProvider>{children}</AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ export async function updateSession(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/join/") ||
+    pathname.startsWith("/invite/") ||
     pathname.startsWith("/e/") ||
     pathname.startsWith("/touren");
 

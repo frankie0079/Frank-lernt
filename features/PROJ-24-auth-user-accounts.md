@@ -129,11 +129,14 @@ Middleware (serverseitig)
 ### Previous Test Run: 2026-04-04 (Round 1)
 **7 Bugs found, all fixed in commit ce5c3dc.**
 
-### Test Run: 2026-04-04 (Round 2 -- Full Re-Test)
+### Previous Test Run: 2026-04-04 (Round 2 -- Full Re-Test)
+**5 bugs reported. Re-verified in Round 3 below -- 3 were false positives.**
+
+### Test Run: 2026-04-04 (Round 3 -- Code-Level Verification)
 **Tested:** 2026-04-04
 **App URL:** http://localhost:3000
 **Tester:** QA Engineer (AI)
-**Build Status:** PASS (Next.js 16.1.1, compiles without errors)
+**Build Status:** PASS (npm run build succeeds, no TypeScript errors)
 
 ---
 
@@ -198,7 +201,7 @@ Middleware (serverseitig)
 - [x] GET /api/members/me selects: id, name, role, avatar_url, created_at, updated_at (no token)
 - [x] GET /api/members selects: id, name, role, avatar_url, created_at (no token)
 - [x] PATCH /api/members/me response selects without token
-- [ ] **BUG-8:** POST /api/members returns token in member object (see below)
+- [x] POST /api/members: token is fetched for joinLink but stripped from response via destructuring on line 113
 
 #### AC-13: Profil-Updates gehen ueber /api/members/me (IDOR-geschuetzt)
 - [x] PATCH /api/members/me resolves member ID from cookie token, not from request body
@@ -207,6 +210,7 @@ Middleware (serverseitig)
 #### AC-14: Rate Limiting auf POST/PATCH Endpunkten
 - [x] POST /api/members: rate limited
 - [x] PATCH /api/members/me: rate limited
+- [x] /join/[token]: rate limited (lines 9-14)
 - [x] 20 requests per minute per IP
 
 ---
@@ -268,18 +272,20 @@ Note: This is a code-level audit. Manual browser testing should be performed in 
 - [x] POST /api/members restricted to organizer role
 - [x] PATCH /api/members/me uses token-based identity (no IDOR possible)
 - [x] Member list returns safe fields only (no tokens)
+- [x] getCurrentMember uses explicit `.select("id, name, role, avatar_url")` -- no token leaked
 
 #### Input Validation
 - [x] Zod validation on all POST/PATCH endpoints
 - [x] Client-side validation on file type and size
 - [x] maxLength on name input
 - [x] JSON parse errors handled gracefully (.catch(() => null))
+- [ ] **BUG-R3-1:** avatar_url in PATCH /api/members/me accepts any URL (see below)
 
 #### Rate Limiting
-- [x] Applied on POST /api/members and PATCH /api/members/me
-- [ ] **BUG-9:** No rate limiting on /join/[token] (see below)
-- [ ] **BUG-10:** Rate limit uses x-forwarded-for which is spoofable (see below)
-- [ ] **BUG-11:** In-memory rate limit resets per serverless instance (see below)
+- [x] Applied on POST /api/members, PATCH /api/members/me, and /join/[token]
+- [x] getRateLimitIp prefers x-vercel-forwarded-for (Vercel-controlled, not spoofable)
+- [ ] **BUG-R3-2:** x-forwarded-for fallback is spoofable in non-Vercel environments (see below)
+- [ ] **BUG-R3-3:** In-memory rate limit resets per serverless instance (see below)
 
 #### Security Headers
 - [x] X-Frame-Options: DENY
@@ -288,65 +294,50 @@ Note: This is a code-level audit. Manual browser testing should be performed in 
 - [x] Strict-Transport-Security with includeSubDomains
 
 #### Data Exposure
-- [ ] **BUG-8:** POST /api/members response includes raw token (see below)
-- [ ] **BUG-12:** getCurrentMember uses select("*") exposing token in server memory (see below)
+- [x] POST /api/members response strips token via destructuring (line 113) -- VERIFIED SAFE
+- [x] getCurrentMember does NOT use select("*") -- explicit column selection confirmed
 
 ---
 
 ### Bugs Found
 
-#### BUG-8: POST /api/members returns token in member object
-- **Severity:** Medium
+#### Round 2 Bug Disposition (False Positives Cleared)
+
+- **BUG-8 (Round 2): CLOSED -- False Positive.** Code at `src/app/api/members/route.ts` line 113 strips the token: `const { token: _token, ...memberWithoutToken } = data;`. The response on line 115 uses `memberWithoutToken`. Token is only in `joinLink`, which is intentional.
+- **BUG-9 (Round 2): CLOSED -- False Positive.** `/join/[token]/route.ts` lines 9-14 DO implement rate limiting via `getRateLimitIp` and `isRateLimited`.
+- **BUG-12 (Round 2): CLOSED -- False Positive.** All `getCurrentMember` helpers use `.select("id, name, role, avatar_url")`, not `select("*")`. Verified in `src/app/api/members/route.ts` line 22, `src/app/api/events/route.ts` line 19, and `src/app/api/events/[id]/route.ts` line 18.
+
+#### BUG-R3-1: avatar_url in PATCH /api/members/me accepts any URL (no domain validation)
+- **Severity:** Medium (Security)
 - **Steps to Reproduce:**
-  1. As organizer, call POST /api/members with valid body
-  2. Response JSON contains `member.token` field alongside `joinLink`
-  3. Expected: Only `joinLink` should contain the token; `member` object should omit it
-  4. Actual: Token exposed in both `member.token` AND `joinLink`
-- **File:** `src/app/api/members/route.ts` line 101: `.select("id, name, token, role, created_at")`
-- **Impact:** The organizer already receives the token via joinLink, so the redundant `member.token` is unnecessary exposure. If the member list response were ever cached or logged, tokens could leak.
+  1. As authenticated member, send `PATCH /api/members/me` with body `{"avatar_url": "https://evil-tracker.com/pixel.png"}`
+  2. Expected: URL validated against Supabase storage domain
+  3. Actual: Any valid URL is accepted (Zod only checks `z.string().url()`)
+- **File:** `src/app/api/members/me/route.ts` line 8
+- **Impact:** An attacker could set their avatar_url to an external tracking pixel. When other members view profiles or the member list, their browsers would load the external image, leaking IP addresses and user-agent strings. Unlike `cover_url` (which has a Supabase domain refine), `avatar_url` has no domain restriction.
 - **Priority:** Fix before deployment
 
-#### BUG-9: No rate limiting on /join/[token] route
+#### BUG-R3-2: Rate limit x-forwarded-for fallback spoofable in non-Vercel environments
 - **Severity:** Low
 - **Steps to Reproduce:**
-  1. Send rapid GET requests to /join/[random-token]
-  2. Expected: Rate limited after N attempts
-  3. Actual: Unlimited attempts, each hitting the database
-- **File:** `src/app/join/[token]/route.ts` -- no rate limit check
-- **Impact:** Tokens are 128-bit (32 hex chars), so brute-force is computationally infeasible. However, an attacker could cause excessive DB queries. Defense-in-depth would add rate limiting.
-- **Priority:** Nice to have
-
-#### BUG-10: Rate limit bypassed via x-forwarded-for spoofing
-- **Severity:** Medium
-- **Steps to Reproduce:**
-  1. Send POST /api/members with header `X-Forwarded-For: 1.2.3.4`
-  2. After 20 requests, change to `X-Forwarded-For: 5.6.7.8`
+  1. In a non-Vercel deployment (e.g., self-hosted), `x-vercel-forwarded-for` header is absent
+  2. Attacker sets `X-Forwarded-For: 1.2.3.4`, rotates IPs to bypass rate limit
   3. Expected: Rate limit applied per real client IP
   4. Actual: Rate limit bypassed by rotating spoofed IPs
-- **File:** `src/lib/rate-limit.ts` line 23-28
-- **Impact:** Any rate-limited endpoint can be attacked at unlimited speed by rotating the x-forwarded-for header. On Vercel, the real IP is in a different header or Vercel strips/overrides x-forwarded-for, so this may be partially mitigated in production. Needs verification.
-- **Priority:** Fix in next sprint
+- **File:** `src/lib/rate-limit.ts` line 28-29
+- **Impact:** On Vercel (production target), `x-vercel-forwarded-for` is used first and cannot be spoofed. Risk only applies to alternative deployments.
+- **Priority:** Nice to have (Vercel deployment mitigates this)
 
-#### BUG-11: In-memory rate limit ineffective on serverless (Vercel)
+#### BUG-R3-3: In-memory rate limit ineffective on serverless (Vercel)
 - **Severity:** Medium
 - **Steps to Reproduce:**
   1. Deploy to Vercel (serverless functions)
   2. Send rapid requests -- each may hit a different serverless instance
   3. Expected: Rate limit applied globally
   4. Actual: Rate limit state is per-instance and resets on cold starts
-- **File:** `src/lib/rate-limit.ts` line 1: `const requests = new Map<string, number[]>()`
-- **Impact:** Rate limiting is essentially non-functional in a serverless deployment. For a v1/MVP this is acceptable, but should be replaced with a distributed store (e.g., Vercel KV, Upstash Redis) before scaling.
+- **File:** `src/lib/rate-limit.ts` line 3: `const requests = new Map<string, number[]>()`
+- **Impact:** Rate limiting is partially functional on serverless (works within a warm instance). For a small-scale MVP (5-50 users), this is acceptable. Should be replaced with Upstash Redis or Vercel KV before scaling.
 - **Priority:** Fix in next sprint
-
-#### BUG-12: getCurrentMember helper uses select("*") leaking token into server memory
-- **Severity:** Low
-- **Steps to Reproduce:**
-  1. Review `src/app/api/members/route.ts` line 23 and `src/app/api/events/route.ts` line 19
-  2. `getCurrentMember` fetches all columns including `token`
-  3. Expected: Only fetch needed columns (id, role)
-  4. Actual: Token loaded into server memory unnecessarily
-- **Impact:** Not directly exploitable since data stays server-side. However, if error logging or tracing captures request context, tokens could appear in logs. Principle of least privilege violation.
-- **Priority:** Nice to have
 
 ---
 
@@ -360,12 +351,13 @@ Note: This is a code-level audit. Manual browser testing should be performed in 
 ---
 
 ### Summary
-- **Acceptance Criteria:** 13/14 passed, 1 partial (AC-12: token in POST response)
+- **Acceptance Criteria:** 14/14 passed
 - **Edge Cases:** 6/6 passed
-- **Bugs Found:** 5 total (0 critical, 0 high, 3 medium, 2 low)
-- **Security:** Generally solid. Medium-severity issues around rate limiting and token exposure in POST response.
+- **Bugs Found:** 3 total (0 critical, 0 high, 1 medium, 2 low)
+  - 3 bugs from Round 2 were false positives and have been cleared
+- **Security:** Solid overall. One medium-severity issue (avatar_url domain validation missing).
 - **Production Ready:** YES (conditionally)
-- **Recommendation:** Fix BUG-8 (strip token from member object in POST response) before deployment. BUG-10 and BUG-11 (rate limiting) are acceptable for MVP but should be addressed before scaling. BUG-9 and BUG-12 are nice-to-have improvements.
+- **Recommendation:** Fix BUG-R3-1 (add Supabase domain validation to avatar_url) before deployment. BUG-R3-3 (in-memory rate limit) is acceptable for MVP. BUG-R3-2 is mitigated by Vercel deployment.
 
 ## Deployment
 _To be added by /deploy_

@@ -15,6 +15,8 @@ import { LinkIcon, AlertCircle } from "lucide-react";
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const redirect = searchParams.get("redirect");
+  const hasInviteRedirect = redirect?.startsWith("/invite/");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -25,7 +27,9 @@ function LoginContent() {
           </div>
           <CardTitle className="text-2xl font-bold">EventDocs</CardTitle>
           <CardDescription>
-            Du brauchst einen persoenlichen Einladungslink vom Organisator.
+            {hasInviteRedirect
+              ? "Du wurdest zu einem Event eingeladen! Melde dich zuerst mit deinem persoenlichen Link an."
+              : "Du brauchst einen persoenlichen Einladungslink vom Organisator."}
           </CardDescription>
         </CardHeader>
 
@@ -36,6 +40,15 @@ function LoginContent() {
               <AlertDescription>
                 Dieser Link ist ungueltig. Bitte frag den Organisator nach einem
                 neuen Link.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {error === "rate_limited" && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription>
+                Zu viele Anfragen. Bitte warte einen Moment.
               </AlertDescription>
             </Alert>
           )}

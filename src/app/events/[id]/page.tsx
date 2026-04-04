@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   Shield,
   BookOpen,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -156,17 +157,32 @@ export default function EventDashboardPage() {
           </Link>
         </Button>
 
-        {/* Edit button (organizer only) */}
+        {/* Organizer actions */}
         {isOrganizer && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-3 top-3 h-9 w-9 rounded-full bg-black/30 text-white hover:bg-black/50"
-            onClick={() => setEditOpen(true)}
-            aria-label="Event bearbeiten"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          <div className="absolute right-3 top-3 flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full bg-black/30 text-white hover:bg-black/50"
+              asChild
+            >
+              <Link
+                href={`/events/${eventId}/settings`}
+                aria-label="Event-Einstellungen"
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full bg-black/30 text-white hover:bg-black/50"
+              onClick={() => setEditOpen(true)}
+              aria-label="Event bearbeiten"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
         )}
 
         {/* Event title overlay */}
@@ -190,10 +206,20 @@ export default function EventDashboardPage() {
             {dateRange}
           </span>
           {event.member_count != null && (
-            <span className="flex items-center gap-1">
-              <Users className="h-4 w-4" aria-hidden="true" />
-              {event.member_count} Teilnehmer
-            </span>
+            isOrganizer ? (
+              <Link
+                href={`/events/${eventId}/settings`}
+                className="flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <Users className="h-4 w-4" aria-hidden="true" />
+                {event.member_count} Teilnehmer
+              </Link>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Users className="h-4 w-4" aria-hidden="true" />
+                {event.member_count} Teilnehmer
+              </span>
+            )
           )}
         </div>
         {event.description && (
