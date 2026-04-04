@@ -32,11 +32,15 @@ export async function updateSession(request: NextRequest) {
   if (!token) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Note: redirect param is set but not consumed after /join — users always
+    // land on /events. This is acceptable since join links are the primary entry.
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  // Validate token against database
+  // Validate token against database on every request.
+  // Trade-off: one DB query per request for security. Could add in-memory
+  // caching later if this becomes a performance concern.
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

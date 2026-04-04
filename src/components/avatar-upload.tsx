@@ -75,7 +75,7 @@ export function AvatarUpload({
           fileType: "image/jpeg",
         });
 
-        // Upload to Supabase Storage
+        // Upload to Supabase Storage (storage is public, no auth needed)
         const supabase = createSupabaseBrowserClient();
         const filePath = `${memberId}/avatar.jpg`;
 
@@ -100,16 +100,16 @@ export function AvatarUpload({
         const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
         setPreviewUrl(urlWithCacheBuster);
 
-        // Update member in database
-        const { error: updateError } = await supabase
-          .from("members")
-          .update({ avatar_url: publicUrl })
-          .eq("id", memberId);
+        // Update own profile via secure API (server validates token)
+        const res = await fetch("/api/members/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatar_url: publicUrl }),
+        });
 
-        if (updateError) {
-          throw new Error(
-            `Profil konnte nicht aktualisiert werden: ${updateError.message}`
-          );
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Profil konnte nicht aktualisiert werden");
         }
 
         onUploadComplete(publicUrl);

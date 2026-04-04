@@ -8,12 +8,10 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export interface Member {
   id: string;
   name: string | null;
-  token: string;
   role: "organizer" | "admin" | "member";
   avatar_url: string | null;
   created_at: string;
@@ -23,14 +21,14 @@ export interface Member {
 interface AuthContextType {
   member: Member | null;
   loading: boolean;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   refreshMember: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   member: null,
   loading: true,
-  signOut: () => {},
+  signOut: async () => {},
   refreshMember: async () => {},
 });
 
@@ -42,58 +40,39 @@ export function useAuth() {
   return context;
 }
 
-function getMemberToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)member_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function clearMemberToken() {
-  document.cookie = "member_token=; path=/; max-age=0";
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createSupabaseBrowserClient();
-
-  const fetchMember = useCallback(
-    async (token: string) => {
-      const { data } = await supabase
-        .from("members")
-        .select("*")
-        .eq("token", token)
-        .single();
-
-      setMember(data);
-      return data;
-    },
-    [supabase]
-  );
+  const fetchMember = useCallback(async () => {
+    try {
+      const res = await fetch("/api/members/me");
+      if (res.ok) {
+        const data = await res.json();
+        setMember(data.member);
+      } else {
+        setMember(null);
+      }
+    } catch {
+      setMember(null);
+    }
+  }, []);
 
   const refreshMember = useCallback(async () => {
-    const token = getMemberToken();
-    if (token) {
-      await fetchMember(token);
-    }
+    await fetchMember();
   }, [fetchMember]);
 
-  const signOut = useCallback(() => {
-    clearMemberToken();
+  const signOut = useCallback(async () => {
+    await fetch("/api/members/me", { method: "DELETE" });
     setMember(null);
     window.location.href = "/login";
   }, []);
 
   useEffect(() => {
     const init = async () => {
-      const token = getMemberToken();
-      if (token) {
-        await fetchMember(token);
-      }
+      await fetchMember();
       setLoading(false);
     };
-
     init();
   }, [fetchMember]);
 

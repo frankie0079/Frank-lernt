@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { profileSchema, type ProfileFormValues } from "@/lib/validations/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,7 @@ interface DisplayNameFormProps {
 }
 
 export function DisplayNameForm({
-  memberId,
+  memberId: _memberId,
   currentName,
   onSaveComplete,
 }: DisplayNameFormProps) {
@@ -50,17 +49,18 @@ export function DisplayNameForm({
     setSaved(false);
 
     try {
-      const supabase = createSupabaseBrowserClient();
-      const displayName =
-        values.display_name?.trim() || null;
+      const displayName = values.display_name?.trim() || null;
 
-      const { error: updateError } = await supabase
-        .from("members")
-        .update({ name: displayName })
-        .eq("id", memberId);
+      // Update own profile via secure API (server validates token)
+      const res = await fetch("/api/members/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: displayName }),
+      });
 
-      if (updateError) {
-        throw new Error(updateError.message);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Speichern fehlgeschlagen");
       }
 
       setSaved(true);

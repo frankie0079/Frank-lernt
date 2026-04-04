@@ -1,135 +1,145 @@
 # PROJ-24: Auth & User-Accounts
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-04
 
 ## Dependencies
 - Keine (Basis-Feature)
 
 ## User Stories
-- Als neuer Nutzer möchte ich mich per Magic Link (Email) anmelden können, damit ich keinen Passwort-Manager brauche.
+- Als Organisator möchte ich Mitglieder anlegen und jedem einen persönlichen Link per WhatsApp schicken können.
+- Als Teilnehmer möchte ich einen Link klicken und sofort eingeloggt sein — ohne Passwort, E-Mail oder App-Download.
 - Als Nutzer möchte ich einen Anzeigenamen und optionales Profilfoto setzen können, damit andere mich im Content-Pool erkennen.
 - Als eingeloggter Nutzer möchte ich mich abmelden können.
 - Als nicht-eingeloggter Besucher möchte ich öffentliche Event-Seiten sehen können, ohne mich anzumelden.
 
 ## Acceptance Criteria
-- [ ] Magic Link Login via Email funktioniert (Supabase Auth Magic Link / Email OTP)
-- [ ] Nutzer kann Display-Name (max 50 Zeichen) setzen und speichern
-- [ ] Nutzer kann optionales Profilfoto hochladen (Supabase Storage, Bucket: `avatars`)
-- [ ] Session bleibt nach App-Neustart bestehen (Supabase Session via LocalStorage)
-- [ ] Geschützte Routen (`/events/*`, `/capture`) leiten nicht-eingeloggte Nutzer zur Login-Seite weiter
-- [ ] Öffentliche Routen (`/e/*`) funktionieren vollständig ohne Login
-- [ ] Abmelden löscht Session und leitet zur Login-Seite (`/login`) weiter
-- [ ] Profil-Seite unter `/profile` zum Bearbeiten von Name und Foto
-- [ ] Profilfoto wird in Content-Pool und Kommentaren als Avatar angezeigt
-- [ ] "Anonym" als Fallback-Anzeigename wenn kein Name gesetzt
+- [x] Organisator kann Mitglieder anlegen via `POST /api/members` (Zod-validiert)
+- [x] Jedes Mitglied bekommt einen einzigartigen persönlichen Link (`/join/[token]`)
+- [x] Link klicken → httpOnly Cookie setzen → sofort eingeloggt auf `/events`
+- [x] Nutzer kann Display-Name (max 50 Zeichen) setzen und speichern
+- [x] Nutzer kann optionales Profilfoto hochladen (Supabase Storage, Bucket: `avatars`)
+- [x] Session bleibt nach App-Neustart bestehen (httpOnly Cookie, 30 Tage)
+- [x] Geschützte Routen (`/events/*`, `/profile`) leiten nicht-eingeloggte Nutzer zur Login-Seite weiter
+- [x] Öffentliche Routen (`/e/*`, `/join/*`) funktionieren vollständig ohne Login
+- [x] Abmelden löscht Cookie und leitet zur Login-Seite (`/login`) weiter
+- [x] Profil-Seite unter `/profile` zum Bearbeiten von Name und Foto
+- [x] "Anonym" als Fallback-Anzeigename wenn kein Name gesetzt
+- [x] Token wird nie an den Browser/Client gesendet (nur httpOnly Cookie)
+- [x] Profil-Updates gehen über `/api/members/me` (IDOR-geschützt)
+- [x] Rate Limiting auf POST/PATCH Endpunkten
 
 ## Edge Cases
-- Magic Link abgelaufen (15 min) → Fehlermeldung "Dieser Link ist abgelaufen" + Button "Neuen Link anfordern"
-- Gleiche Email auf zweitem Gerät → Session auf beiden Geräten aktiv (Supabase Multi-Session)
+- Ungültiger Token-Link → Fehlermeldung "Dieser Link ist ungueltig" + Hinweis "Frag den Organisator"
 - Profilfoto > 2 MB → Fehlermeldung "Bild zu groß (max. 2 MB)" vor dem Upload
 - Profilfoto falsches Format (nicht JPEG/PNG/WebP) → Fehlermeldung "Nur JPEG, PNG und WebP erlaubt"
 - Display-Name leer gelassen → "Anonym" als Fallback in allen Ansichten
-- Kein Internet auf Login-Screen → Hinweis "Keine Internetverbindung — Magic Link benötigt Internet"
-- Nutzer tippt falsche Email → Link wird an falsche Adresse gesandt, kein Fehler in der App (Security)
-- Session-Token abgelaufen während aktiver Nutzung → Stiller Refresh, bei Fehler zur Login-Seite
+- Cookie abgelaufen oder gelöscht → Middleware leitet zu `/login` weiter
+- Ungültiges Cookie (Token existiert nicht mehr in DB) → Cookie löschen, redirect zu `/login`
 
 ## Technical Requirements
-- Supabase Auth (Magic Link / Email OTP) — kein OAuth, kein Passwort
-- `src/middleware.ts` mit Supabase SSR Auth-Check für geschützte Routen
-- Server-Side Session via `@supabase/ssr` (createServerClient in Server Components, Route Handler, Middleware)
-- Client-Side Session via `@supabase/ssr` (createBrowserClient in Client Components)
-- `profiles` Tabelle in Supabase (id UUID FK auth.users, display_name TEXT, avatar_url TEXT, created_at TIMESTAMPTZ)
-- RLS auf `profiles`: SELECT public, INSERT/UPDATE nur für eigene Zeile (auth.uid() = id)
-- Storage Bucket `avatars`: public read, authentifiziertes Write
+- Token-basierte Links (kein Supabase Auth, kein Magic Link, keine E-Mail)
+- `members` Tabelle in Supabase (id, name, token, role, avatar_url, created_at, updated_at)
+- RLS enabled auf `members` Tabelle
+- `src/middleware.ts` prüft `member_token` httpOnly Cookie gegen DB
+- `/api/members/me` für sichere Profil-Updates (GET eigenes Profil, PATCH Name/Avatar, DELETE sign-out)
+- `/api/members` für Organisator-Verwaltung (GET Liste, POST neues Mitglied)
+- Storage Bucket `avatars`: public read, 2MB Limit, JPEG/PNG/WebP
 - Profilfoto-Kompression client-side (max 400px, < 200 KB) vor Upload
 - Zod-Schema für Profil-Validierung (display_name max 50 Zeichen)
+- Rate Limiting via `src/lib/rate-limit.ts`
 
 ---
 
-## Tech Design (Solution Architect)
+## Tech Design
 
 ### Übersicht
-Foundation-Feature: Supabase Auth (Magic Link) + `profiles` Tabelle + Route-Schutz via Middleware. Alle v2-Features bauen darauf auf.
+Foundation-Feature: Token-basierte persönliche Links + `members` Tabelle + Route-Schutz via Middleware. Alle v2-Features bauen darauf auf.
+
+### Auth-Flow
+```
+1. Organisator erstellt Mitglied → POST /api/members → bekommt Join-Link
+2. Organisator schickt Link per WhatsApp an Freund
+3. Freund klickt /join/[token] → httpOnly Cookie gesetzt → redirect /events
+4. AuthProvider ruft /api/members/me → bekommt Member-Daten (ohne Token!)
+5. Profil bearbeiten: PATCH /api/members/me (Server validiert Token aus Cookie)
+```
 
 ### Komponenten-Struktur
-
 ```
 App Shell (Layout-Level)
-+-- AuthProvider (wraps entire app — session state)
++-- AuthProvider (wraps entire app — fetches /api/members/me)
 |
 /login
-+-- LoginPage
-    +-- EmailInputForm (shadcn: Input + Button)
-    +-- Confirmation State ("Magic Link wurde gesendet")
-    +-- ErrorAlert (abgelaufen, kein Internet)
-    +-- "Neuen Link anfordern" Button
++-- Info-Seite ("Du brauchst einen Einladungslink")
++-- Fehlermeldung bei ungültigem Link
 
-/auth/callback (unsichtbarer Redirect-Handler)
-+-- Session-Verarbeitung → weiterleiten zu /events
+/join/[token] (Route Handler)
++-- Token validieren → Cookie setzen → /events
 
 /profile (geschützt)
 +-- ProfilePage
-    +-- AvatarUpload
-    |   +-- Avatar (shadcn: Avatar — bereits installiert)
-    |   +-- Upload-Button + client-side Kompression
-    |   +-- Fehlermeldungen (zu groß, falsches Format)
-    +-- DisplayNameForm (shadcn: Input + Form)
-    |   +-- Zeichenzähler (max 50)
-    |   +-- Speichern-Button
-    +-- AbmeldenButton
+    +-- AvatarUpload (Upload → Supabase Storage → PATCH /api/members/me)
+    +-- DisplayNameForm (PATCH /api/members/me)
+    +-- AbmeldenButton (DELETE /api/members/me)
 
-Middleware (serverseitig, unsichtbar)
-+-- Schützt /events/*, /join/* → Redirect zu /login
-+-- Öffentlich: /e/*, /login, /auth/callback
+/events (geschützt)
++-- Events Dashboard mit Profil-Avatar
+
+Middleware (serverseitig)
++-- Prüft member_token Cookie gegen DB
++-- Schützt /events/*, /profile → Redirect zu /login
++-- Öffentlich: /, /join/*, /e/*, /touren/*
 ```
 
 ### Datenmodell
 
-**Supabase Auth (built-in):**
-- Benutzer-ID (UUID), Email, Session-Token (LocalStorage), Auto-Refresh
+**`members` Tabelle (live):**
+- id: UUID (PK, auto-generated)
+- name: TEXT (optional, max 50 Zeichen → Fallback "Anonym")
+- token: TEXT (unique, auto-generated 32 hex chars)
+- role: TEXT ('organizer' | 'admin' | 'member')
+- avatar_url: TEXT (Link zu Supabase Storage)
+- created_at, updated_at: TIMESTAMPTZ (auto-managed)
+- RLS enabled, auto-updated_at Trigger
 
-**`profiles` Tabelle:**
-- ID = Auth-User-UUID (kein separater Key)
-- display_name (Text, max 50 Zeichen, optional → Fallback "Anonym")
-- avatar_url (Link zu Supabase Storage)
-- created_at (Zeitstempel)
-- Sicherheit: Lesen für alle, Schreiben nur für Besitzer (RLS)
+**Storage Bucket `avatars` (live):**
+- Öffentlich lesbar, 2MB Limit, JPEG/PNG/WebP
+- Pfad: `{member-id}/avatar.jpg` (überschreibt bei Update)
 
-**Storage Bucket `avatars`:**
-- Öffentlich lesbar, authentifiziertes Schreiben
-- Pfad: `{user-id}/avatar.jpg` (überschreibt bei Update)
+### API-Endpunkte
 
-### Tech-Entscheidungen
+| Methode | Route | Auth | Beschreibung |
+|---------|-------|------|-------------|
+| GET | /api/members | member | Mitgliederliste |
+| POST | /api/members | organizer | Neues Mitglied anlegen (+ Join-Link) |
+| GET | /api/members/me | member | Eigenes Profil (ohne Token) |
+| PATCH | /api/members/me | member | Name/Avatar updaten |
+| DELETE | /api/members/me | any | Abmelden (Cookie löschen) |
 
-| Entscheidung | Warum |
-|---|---|
-| Magic Link statt Passwort | Kein Passwort-Vergessen-Flow, kein Sicherheitsrisiko |
-| `@supabase/ssr` Package | Für Next.js App Router: Server Components + Middleware + Client sync |
-| Middleware für Route-Schutz | Zentraler Auth-Check, läuft vor dem Seitenrendering |
-| `profiles` Tabelle | auth.users nicht direkt im Browser zugänglich (Security) |
-| Avatar-Kompression im Browser | Spart Storage-Kosten, schnellere Ladezeiten |
-| shadcn Avatar Komponente | Bereits installiert, Wiederverwendung in PROJ-28/32/33 |
-
-### Neue Routen
-- `/login` — Magic Link anfordern (öffentlich)
-- `/auth/callback` — Supabase verarbeitet Link-Klick (öffentlich)
-- `/profile` — Name + Avatar bearbeiten (geschützt)
-
-### Dependencies
-- `@supabase/ssr` — Server-Side Auth für App Router (ggf. neu installieren)
-- `@supabase/supabase-js` — Supabase Client (bereits v1)
-- `browser-image-compression` — Avatar-Kompression (bereits v1)
-- `zod` + `react-hook-form` — Profil-Validierung (bereits installiert)
-
-### Wiederverwendung v1
-- `src/lib/photo-upload.ts` — Kompression + Upload für Avatar
-- `src/components/ui/avatar.tsx` — shadcn Avatar (bereits installiert)
-- `src/components/ui/form.tsx` — shadcn Form für Display-Name
+### Sicherheit
+- Token wird NIE an Client gesendet (httpOnly Cookie, /api/members/me gibt Token nicht zurück)
+- Profil-Updates nur über eigenen Token möglich (kein IDOR)
+- Rate Limiting auf mutating Endpunkten (POST, PATCH)
+- Middleware validiert Token gegen DB bei jedem Request
 
 ## QA Test Results
-_To be added by /qa_
+
+### Test Run: 2026-04-04
+**7 Bugs found, all fixed:**
+
+| Bug | Schwere | Problem | Fix |
+|-----|---------|---------|-----|
+| BUG-1 | Kritisch | httpOnly Cookie nicht per JS lesbar | AuthProvider nutzt /api/members/me statt document.cookie |
+| BUG-2 | Kritisch | Token im Browser-State sichtbar | /api/members/me gibt Token nicht zurueck |
+| BUG-3 | Hoch | IDOR: jeder konnte jedes Profil aendern | Profil-Updates via /api/members/me (Server prueft Token) |
+| BUG-4 | Medium | Kein Rate Limiting | rate-limit.ts eingebunden in POST/PATCH Endpunkte |
+| BUG-5 | Medium | Feature-Spec veraltet | Spec komplett aktualisiert |
+| BUG-6 | Low | DB-Query pro Middleware-Request | Akzeptabler Tradeoff, Kommentar hinzugefuegt |
+| BUG-7 | Low | redirect-Parameter nicht genutzt | Akzeptabler Tradeoff, Kommentar hinzugefuegt |
+
+**Status nach Fixes: Alle Acceptance Criteria erfuellt.**
 
 ## Deployment
 _To be added by /deploy_
