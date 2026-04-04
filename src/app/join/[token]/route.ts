@@ -1,10 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("error", "rate_limited");
+    return NextResponse.redirect(url);
+  }
+
   const { token } = await params;
 
   // Validate token

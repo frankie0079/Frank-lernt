@@ -1,0 +1,350 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
+import { EventEditSheet } from "@/components/event-edit-sheet";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  type EventData,
+  type AgendaItem,
+  computeEventStatus,
+  generateEventGradient,
+  formatDateRange,
+} from "@/lib/event-utils";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Users,
+  Pencil,
+  AlertCircle,
+  Camera,
+  LayoutGrid,
+  Shield,
+  BookOpen,
+} from "lucide-react";
+import Link from "next/link";
+
+const statusConfig: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "outline" }
+> = {
+  planned: { label: "Geplant", variant: "secondary" },
+  active: { label: "Aktiv", variant: "default" },
+  archived: { label: "Archiviert", variant: "outline" },
+};
+
+export default function EventDashboardPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { member, loading: authLoading } = useAuth();
+
+  const [event, setEvent] = useState<EventData | null>(null);
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const eventId = params.id as string;
+
+  const fetchEvent = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/events/${eventId}`);
+      if (res.status === 403) {
+        router.push("/events");
+        return;
+      }
+      if (res.status === 404) {
+        setError("Event nicht gefunden.");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("Event konnte nicht geladen werden.");
+      }
+
+      const data = await res.json();
+      setEvent(data.event);
+      setAgendaItems(data.agenda_items || []);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Ein Fehler ist aufgetreten."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId, router]);
+
+  useEffect(() => {
+    if (!authLoading && member) {
+      fetchEvent();
+    }
+  }, [authLoading, member, fetchEvent]);
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Skeleton className="h-48 w-full" />
+        <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!member) return null;
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto max-w-2xl space-y-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/events">
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              Zurueck
+            </Link>
+          </Button>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) return null;
+
+  const status = computeEventStatus(event.start_date, event.end_date);
+  const config = statusConfig[status];
+  const gradient = generateEventGradient(event.name);
+  const dateRange = formatDateRange(event.start_date, event.end_date);
+  const isOrganizer = event.organizer_id === member.id;
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Cover / Header */}
+      <div
+        className="relative h-48 w-full md:h-64"
+        style={!event.cover_url ? { background: gradient } : undefined}
+      >
+        {event.cover_url && (
+          <img
+            src={event.cover_url}
+            alt={`Cover von ${event.name}`}
+            className="h-full w-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+
+        {/* Back button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute left-3 top-3 h-9 w-9 rounded-full bg-black/30 text-white hover:bg-black/50"
+          asChild
+        >
+          <Link href="/events" aria-label="Zurueck zu Meine Events">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </Button>
+
+        {/* Edit button (organizer only) */}
+        {isOrganizer && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-3 top-3 h-9 w-9 rounded-full bg-black/30 text-white hover:bg-black/50"
+            onClick={() => setEditOpen(true)}
+            aria-label="Event bearbeiten"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Event title overlay */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+          <div className="mx-auto max-w-2xl">
+            <Badge variant={config.variant} className="mb-2">
+              {config.label}
+            </Badge>
+            <h1 className="text-2xl font-bold text-white md:text-3xl">
+              {event.name}
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Event Meta */}
+      <div className="mx-auto max-w-2xl px-4 py-4">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            {dateRange}
+          </span>
+          {event.member_count != null && (
+            <span className="flex items-center gap-1">
+              <Users className="h-4 w-4" aria-hidden="true" />
+              {event.member_count} Teilnehmer
+            </span>
+          )}
+        </div>
+        {event.description && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {event.description}
+          </p>
+        )}
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="mx-auto max-w-2xl px-4 pb-8">
+        <Tabs defaultValue="capture" className="w-full">
+          <TabsList className="w-full grid grid-cols-4">
+            <TabsTrigger value="capture" className="text-xs sm:text-sm">
+              <Camera className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline">Beitraege</span>
+            </TabsTrigger>
+            <TabsTrigger value="pool" className="text-xs sm:text-sm">
+              <LayoutGrid className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline">Pool</span>
+            </TabsTrigger>
+            <TabsTrigger value="admin" className="text-xs sm:text-sm">
+              <Shield className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline">Admin</span>
+            </TabsTrigger>
+            <TabsTrigger value="book" className="text-xs sm:text-sm">
+              <BookOpen className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline">Buch</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="capture" className="mt-6">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <Camera
+                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-foreground">
+                Wanderer-Screen
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Kommt in PROJ-27: Fotos, Videos, Texte und Sprachmemos erfassen
+              </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="pool" className="mt-6">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <LayoutGrid
+                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-foreground">
+                Content-Pool
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Kommt in PROJ-28: Alle Beitraege als Realtime-Karteikarten
+              </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="admin" className="mt-6">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <Shield
+                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-foreground">
+                Tages-Admin
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Kommt in PROJ-33: Kurations-Workflow und Slideshow
+              </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="book" className="mt-6">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <BookOpen
+                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-foreground">
+                Event-Buch
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Kommt in PROJ-36: Post-Event Tagebuch + PDF-Export
+              </p>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Agenda Section */}
+        {agendaItems.length > 0 && (
+          <div className="mt-8">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
+              Agenda
+            </h2>
+            <div className="space-y-3">
+              {agendaItems
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map((item) => {
+                  const itemDate = new Date(item.date + "T00:00:00");
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex gap-3 rounded-lg border border-border p-3"
+                    >
+                      <div className="flex flex-col items-center justify-center rounded-md bg-muted px-3 py-1 text-center">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {itemDate.toLocaleDateString("de-DE", {
+                            weekday: "short",
+                          })}
+                        </span>
+                        <span className="text-lg font-bold text-foreground">
+                          {itemDate.getDate()}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {itemDate.toLocaleDateString("de-DE", {
+                            month: "short",
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground">
+                          {item.title}
+                        </h3>
+                        {item.description && (
+                          <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Edit Sheet */}
+      {isOrganizer && (
+        <EventEditSheet
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          event={event}
+          agendaItems={agendaItems}
+          onEventUpdated={fetchEvent}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,3 +1,5 @@
+// In-memory store — per-instance on Vercel serverless. Acceptable for MVP.
+// For production scale, replace with Upstash Redis or Vercel KV.
 const requests = new Map<string, number[]>();
 
 const WINDOW_MS = 60_000; // 1 minute
@@ -21,7 +23,9 @@ export function isRateLimited(ip: string): boolean {
 }
 
 export function getRateLimitIp(request: Request): string {
+  // Prefer Vercel's trusted header (cannot be spoofed by clients)
   return (
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown"

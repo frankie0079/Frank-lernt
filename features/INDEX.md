@@ -15,8 +15,8 @@
 
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
-| PROJ-24 | Auth & User-Accounts | In Progress | [PROJ-24-auth-user-accounts.md](PROJ-24-auth-user-accounts.md) | 2026-03-08 |
-| PROJ-25 | Event-Erstellung & -Verwaltung | Planned | [PROJ-25-event-erstellung.md](PROJ-25-event-erstellung.md) | 2026-03-08 |
+| PROJ-24 | Auth & User-Accounts | In Review | [PROJ-24-auth-user-accounts.md](PROJ-24-auth-user-accounts.md) | 2026-03-08 |
+| PROJ-25 | Event-Erstellung & -Verwaltung | In Review | [PROJ-25-event-erstellung.md](PROJ-25-event-erstellung.md) | 2026-03-08 |
 | PROJ-26 | Teilnehmer-Einladung & Member-Management | Planned | [PROJ-26-teilnehmer-einladung.md](PROJ-26-teilnehmer-einladung.md) | 2026-03-08 |
 | PROJ-27 | Wanderer-Screen (Eingabe-Interface) | Planned | [PROJ-27-wanderer-screen.md](PROJ-27-wanderer-screen.md) | 2026-03-08 |
 | PROJ-28 | Content-Pool (Realtime-Karteikarten) | Planned | [PROJ-28-content-pool.md](PROJ-28-content-pool.md) | 2026-03-08 |

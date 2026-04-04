@@ -20,7 +20,7 @@ async function getCurrentMember(request: NextRequest) {
 
   const { data } = await supabase
     .from("members")
-    .select("*")
+    .select("id, name, role, avatar_url")
     .eq("token", token)
     .single();
 
@@ -109,8 +109,11 @@ export async function POST(request: NextRequest) {
   const baseUrl = request.nextUrl.origin;
   const joinLink = `${baseUrl}/join/${data.token}`;
 
+  // Strip token from response — joinLink is sufficient
+  const { token: _token, ...memberWithoutToken } = data;
+
   return NextResponse.json({
-    member: data,
+    member: memberWithoutToken,
     joinLink,
   });
 }

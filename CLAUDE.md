@@ -115,9 +115,9 @@ npm run start      # Production server
 
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
 - **v1 Tabellen (live):** `tours`, `diary_entries`, `photos`, `audio_notes`
-- **v2 Tabellen (geplant):** `events`, `event_members`, `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
+- **v2 Tabellen (geplant):** `event_members`, `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
 - **Auth:** Token-basierte Links (kein Supabase Auth)
-- **v2 Tabellen (live):** `members` (Token-Auth, RLS enabled)
+- **v2 Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled)
 - **Storage Buckets (live):** `photos`, `audio` (public, 20MB), `avatars` (public, 2MB, JPEG/PNG/WebP)
 - **Storage Buckets (geplant):** `media`, `slideshows`
 
@@ -141,11 +141,30 @@ Fertiggestellt:
 Noch offen für PROJ-24:
 - `/qa`: Tests + Security Audit
 
-**Nächster Schritt:** `/qa` für PROJ-24
+**PROJ-25: Event-Erstellung & -Verwaltung — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
+
+Fertiggestellt:
+- `events` Tabelle in Supabase (RLS enabled)
+- `/events/new` Seite: Multi-Step-Formular (Basis-Infos + Agenda)
+- `/events/[id]` Seite: Event-Dashboard mit Cover, Details, Agenda
+- `CoverPhotoUploader`: Foto-Upload mit Client-Kompression
+- `EventCard`: Event-Karten mit Cover, Status-Badge, Datum, Teilnehmer
+- `EventEditSheet`: Inline-Bearbeitung von Event-Details
+- `POST /api/events`: Event erstellen (Zod-validiert, nur Organisator)
+- `GET /api/events`: Events auflisten (gefiltert nach Mitgliedschaft)
+- `GET/PATCH/DELETE /api/events/[id]`: Event CRUD
+- Event-Validierung: `src/lib/validations/event.ts`
+- Event-Utilities: `src/lib/event-utils.ts` (Status, Datum-Formatierung)
+- Calendar-Komponente: `src/components/ui/calendar.tsx` (shadcn/ui)
+
+Noch offen für PROJ-25:
+- `/qa`: Tests + Security Audit
+
+**Nächster Schritt:** `/qa` für PROJ-24 und PROJ-25
 
 Danach Build-Reihenfolge:
-1. ~~**PROJ-24: Auth**~~ ← In Progress
-2. **PROJ-25: Event-Erstellung**
+1. ~~**PROJ-24: Auth**~~ ← In Review
+2. ~~**PROJ-25: Event-Erstellung**~~ ← In Review
 3. **PROJ-26: Teilnehmer-Einladung**
 4. **PROJ-27: Wanderer-Screen** (Eingabe: Foto/Video/Text/Sprache)
 5. **PROJ-28: Content-Pool** (Realtime-Karteikarten)
