@@ -1,6 +1,6 @@
 # PROJ-29: Video-Aufnahme (bis 90 Sekunden)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-05
 
@@ -459,4 +459,8 @@ Keine neuen Pakete — MediaRecorder, getUserMedia und Canvas API sind Browser-n
 - **Recommendation:** All 6 bugs fixed. Ready for deploy.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://frank-lernt.vercel.app
+**Commit:** feat(PROJ-29): Implement Video-Aufnahme (bis 90 Sekunden)
+**QA Status:** All 6 bugs fixed, build passing
