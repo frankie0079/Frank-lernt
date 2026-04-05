@@ -53,7 +53,60 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Overview
+Video-Aufnahme folgt dem gleichen Muster wie Foto-Aufnahme: Button → Bottom-Sheet (Aufnahme/Vorschau) → Upload → API. Kein neues Backend, keine neue DB-Tabelle — alles bereits vorhanden.
+
+### Component Structure
+
+```
+WandererScreen (modified)
++-- ActionButtonGrid (modified: Video-Button wird aktiv)
++-- VideoSheet (NEW — Bottom Sheet, 3 Zustände)
+    +-- [idle] "Aufnahme starten" Button
+    +-- [recording] Live-Vorschau + Timer Badge + Stopp-Button
+    +-- [preview] <video controls> + "Neu aufnehmen" + CaptionTextarea + Progress + Upload
+
+useVideoRecorder Hook (NEW)
++-- getUserMedia (Kamera + Mikrofon)
++-- MediaRecorder mit MIME-Type-Erkennung (WebM/VP8 → MP4 Fallback)
++-- 90s Auto-Stopp via setInterval
++-- Gibt zurück: stream, isRecording, elapsedSeconds, blob, start(), stop()
+
+ContentCard (modified)
++-- [type='video'] Thumbnail mit ▶ Play-Symbol Overlay
+
+VideoPlayerOverlay (NEW)
++-- Dialog mit <video controls autoPlay playsInline>
+```
+
+### Datenmodell
+Keine DB-Änderungen. `content_items` unterstützt bereits `type='video'`, `media_url`, `thumbnail_url`.
+
+- Video: `media/[event_id]/videos/[user_id]/[timestamp]-[uuid].webm`
+- Thumbnail: `media/[event_id]/video-thumbs/[user_id]/[timestamp].jpg` (Canvas API → erster Frame → JPEG)
+
+### Tech-Entscheidungen
+
+| Entscheidung | Gewählt | Warum |
+|---|---|---|
+| Aufnahme-API | MediaRecorder API (Browser-nativ) | Kostenlos, kein Server nötig |
+| Format | WebM/VP8 primär, MP4 Fallback | iOS Safari kennt kein WebM — via `MediaRecorder.isTypeSupported()` erkannt |
+| Thumbnail | Canvas API → erster Frame → JPEG | Komplett im Browser, kein extra Service |
+| Upload | Direkt zu Supabase Storage (wie Fotos) | Gleiche Pipeline, kein neuer API-Endpunkt |
+| API-Endpunkt | `POST /api/events/[id]/content` (bestehend) | Akzeptiert bereits `type: 'video'`, `thumbnail_url` |
+| Video-Player | Natives `<video>` in shadcn Dialog | Kein extra Paket, iOS-kompatibel mit `playsInline` |
+
+### Was sich ändert vs. was neu ist
+
+**Neu:** `VideoSheet`, `useVideoRecorder`, `VideoPlayerOverlay`
+
+**Modifiziert:** `ActionButtonGrid` (Video-Button aktiv), `WandererScreen` (VideoSheet-State), `ContentCard` (▶-Overlay für Videos)
+
+**Unverändert:** Alle API-Routen, DB-Schema, `PhotoSheet`, `TextCommentSheet`
+
+### Dependencies
+Keine neuen Pakete — MediaRecorder, getUserMedia und Canvas API sind Browser-nativ.
 
 ## QA Test Results
 _To be added by /qa_
