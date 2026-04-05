@@ -1,6 +1,6 @@
 # PROJ-27: Wanderer-Screen (Eingabe-Interface)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-08
 **Last Updated:** 2026-03-08
 
@@ -57,7 +57,89 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Komponenten-Struktur
+
+```
+/events/[id]/capture (Seite)
+├── GpsStatusBadge           ← GPS-Status (grün/grau/rot), oben rechts
+├── AgendaSelector           ← Select-Dropdown: heutiger Agenda-Punkt vorausgewählt
+│                               (ausgeblendet wenn Agenda leer)
+└── ActionButtonGrid         ← 2×2 Grid mit 4 großen Touch-Buttons
+    ├── [Kamera]             ← Foto direkt aufnehmen
+    ├── [Video]              ← Platzhalter → PROJ-29 (deaktiviert)
+    ├── [Upload]             ← Bild aus Mediathek wählen
+    └── [Kommentar]          ← Reiner Text-Beitrag
+
+PhotoSheet (Bottom Sheet für Kamera + Upload)
+├── PhotoPreview             ← Vorschau des Bildes
+├── CaptionTextarea          ← Optionaler Kommentar (max 1000 Z., Zeichenzähler)
+├── UploadProgressBar        ← Sichtbar während Upload
+└── SubmitButton / CancelButton
+
+TextCommentSheet (Bottom Sheet für Text)
+├── CaptionTextarea          ← Pflichtfeld (max 1000 Z., Zeichenzähler)
+└── SubmitButton / CancelButton
+```
+
+### Datenmodell
+
+**`agenda_items` Tabelle** (falls noch nicht aus PROJ-25 vorhanden):
+- ID, Event-Zugehörigkeit, Titel, Datum, Tages-Admin, Reihenfolge
+
+**`content_items` Tabelle** (neu, Kern von PROJ-27):
+- ID (eindeutig)
+- Event-Zugehörigkeit
+- Agenda-Punkt (optional)
+- Autor (verknüpft mit members)
+- Typ: "photo" | "video" | "text" | "audio"
+- Medien-URL (Supabase Storage)
+- Thumbnail-URL (400px Vorschau)
+- Bildunterschrift / Kommentar (max 1000 Zeichen)
+- GPS-Koordinaten: Breitengrad + Längengrad (optional)
+- EXIF-Datum (optional)
+- Erstellt am
+
+**Supabase Storage Bucket: `media`** (neu, öffentlich, max 20 MB, Pfad: `[event_id]/[user_id]/[timestamp]-[uuid]`)
+
+### API
+
+| Methode | Route | Zweck |
+|---------|-------|-------|
+| `GET` | `/api/events/[id]/agenda` | Agenda-Punkte laden (Dropdown) |
+| `POST` | `/api/events/[id]/content` | Neuen Beitrag speichern |
+
+Ablauf Foto/Upload: Datei → EXIF-Extraktion → Kompression → Thumbnail (Browser) → Storage Upload → POST mit URL + Metadaten
+
+### Tech-Entscheidungen
+
+| Entscheidung | Begründung |
+|---|---|
+| Bottom Sheet statt Dialog | Auf iPhone natürlicher, Touch-freundlicher |
+| `<input capture="environment">` (versteckt) | Öffnet direkt Rück-Kamera auf iOS |
+| EXIF vor Kompression | browser-image-compression entfernt EXIF — GPS muss vorher extrahiert werden |
+| Canvas-Thumbnail (400px) | Kleines Vorschaubild für Content-Pool (PROJ-28) |
+| Video-Button als Platzhalter | Video-Logik kommt in PROJ-29 |
+| GPS non-blocking | Kein GPS → Beitrag trotzdem gespeichert |
+| Offline-Queue (IndexedDB + Serwist) | Wandergebiete haben schlechtes Netz |
+| RLS auf content_items | Nur Event-Mitglieder dürfen Beiträge sehen/erstellen |
+
+### Wiederverwendbare Komponenten
+
+- `cover-photo-uploader.tsx` → Foto-Kompression-Logik als Vorlage
+- `auth-provider.tsx` → `useAuth()` für Autor-ID + Name
+- shadcn: Sheet, Select, Textarea, Button, Progress, Badge, Sonner (Toast)
+
+### Neue Pakete
+
+Keine — `exifr` und `browser-image-compression` bereits im Projekt.
+
+### Scope-Abgrenzung
+
+- **In PROJ-27:** Foto, Upload, Text, GPS, Agenda-Zuordnung, Offline-Queue
+- **In PROJ-29:** Video-Aufnahme (nur Platzhalter-Button)
+- **In PROJ-30:** Sprachmemo (kommt später)
+- **In PROJ-28:** Content-Pool zeigt die hier gespeicherten Beiträge an
 
 ## QA Test Results
 _To be added by /qa_
