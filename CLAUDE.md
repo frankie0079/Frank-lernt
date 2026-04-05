@@ -109,95 +109,31 @@ npm run start      # Production server
 
 ## Aktueller Stand
 
-**PROJ-24: Auth & User-Accounts — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
+### Deployed (Production)
+- **PROJ-24: Auth & User-Accounts** — QA Round 4 passed (14/14 AC, 0 bugs)
+- **PROJ-27: Wanderer-Screen** — Deployed, QA passed
+- **PROJ-28: Content-Pool** — Deployed, QA passed
+- **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 passed (6/6 bugs fixed)
 
-Fertiggestellt:
-- Token-basiertes Auth-System (kein Supabase Auth, kein Magic Link)
-- `members` Tabelle in Supabase (RLS enabled, auto-updated_at Trigger)
-- Organisator (Frank) angelegt mit persönlichem Token
-- `/join/[token]` Route: Link klicken → Cookie setzen → eingeloggt
-- `/login` Info-Seite: "Du brauchst einen Einladungslink"
-- `/profile` Seite: Avatar + Anzeigename bearbeiten
-- `/events` Seite: Dashboard mit Profil-Avatar
-- `POST /api/members`: Organisator kann Mitglieder anlegen (Zod-validiert)
-- `GET /api/members`: Mitgliederliste abrufen
-- Middleware: Token-Cookie prüfen, ungültige Tokens löschen
-- AuthProvider: `useAuth()` Hook mit `member`, `signOut()`, `refreshMember()`
+### In Review
+- **PROJ-25: Event-Erstellung** — QA: 11/12 AC, BUG-R2-1 (Tages-Admin UI) deferred to PROJ-26
+- **PROJ-26: Teilnehmer-Einladung** — QA: 9/11 AC, verbleibende Bugs Low/Medium (akzeptabel für MVP)
 
-Noch offen für PROJ-24:
-- `/qa`: Tests + Security Audit
+### Nächster Schritt
+`/architecture` für **PROJ-30: Sprachmemo + Transkription** (Web Speech API)
 
-**PROJ-25: Event-Erstellung & -Verwaltung — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
-
-Fertiggestellt:
-- `events` Tabelle in Supabase (RLS enabled)
-- `/events/new` Seite: Multi-Step-Formular (Basis-Infos + Agenda)
-- `/events/[id]` Seite: Event-Dashboard mit Cover, Details, Agenda
-- `CoverPhotoUploader`: Foto-Upload mit Client-Kompression
-- `EventCard`: Event-Karten mit Cover, Status-Badge, Datum, Teilnehmer
-- `EventEditSheet`: Inline-Bearbeitung von Event-Details
-- `POST /api/events`: Event erstellen (Zod-validiert, nur Organisator)
-- `GET /api/events`: Events auflisten (gefiltert nach Mitgliedschaft)
-- `GET/PATCH/DELETE /api/events/[id]`: Event CRUD
-- Event-Validierung: `src/lib/validations/event.ts`
-- Event-Utilities: `src/lib/event-utils.ts` (Status, Datum-Formatierung)
-- Calendar-Komponente: `src/components/ui/calendar.tsx` (shadcn/ui)
-
-QA für PROJ-25: 11/12 AC passed, 0 critical bugs. BUG-R2-1 (Tages-Admin UI) deferred to PROJ-26.
-
-**PROJ-26: Teilnehmer-Einladung & Member-Management — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
-
-Fertiggestellt:
-- `event_members` + `invitations` Tabellen in Supabase (RLS enabled)
-- `/invite/[token]` Route: Event-Einladungslink (nicht `/join/[token]` — das ist Member-Auth)
-- `/events/[id]/settings` Seite: Einladungslink-Verwaltung + Teilnehmerliste (nur Organisator)
-- `InvitationLinkCard`: Link anzeigen, kopieren, WhatsApp teilen, neu generieren
-- `EventMemberList`: Teilnehmer mit Avatar, Rolle-Badge, Beitrittsdatum, Entfernen-Button
-- `GET/POST /api/events/[id]/invitations`: Einladungslink abrufen/generieren
-- `GET /api/events/[id]/members`: Teilnehmerliste
-- `DELETE /api/events/[id]/members/[memberId]`: Teilnehmer entfernen (nicht sich selbst)
-- `POST /api/invite/[token]`: Event beitreten (Token-Prüfung, Max 50, Duplikat-Check)
-- Login-Seite zeigt Kontext bei `/invite/`-Redirect
-- Redirect-Flow nach Login: localStorage-basiert (Login speichert Redirect, Events-Seite leitet weiter)
-
-QA für PROJ-26: 9/11 AC passed, BUG-1 (Redirect) gefixt. Verbleibende Bugs sind Low/Medium (Race Condition, Rate Limiting) — akzeptabel für MVP.
-
-**PROJ-27: Wanderer-Screen — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
-
-Fertiggestellt:
-- `content_items` Tabelle in Supabase (RLS enabled, Indexes auf event_id/author_id/created_at)
-- `media` Storage Bucket (public, 20MB)
-- `/events/[id]` Capture-Tab: WandererScreen mit 4 Aktions-Buttons (Kamera, Video, Upload, Kommentar)
-- `ActionButtonGrid`: 2×2 Touch-optimierte Buttons (Video als Platzhalter für PROJ-29)
-- `PhotoSheet`: Bottom-Sheet mit Vorschau, Kommentar, Upload-Fortschritt
-- `TextCommentSheet`: Bottom-Sheet für reine Text-Beiträge
-- `AgendaSelector`: Dropdown mit Auto-Auswahl heutiger Agenda-Punkt
-- `GpsStatusBadge`: Farbcodierte GPS-Anzeige (grün/rot/grau)
-- `CaptionTextarea`: Wiederverwendbare Textarea mit Zeichenzähler (max 1000)
-- `useGeolocation` Hook: GPS mit Status-Tracking + Refresh
-- Foto-Pipeline: EXIF-Extraktion (exifr) → Kompression (1920px/1MB) → Thumbnail (400px) → Storage Upload
-- `POST /api/events/[id]/content`: Beitrag erstellen (Zod-validiert, Membership-Check, Rate-Limiting)
-- `GET /api/events/[id]/content`: Beiträge auflisten (max 200, neueste zuerst)
-- `DELETE /api/events/[id]/content/[contentId]`: Beitrag löschen (Autor oder Organisator, inkl. Storage-Cleanup)
-- Content-Validierung: `src/lib/validations/content.ts`
-- Content-Upload-Pipeline: `src/lib/content-upload.ts`
-
-Noch offen für PROJ-27:
-- `/qa`: Tests + Security Audit
-
-**Nächster Schritt:** `/qa` für PROJ-27
-
-Danach Build-Reihenfolge:
-1. ~~**PROJ-24: Auth**~~ ← In Review
-2. ~~**PROJ-25: Event-Erstellung**~~ ← In Review
-3. ~~**PROJ-26: Teilnehmer-Einladung**~~ ← In Review
-4. ~~**PROJ-27: Wanderer-Screen**~~ ← In Review
-5. **PROJ-28: Content-Pool** (Realtime-Karteikarten)
-6. **PROJ-29: Video-Aufnahme** + **PROJ-30: Sprachmemo**
-7. **PROJ-31: Reactions** + **PROJ-32: Kommentare**
-8. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
-9. **PROJ-35: Öffentliche Event-Seite**
-10. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
+### Build-Reihenfolge
+1. ~~PROJ-24: Auth~~ ✅ Deployed
+2. ~~PROJ-25: Event-Erstellung~~ In Review
+3. ~~PROJ-26: Teilnehmer-Einladung~~ In Review
+4. ~~PROJ-27: Wanderer-Screen~~ ✅ Deployed
+5. ~~PROJ-28: Content-Pool~~ ✅ Deployed
+6. ~~PROJ-29: Video-Aufnahme~~ ✅ Deployed
+7. **PROJ-30: Sprachmemo** ← nächstes Feature
+8. **PROJ-31: Reactions** + **PROJ-32: Kommentare**
+9. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
+10. **PROJ-35: Öffentliche Event-Seite**
+11. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
 
 ## Product Context
 
