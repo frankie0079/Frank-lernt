@@ -67,20 +67,6 @@ API:
 /api/events/[id]/reports   CRUD Daily Reports
 ```
 
-## v1 Code (Wiederverwendbar)
-
-Der bestehende v1-Code bleibt im Repo. Folgende Teile werden in v2 wiederverwendet:
-
-| Komponente | Dateien | Wiederverwendung |
-|------------|---------|------------------|
-| Foto-Pipeline | `src/lib/photo-upload.ts` | EXIF → Kompression → Upload |
-| Karte | `src/components/leaflet-map.tsx`, `karte-client.tsx` | GPS-Marker auf Event-Karte |
-| PWA-Basis | `src/app/sw.ts`, `public/manifest.json` | Service Worker anpassen |
-| Share-Button | `src/components/share-button.tsx` | Web Share API + wa.me |
-| Photo-Grid | `src/components/photo-grid.tsx`, `photo-lightbox.tsx` | Content-Pool Foto-Ansicht |
-| Rate-Limiting | `src/lib/rate-limit.ts` | API-Schutz |
-| shadcn/ui | `src/components/ui/` (35 Komponenten) | Gesamte UI |
-
 ## Development Workflow
 
 1. `/requirements` — Feature-Spec schreiben ✅ (14 Specs: PROJ-24 bis PROJ-37)
@@ -92,7 +78,7 @@ Der bestehende v1-Code bleibt im Repo. Folgende Teile werden in v2 wiederverwend
 
 ## Feature Tracking
 
-Alle Features in `features/INDEX.md`. v2 Features: PROJ-24 bis PROJ-37. v1 Features (PROJ-1 bis PROJ-23): Superseded.
+Alle Features in `features/INDEX.md`. Features: PROJ-24 bis PROJ-37. v1 (PROJ-1–23) wurde gelöscht.
 
 ## Key Conventions
 
@@ -114,10 +100,9 @@ npm run start      # Production server
 ## Supabase
 
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
-- **v1 Tabellen (live):** `tours`, `diary_entries`, `photos`, `audio_notes`
-- **v2 Tabellen (geplant):** `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
+- **Tabellen (geplant):** `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
 - **Auth:** Token-basierte Links (kein Supabase Auth)
-- **v2 Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`
+- **Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`
 - **Storage Buckets (live):** `photos`, `audio` (public, 20MB), `avatars` (public, 2MB, JPEG/PNG/WebP)
 - **Storage Buckets (geplant):** `media`, `slideshows`
 
