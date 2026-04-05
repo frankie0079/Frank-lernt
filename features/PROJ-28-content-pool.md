@@ -580,4 +580,15 @@ All 11 acceptance criteria pass. All 6 edge cases pass. The 4 Round 1 bugs that 
 Deploy now. Address BUG-R2-1 in the next sprint alongside PROJ-29.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://frank-lernt.vercel.app
+**Git Tag:** v1.2.0-PROJ-28
+
+**Pre-deployment checklist:**
+- [x] `npm run build` — clean (0 errors)
+- [x] `npm run lint` — 0 errors, 7 warnings (img elements, acceptable)
+- [x] QA Round 1: 10/11 AC passed — 5 bugs found, all fixed
+- [x] QA Round 2: 11/11 AC passed — 3 bugs found, all fixed
+- [x] No critical/high bugs
+- [x] All code committed, pushed to main → Vercel auto-deploy triggered
