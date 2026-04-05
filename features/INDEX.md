@@ -18,7 +18,7 @@
 | PROJ-24 | Auth & User-Accounts | In Review | [PROJ-24-auth-user-accounts.md](PROJ-24-auth-user-accounts.md) | 2026-03-08 |
 | PROJ-25 | Event-Erstellung & -Verwaltung | In Review | [PROJ-25-event-erstellung.md](PROJ-25-event-erstellung.md) | 2026-03-08 |
 | PROJ-26 | Teilnehmer-Einladung & Member-Management | In Review | [PROJ-26-teilnehmer-einladung.md](PROJ-26-teilnehmer-einladung.md) | 2026-03-08 |
-| PROJ-27 | Wanderer-Screen (Eingabe-Interface) | In Review | [PROJ-27-wanderer-screen.md](PROJ-27-wanderer-screen.md) | 2026-03-08 |
+| PROJ-27 | Wanderer-Screen (Eingabe-Interface) | Deployed | [PROJ-27-wanderer-screen.md](PROJ-27-wanderer-screen.md) | 2026-03-08 |
 | PROJ-28 | Content-Pool (Realtime-Karteikarten) | In Progress | [PROJ-28-content-pool.md](PROJ-28-content-pool.md) | 2026-03-08 |
 | PROJ-29 | Video-Aufnahme (bis 90 Sekunden) | Planned | [PROJ-29-video-aufnahme.md](PROJ-29-video-aufnahme.md) | 2026-03-08 |
 | PROJ-30 | Sprachmemo + Transkription (Web Speech API) | Planned | [PROJ-30-sprachmemo.md](PROJ-30-sprachmemo.md) | 2026-03-08 |

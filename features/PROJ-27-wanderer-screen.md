@@ -471,4 +471,17 @@ No changes from Round 2 -- all standard Web APIs used. No regressions from bug f
 - **Recommendation:** All 13 acceptance criteria pass. All previous high-severity bugs are fixed. The 4 new findings are medium/low severity edge cases that do not affect core online functionality. BUG-R3-1 (IndexedDB quota) is the most impactful for the outdoor/hiking use case but only triggers after queuing many large photos offline -- an uncommon scenario for MVP. Deploy now, address BUG-R3-1 in the next sprint alongside PROJ-28.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-05
+**Production URL:** https://frank-lernt.vercel.app
+**Git Tag:** v1.1.0-PROJ-27
+
+**Pre-deployment checklist:**
+- [x] `npm run build` — clean (0 errors)
+- [x] `npm run lint` — 0 errors, 7 warnings (img elements, acceptable)
+- [x] QA Round 3: 13/13 AC passed, production ready: YES
+- [x] No critical/high bugs
+- [x] BUG-R3-1 (QuotaExceededError) fixed before deploy
+- [x] All environment variables in `.env.local.example`
+- [x] No secrets committed to git
+- [x] Pushed to main → Vercel auto-deploy triggered
