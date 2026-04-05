@@ -350,7 +350,7 @@ Note: This is a code-level audit. Manual browser testing should be performed in 
 
 ---
 
-### Summary
+### Summary (Round 3)
 - **Acceptance Criteria:** 14/14 passed
 - **Edge Cases:** 6/6 passed
 - **Bugs Found:** 3 total (0 critical, 0 high, 1 medium, 2 low)
@@ -358,6 +358,71 @@ Note: This is a code-level audit. Manual browser testing should be performed in 
 - **Security:** Solid overall. One medium-severity issue (avatar_url domain validation missing).
 - **Production Ready:** YES (conditionally)
 - **Recommendation:** Fix BUG-R3-1 (add Supabase domain validation to avatar_url) before deployment. BUG-R3-3 (in-memory rate limit) is acceptable for MVP. BUG-R3-2 is mitigated by Vercel deployment.
+
+---
+
+### Test Run: 2026-04-05 (Round 4 -- Post-Deployment Regression Verification)
+**Tested:** 2026-04-05
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Build Status:** PASS (npm run build succeeds, 0 errors, 7 lint warnings -- none related to PROJ-24)
+
+#### Context
+PROJ-25 through PROJ-28 have been deployed since the last QA round. This round verifies that PROJ-24 auth functionality has no regressions and that BUG-R3-1 was properly fixed.
+
+#### BUG-R3-1 Fix Verification: PASS
+- [x] `avatar_url` in PATCH /api/members/me now has `.refine()` that validates URL starts with `NEXT_PUBLIC_SUPABASE_URL` (file: `src/app/api/members/me/route.ts` lines 8-14)
+- [x] External URLs like `https://evil-tracker.com/pixel.png` would be rejected by the Zod schema
+- [x] Fix committed in `bb129ee`
+
+#### Acceptance Criteria Re-Verification: 14/14 PASS
+- [x] AC-1: POST /api/members -- auth check (401), organizer check (403), Zod validation, rate limiting -- all intact
+- [x] AC-2: Token auto-generated, unique, returned as joinLink -- intact
+- [x] AC-3: /join/[token] sets httpOnly cookie, redirects to /events -- intact
+- [x] AC-4: PATCH /api/members/me validates name max 50, client-side maxLength + counter -- intact
+- [x] AC-5: Avatar upload with client-side type/size validation, compression, Supabase storage -- intact
+- [x] AC-6: Cookie maxAge 30 days, httpOnly -- intact
+- [x] AC-7: Middleware redirects unauthenticated to /login -- intact (also covers /invite/* as public)
+- [x] AC-8: Public routes /, /join/*, /e/*, /touren/*, /invite/* all bypass auth -- intact
+- [x] AC-9: DELETE /api/members/me clears cookie, AuthProvider redirects to /login -- intact
+- [x] AC-10: Profile page with AvatarUpload, DisplayNameForm, role badge, loading skeleton -- intact
+- [x] AC-11: "Anonym" fallback on events page (line 80), User icon fallback on avatar -- intact
+- [x] AC-12: No token in any API response (explicit column selection across all 10+ getCurrentMember helpers verified)
+- [x] AC-13: PATCH /api/members/me resolves identity from cookie, no IDOR -- intact
+- [x] AC-14: Rate limiting on POST /api/members, PATCH /api/members/me, /join/[token] -- intact
+
+#### Security Audit Re-Verification (Red Team)
+- [x] No `select("*")` anywhere in codebase (grep confirms zero matches)
+- [x] All 10+ `getCurrentMember` helper functions across API routes use explicit column selection without token
+- [x] Token only appears in join route response (joinLink) and is stripped from member object via destructuring
+- [x] avatar_url domain validation now in place (BUG-R3-1 fixed)
+- [x] Security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS) applied globally via next.config.ts
+- [x] Open redirect prevented: localStorage redirect validated with `startsWith("/")` in both login page and events page
+- [x] POST /api/members allows organizer to create any role (including organizer) -- design decision, acceptable for single-organizer MVP
+
+#### Regression Check (PROJ-25 through PROJ-28 impact)
+- [x] AuthProvider still wraps entire app via root layout
+- [x] Middleware matcher excludes API routes (they handle own auth) -- no interference with new API routes
+- [x] New routes (/events/[id]/settings, /invite/[token]) properly added to public/protected lists
+- [x] All new API routes (events, invitations, content, members) reuse same getCurrentMember pattern
+- [x] Build output shows all routes correctly: /login (static), /join/[token] (dynamic), /profile (static), /events (static)
+
+#### Known Accepted Issues (carried from Round 3)
+- **BUG-R3-2 (Low):** x-forwarded-for spoofable in non-Vercel environments -- mitigated by Vercel deployment
+- **BUG-R3-3 (Medium):** In-memory rate limit per serverless instance -- acceptable for MVP (5-50 users)
+
+#### Bugs Found: 0 new bugs
+
+---
+
+### Summary (Round 4)
+- **Acceptance Criteria:** 14/14 passed
+- **Edge Cases:** 6/6 passed (unchanged from Round 3)
+- **New Bugs Found:** 0
+- **Previously Open Bugs:** BUG-R3-1 FIXED, BUG-R3-2 accepted (Low), BUG-R3-3 accepted (Medium/MVP)
+- **Security:** Solid. All prior issues addressed or accepted with documented rationale.
+- **Regression:** No regressions from PROJ-25 through PROJ-28 deployments.
+- **Production Ready:** YES
 
 ## Deployment
 _To be added by /deploy_
