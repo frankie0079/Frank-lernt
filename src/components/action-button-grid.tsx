@@ -5,6 +5,7 @@ import { Camera, Video, ImagePlus, MessageSquare } from "lucide-react";
 
 interface ActionButtonGridProps {
   onCamera: () => void;
+  onVideo: () => void;
   onUpload: () => void;
   onComment: () => void;
   disabled?: boolean;
@@ -12,10 +13,10 @@ interface ActionButtonGridProps {
 
 /**
  * 2x2 grid of large, touch-optimized action buttons for the Wanderer Screen.
- * Video button is a disabled placeholder (PROJ-29).
  */
 export function ActionButtonGrid({
   onCamera,
+  onVideo,
   onUpload,
   onComment,
   disabled = false,
@@ -34,16 +35,16 @@ export function ActionButtonGrid({
         <span className="text-sm font-medium">Kamera</span>
       </Button>
 
-      {/* Video - placeholder for PROJ-29 */}
+      {/* Video - record video (PROJ-29) */}
       <Button
         variant="outline"
-        className="flex h-28 flex-col items-center justify-center gap-2 rounded-xl border-2 text-muted-foreground opacity-50 cursor-not-allowed sm:h-32"
-        disabled
-        aria-label="Video aufnehmen (kommt bald)"
+        className="flex h-28 flex-col items-center justify-center gap-2 rounded-xl border-2 text-foreground hover:bg-primary/5 hover:border-primary/50 active:scale-[0.97] transition-all sm:h-32"
+        onClick={onVideo}
+        disabled={disabled}
+        aria-label="Video aufnehmen"
       >
         <Video className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden="true" />
         <span className="text-sm font-medium">Video</span>
-        <span className="text-[10px] text-muted-foreground">Kommt bald</span>
       </Button>
 
       {/* Upload from gallery */}

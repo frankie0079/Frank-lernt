@@ -9,13 +9,16 @@ import {
 } from "@/components/agenda-selector";
 import { ActionButtonGrid } from "@/components/action-button-grid";
 import { PhotoSheet } from "@/components/photo-sheet";
+import { VideoSheet } from "@/components/video-sheet";
 import { TextCommentSheet } from "@/components/text-comment-sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import {
   CONTENT_MAX_FILE_SIZE_BYTES,
   CONTENT_ALLOWED_IMAGE_TYPES,
+  CONTENT_ALLOWED_VIDEO_TYPES,
 } from "@/lib/validations/content";
+import { VIDEO_MAX_FILE_SIZE_BYTES } from "@/lib/content-upload";
 import { startOnlineSync } from "@/lib/offline-queue";
 import type { AgendaItem } from "@/lib/event-utils";
 import { AlertCircle } from "lucide-react";
@@ -55,38 +58,47 @@ export function WandererScreen({
 
   // File handling
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // Sheet states
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
+  const [videoSheetOpen, setVideoSheetOpen] = useState(false);
   const [textSheetOpen, setTextSheetOpen] = useState(false);
 
-  // Validate selected file
+  // Validate selected file — images open PhotoSheet, videos open VideoSheet
   const validateAndSetFile = useCallback((file: File | undefined) => {
     if (!file) return;
 
     setFileError(null);
 
-    // Check file size
-    if (file.size > CONTENT_MAX_FILE_SIZE_BYTES) {
-      setFileError("Datei zu gross (max. 20 MB)");
-      return;
-    }
-
-    // Check file type — allow images only for now
     const isImage = CONTENT_ALLOWED_IMAGE_TYPES.some(
       (type) => file.type === type || (file.type === "" && file.name.match(/\.(jpe?g|png|webp|heic|heif)$/i))
     );
 
-    if (!isImage) {
-      setFileError("Nur Bilder erlaubt (JPEG, PNG, WebP, HEIC)");
-      return;
-    }
+    const isVideo = CONTENT_ALLOWED_VIDEO_TYPES.some(
+      (type) => file.type === type || (file.type === "" && file.name.match(/\.(mp4|webm|mov)$/i))
+    );
 
-    setSelectedFile(file);
-    setPhotoSheetOpen(true);
+    if (isImage) {
+      if (file.size > CONTENT_MAX_FILE_SIZE_BYTES) {
+        setFileError("Bild zu gross (max. 20 MB)");
+        return;
+      }
+      setSelectedFile(file);
+      setPhotoSheetOpen(true);
+    } else if (isVideo) {
+      if (file.size > VIDEO_MAX_FILE_SIZE_BYTES) {
+        setFileError(`Video zu gross (max. ${Math.round(VIDEO_MAX_FILE_SIZE_BYTES / 1024 / 1024)} MB)`);
+        return;
+      }
+      setSelectedVideoFile(file);
+      setVideoSheetOpen(true);
+    } else {
+      setFileError("Nur Bilder und Videos erlaubt (JPEG, PNG, WebP, HEIC, MP4, WebM, MOV)");
+    }
   }, []);
 
   // Camera button handler — check permissions first
@@ -109,6 +121,12 @@ export function WandererScreen({
     }
 
     cameraInputRef.current?.click();
+  }, []);
+
+  // Video button handler
+  const handleVideo = useCallback(() => {
+    setFileError(null);
+    setVideoSheetOpen(true);
   }, []);
 
   // Upload button handler
@@ -166,11 +184,13 @@ export function WandererScreen({
         </Alert>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons — disabled when any sheet is open */}
       <ActionButtonGrid
         onCamera={handleCamera}
+        onVideo={handleVideo}
         onUpload={handleUpload}
         onComment={handleComment}
+        disabled={photoSheetOpen || videoSheetOpen || textSheetOpen}
       />
 
       {/* Hidden file inputs */}
@@ -186,10 +206,10 @@ export function WandererScreen({
       <input
         ref={uploadInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/webm,video/quicktime"
         onChange={handleFileChange}
         className="hidden"
-        aria-label="Bild aus Galerie auswaehlen"
+        aria-label="Datei aus Galerie auswaehlen"
       />
 
       {/* Photo Sheet */}
@@ -202,6 +222,18 @@ export function WandererScreen({
         agendaItemId={selectedAgendaId}
         gpsPosition={position}
         onSubmitSuccess={handleSubmitSuccess}
+      />
+
+      {/* Video Sheet */}
+      <VideoSheet
+        open={videoSheetOpen}
+        onOpenChange={setVideoSheetOpen}
+        eventId={eventId}
+        userId={userId}
+        agendaItemId={selectedAgendaId}
+        gpsPosition={position}
+        onSubmitSuccess={handleSubmitSuccess}
+        file={selectedVideoFile}
       />
 
       {/* Text Comment Sheet */}

@@ -155,6 +155,7 @@ export function ContentLightbox({
                 src={item.media_url}
                 controls
                 playsInline
+                autoPlay
                 className="max-h-full max-w-full"
                 aria-label={item.caption || "Video"}
               />

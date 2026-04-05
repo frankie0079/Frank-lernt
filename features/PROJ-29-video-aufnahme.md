@@ -405,5 +405,58 @@ Keine neuen Pakete — MediaRecorder, getUserMedia und Canvas API sind Browser-n
 - **Production Ready:** NO
 - **Recommendation:** Fix all 6 bugs before deployment. BUG-3 (High) is the most important -- the gallery upload fallback for unsupported browsers is non-functional and the error message actively misleads users.
 
+### QA Round 2 (Re-test)
+
+**Tested:** 2026-04-05
+**Tester:** QA Engineer (AI)
+**Build Status:** PASS (npm run build succeeds, no TypeScript errors)
+**Purpose:** Verify all 6 bugs from QA Round 1 have been fixed.
+
+---
+
+#### BUG-1 (Low): Confirm button label says "Absenden" instead of "Verwenden"
+- **Status: PASS (FIXED)**
+- **Evidence:** `src/components/video-sheet.tsx` line 474 -- button text is now `"Verwenden"`
+
+#### BUG-2 (Medium): Missing autoPlay on lightbox video player
+- **Status: PASS (FIXED)**
+- **Evidence:** `src/components/content-lightbox.tsx` line 158 -- `<video>` element now includes `autoPlay` attribute alongside `controls` and `playsInline`
+
+#### BUG-3 (High): Upload-from-gallery fallback not functional for videos
+- **Status: PASS (FIXED)**
+- **Evidence (3 changes required, all present):**
+  1. `src/components/wanderer-screen.tsx` line 209 -- `uploadInputRef` file input `accept` now includes `video/mp4,video/webm,video/quicktime`
+  2. `src/components/wanderer-screen.tsx` lines 72-102 -- `validateAndSetFile` checks `CONTENT_ALLOWED_VIDEO_TYPES` and routes video files to `setSelectedVideoFile` + opens `VideoSheet`
+  3. `src/components/video-sheet.tsx` line 48 -- accepts optional `file?: File | null` prop; wanderer-screen passes it on line 236 as `file={selectedVideoFile}`
+  4. `src/components/video-sheet.tsx` lines 92-102 -- gallery file is set as blob for preview, bypassing recording
+  5. `src/lib/validations/content.ts` lines 35-39 -- `CONTENT_ALLOWED_VIDEO_TYPES` includes `video/mp4`, `video/quicktime`, `video/webm`
+
+#### BUG-4 (Low): No interruption dialog when recording stops unexpectedly
+- **Status: PASS (FIXED)**
+- **Evidence:**
+  1. `src/hooks/use-video-recorder.ts` line 83 -- `intentionalStopRef` tracks whether stop was user-initiated
+  2. `src/hooks/use-video-recorder.ts` line 274 -- `stop()` sets `intentionalStopRef.current = true` before stopping
+  3. `src/hooks/use-video-recorder.ts` line 236 -- auto-stop at 90s also sets `intentionalStopRef.current = true`
+  4. `src/hooks/use-video-recorder.ts` lines 209-213 -- `recorder.onstop` checks `!intentionalStopRef.current` and calls `onInterrupted()` callback
+  5. `src/components/video-sheet.tsx` lines 74-76 -- `onInterrupted` callback shows toast: "Aufnahme wurde unterbrochen. Du kannst das Video verwenden oder neu aufnehmen."
+
+#### BUG-5 (Medium): Missing confirmation dialog when closing sheet during recording
+- **Status: PASS (FIXED)**
+- **Evidence:** `src/components/video-sheet.tsx` lines 112-130 -- `handleOpenChange` checks `if (recorder.isRecording)` and shows `window.confirm("Aufnahme abbrechen? Das aufgenommene Video geht verloren.")`. If user cancels, the function returns early without closing the sheet.
+
+#### BUG-6 (Medium): Action buttons not disabled during active upload
+- **Status: PASS (FIXED)**
+- **Evidence:** `src/components/wanderer-screen.tsx` line 193 -- `ActionButtonGrid` receives `disabled={photoSheetOpen || videoSheetOpen || textSheetOpen}`, preventing interaction while any sheet is open.
+
+---
+
+#### Round 2 Summary
+- **Bugs re-tested:** 6/6
+- **Bugs fixed:** 6/6 (all PASS)
+- **New bugs found:** 0
+- **Build status:** PASS
+- **Production Ready:** YES
+- **Recommendation:** All 6 bugs fixed. Ready for deploy.
+
 ## Deployment
 _To be added by /deploy_
