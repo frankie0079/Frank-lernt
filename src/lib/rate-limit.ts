@@ -3,22 +3,25 @@
 const requests = new Map<string, number[]>();
 
 const WINDOW_MS = 60_000; // 1 minute
-const MAX_REQUESTS = 30; // max 30 POST requests per minute per IP
+const MAX_WRITE_REQUESTS = 30; // max 30 POST/DELETE requests per minute per IP
+const MAX_READ_REQUESTS = 60; // max 60 GET requests per minute per IP
 
-export function isRateLimited(ip: string): boolean {
+export function isRateLimited(ip: string, type: "read" | "write" = "write"): boolean {
+  const key = `${type}:${ip}`;
+  const limit = type === "read" ? MAX_READ_REQUESTS : MAX_WRITE_REQUESTS;
   const now = Date.now();
-  const timestamps = requests.get(ip) ?? [];
+  const timestamps = requests.get(key) ?? [];
 
   // Remove expired timestamps
   const valid = timestamps.filter((t) => now - t < WINDOW_MS);
 
-  if (valid.length >= MAX_REQUESTS) {
-    requests.set(ip, valid);
+  if (valid.length >= limit) {
+    requests.set(key, valid);
     return true;
   }
 
   valid.push(now);
-  requests.set(ip, valid);
+  requests.set(key, valid);
   return false;
 }
 

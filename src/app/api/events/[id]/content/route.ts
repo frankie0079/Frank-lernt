@@ -43,6 +43,14 @@ export async function GET(
     return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
   }
 
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip, "read")) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      { status: 429 }
+    );
+  }
+
   const currentMember = await getCurrentMember(request);
   if (!currentMember) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });

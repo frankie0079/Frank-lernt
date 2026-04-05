@@ -1,6 +1,6 @@
 # PROJ-28: Content-Pool (Karteikarten, Realtime-Ansicht)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-05
 
@@ -170,7 +170,280 @@ Geänderte Dateien:
 - `src/app/events/[id]/page.tsx` — Pool-Tab Placeholder durch `<ContentPool>` ersetzen
 
 ## QA Test Results
-_To be added by /qa_
+
+### Round 1 (2026-04-05)
+
+**Tested:** 2026-04-05
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Build:** Production build succeeds with 0 errors, 7 warnings (all `<img>` vs `<Image>` -- acceptable for dynamic Supabase URLs).
+**Lint:** 0 errors, 7 warnings (same as above).
+
+---
+
+### Acceptance Criteria Status
+
+#### AC-1: Chronologische Liste (neueste zuerst) aller content_items unter /events/[id]
+- [x] **PASS** -- ContentPool component loaded under Pool tab at `/events/[id]`
+- [x] **PASS** -- API query uses `.order("created_at", { ascending: false })` (route.ts line 90)
+- [x] **PASS** -- Items rendered via `ContentCard` in a responsive grid (1-col mobile, 2-col sm+)
+
+#### AC-2: Karteikarte mit Vorschaubild, Autorenname+Avatar, Uhrzeit (relativ), Medientyp-Badge
+- [x] **PASS** -- Photo cards show thumbnail via `<img>` with lazy loading and fallback on error
+- [x] **PASS** -- Video cards show thumbnail + Play icon overlay
+- [x] **PASS** -- Audio cards show Mic icon on purple gradient
+- [x] **PASS** -- Text cards show first lines with `line-clamp-4`
+- [x] **PASS** -- Author row: Avatar (shadcn Avatar), name, relative time via `date-fns formatDistanceToNow` with `locale: de`
+- [x] **PASS** -- Media type badge with color-coded icon+label (Foto/Video/Text/Sprachmemo)
+
+#### AC-3: Neue Beitraege erscheinen live ohne Seiten-Reload (Supabase Realtime)
+- [x] **PASS** -- Realtime subscription on `postgres_changes` INSERT/DELETE for `content_items` with `event_id` filter
+- [ ] **PARTIAL** -- See BUG-1 (stale closure for activeFilter in Realtime handler)
+
+#### AC-4: Toast-Benachrichtigung "Neuer Beitrag von [Name]" bei fremden Beitraegen
+- [x] **PASS** -- Toast shown via `sonner` with author name from enriched API fetch
+- [x] **PASS** -- Own content (author_id === userId) does NOT trigger toast
+- [x] **PASS** -- Fallback toast "Neuer Beitrag" if enrichment fetch fails
+
+#### AC-5: Filter-Leiste mit horizontal scrollbaren Badges
+- [x] **PASS** -- ContentFilterBar renders: Alle, Fotos, Videos, Texte, Sprachmemos + agenda items
+- [x] **PASS** -- Uses shadcn ScrollArea with horizontal ScrollBar
+- [x] **PASS** -- Each filter is a `<button role="tab">` with `aria-selected`
+
+#### AC-6: Aktiver Filter ist visuell hervorgehoben
+- [x] **PASS** -- Active filter uses `Badge variant="default"`, inactive uses `variant="outline"`
+
+#### AC-7: Tap auf Karteikarte oeffnet Vollbild-Ansicht (Lightbox)
+- [x] **PASS** -- ContentLightbox using shadcn Dialog, fullscreen (100vw x 100dvh)
+- [x] **PASS** -- Photo: full-size `<img>` with `object-contain`
+- [x] **PASS** -- Video: `<video playsInline controls>` (iOS compatible)
+- [x] **PASS** -- Audio: `<audio controls>` with Mic icon
+- [x] **PASS** -- Text: full text with `whitespace-pre-wrap`
+- [x] **PASS** -- Swipe navigation via Pointer Events (60px threshold)
+- [x] **PASS** -- Keyboard navigation: ArrowLeft/ArrowRight
+- [x] **PASS** -- Navigation buttons visible on desktop (sm+), hidden on mobile (swipe instead)
+- [x] **PASS** -- Bottom info bar with author, time, position counter (e.g. "3 / 12")
+
+#### AC-8: Eigene Beitraege: Loeschen-Button (Papierkorb-Icon)
+- [x] **PASS** -- Trash2 icon button visible only when `canDelete` (author or organizer)
+- [x] **PASS** -- Button uses `e.stopPropagation()` to prevent lightbox opening
+
+#### AC-9: Admin + Organisator koennen alle Beitraege loeschen
+- [x] **PASS** -- Frontend: `canDelete = item.author_id === currentUserId || isOrganizer`
+- [x] **PASS** -- Backend: DELETE endpoint checks author_id OR event organizer_id
+- Note: "Admin" (Tages-Admin) role not yet implemented -- deferred to PROJ-33. Currently only author + organizer can delete.
+
+#### AC-10: Loeschen mit Bestaetigungs-Dialog
+- [x] **PASS** -- AlertDialog with "Beitrag loeschen?" title and "Beitrag unwiderruflich loeschen?" description
+- [x] **PASS** -- Cancel and destructive-styled Loeschen button
+
+#### AC-11: Optimistic Deletion
+- [x] **PASS** -- Item removed from state immediately via `setItems(prev => prev.filter(...))`
+- [x] **PASS** -- On API error: toast error + refetch to restore items
+- [x] **PASS** -- Realtime DELETE handler also removes item (handles cross-device deletion)
+
+---
+
+### Edge Cases
+
+#### EC-1: 0 Beitraege -- Empty State
+- [x] **PASS** -- Empty state with LayoutGrid icon + "Noch keine Beitraege" + CTA to switch to Capture tab
+- [x] **PASS** -- Filter-specific empty state: "Keine Beitraege fuer diesen Filter" + "Alle Beitraege anzeigen" button
+
+#### EC-2: Mehr als 200 Beitraege -- Infinite Scroll
+- [x] **PASS** -- IntersectionObserver on `loadMoreRef` div triggers `fetchItems(cursor)` with 200px rootMargin
+- [x] **PASS** -- Cursor pagination via `created_at < cursor` server-side
+- [x] **PASS** -- `hasMore` set to false when fewer than PAGE_SIZE (20) items returned
+- [x] **PASS** -- Loading indicator (2 skeleton cards) shown during pagination
+
+#### EC-3: Bild-URL nicht erreichbar -- Platzhalter-Icon
+- [x] **PASS** -- `onError` handler sets `imgError` state, shows `ImageOff` icon (teal) for photos, `Video` icon (blue) for videos
+
+#### EC-4: "Neue Beitraege" Pill-Button
+- [x] **PASS** -- Fixed pill appears at top when `newItemsCount > 0 && !isAtTop`
+- [x] **PASS** -- Shows count with singular/plural ("1 neuer Beitrag" / "2 neue Beitraege")
+- [x] **PASS** -- Click scrolls to top smoothly and resets counter
+
+#### EC-5: Filter aktiv + Realtime-Beitrag passt nicht zum Filter
+- [ ] **FAIL** -- See BUG-1 (stale closure makes filter check unreliable)
+
+#### EC-6: Filter-State in URL-Params
+- [x] **PASS** -- Filter stored as `?filter=photos` etc. in URL via `router.replace()`
+- [x] **PASS** -- Agenda filters use `?filter=agenda:[uuid]` format
+- [x] **PASS** -- "Alle" filter removes the param from URL
+
+---
+
+### Bugs Found
+
+#### BUG-1: Stale Closure in Realtime INSERT Handler (Medium)
+
+**Severity:** Medium
+**Priority:** P2
+**Component:** `src/components/content-pool.tsx` lines 216-297
+
+**Description:** The Supabase Realtime `useEffect` has dependency array `[eventId, userId]` but the INSERT callback references `activeFilter` (line 253) and `isAtTop` (line 254) from the closure. Since these variables are not in the dependency array, the Realtime handler will always use their initial values. If the user changes the filter while viewing the pool, newly received Realtime items will be checked against the OLD filter value, not the current one.
+
+**Steps to Reproduce:**
+1. Open Pool tab (filter defaults to "all")
+2. Switch filter to "Fotos"
+3. Another user posts a text comment
+4. The text comment will pass the `matchesFilter(fullItem, "all")` check (stale) and be inserted into the list, even though current filter is "Fotos"
+
+**Expected:** Text comment should trigger toast but NOT be added to the filtered list.
+**Actual:** Text comment is added to the list because `activeFilter` is stale ("all" instead of "photos").
+
+**Fix Suggestion:** Use a ref for `activeFilter` and `isAtTop`, or add them to the dependency array (which requires channel teardown/re-subscribe on filter change), or use `useRef` to track current filter.
+
+---
+
+#### BUG-2: No Deduplication of Realtime Items (Medium)
+
+**Severity:** Medium
+**Priority:** P2
+**Component:** `src/components/content-pool.tsx` line 255
+
+**Description:** When a Realtime INSERT event arrives and the item is added to state via `setItems((prev) => [fullItem, ...prev])`, there is no check whether the item already exists in the list. This can cause duplicates if:
+- The user refreshes or the initial fetch is still in-flight when Realtime fires
+- The same Realtime event is delivered twice (Supabase at-least-once delivery)
+- A race condition between cursor pagination fetch and Realtime INSERT
+
+**Steps to Reproduce:**
+1. Open Pool tab
+2. Another user posts a photo while the initial fetch is completing
+3. The item appears in both the fetch result and the Realtime handler
+
+**Expected:** Each item appears exactly once.
+**Actual:** Item may appear twice.
+
+**Fix Suggestion:** Add deduplication before inserting: `setItems((prev) => prev.some(i => i.id === fullItem.id) ? prev : [fullItem, ...prev])`
+
+---
+
+#### BUG-3: GET /api/events/[id]/content Has No Rate Limiting (Low)
+
+**Severity:** Low
+**Priority:** P3
+**Component:** `src/app/api/events/[id]/content/route.ts` GET handler
+
+**Description:** The POST and DELETE endpoints both have rate limiting via `isRateLimited()`, but the GET endpoint does not. An authenticated attacker could rapidly poll the endpoint to enumerate content or cause excessive database load.
+
+**Steps to Reproduce:**
+1. Authenticate as event member
+2. Send rapid GET requests to `/api/events/[id]/content` in a loop
+
+**Expected:** Rate limiting applied.
+**Actual:** No rate limiting on GET requests.
+
+**Fix Suggestion:** Add rate limiting to GET handler (higher threshold than POST, e.g. 60 req/min).
+
+---
+
+#### BUG-4: Supabase Realtime Client Created Without User Auth (Low)
+
+**Severity:** Low
+**Priority:** P3
+**Component:** `src/components/content-pool.tsx` lines 217-221
+
+**Description:** The Realtime subscription creates a Supabase client with only the anon key (no user session token). This means the Realtime subscription relies on Supabase's server-side filter (`event_id=eq.${eventId}`) rather than RLS for access control. Any client with the anon key could subscribe to another event's content_items changes by modifying the eventId. The actual content data from Realtime payloads is limited (no author enrichment), and the API fetch for enrichment has proper auth, so data exposure is minimal -- but the user would still receive INSERT/DELETE notifications for events they shouldn't access.
+
+**Mitigation:** The Realtime payload contains raw DB fields (id, event_id, author_id, type, etc.) but NOT media URLs or captions unless Supabase is configured to include full rows. The enrichment fetch (`/api/events/${eventId}/content?id=...`) has proper membership checks, so full data isn't exposed. Risk is low but should be addressed.
+
+**Fix Suggestion:** Either enable Supabase Realtime RLS (requires database-level configuration with `supabase_realtime` publication), or accept the risk for MVP.
+
+---
+
+#### BUG-5: Lightbox Swipe Can Interfere with Dialog Close (Low)
+
+**Severity:** Low
+**Priority:** P4
+**Component:** `src/components/content-lightbox.tsx` lines 61-77
+
+**Description:** The swipe gesture detection uses `pointerdown`/`pointermove`/`pointerup` on the entire DialogContent. Vertical swipe gestures or accidental touches could trigger horizontal navigation. The `touch-action: pan-y` CSS class on the media container helps but the pointer handlers are on the parent DialogContent, not the media container.
+
+**Steps to Reproduce:**
+1. Open lightbox on a photo
+2. Try to scroll vertically on a text item or interact with video controls
+3. Horizontal pointer movement may trigger unintended navigation
+
+**Expected:** Swipe only triggers on deliberate horizontal gestures.
+**Actual:** Any horizontal pointer movement > 60px triggers navigation.
+
+**Fix Suggestion:** Add a minimum vertical-to-horizontal ratio check, or only detect swipe on the media area.
+
+---
+
+### Security Audit (Red Team)
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Auth bypass on GET /content | PASS | Membership check before query execution |
+| Auth bypass on DELETE /content | PASS | Author + organizer check |
+| IDOR: Access other event's content via API | PASS | `event_id` filter applied to all queries |
+| IDOR: Access other event's content via ?id= | PASS | Single-item fetch includes `event_id` filter |
+| SQL injection via cursor param | PASS | Cursor validated as parseable date |
+| SQL injection via filter param | PASS | Filter validated against allowlist |
+| SQL injection via agenda param | PASS | Validated as UUID format |
+| XSS via content caption | PASS | React auto-escapes JSX content |
+| XSS via URL filter param | PASS | Value not rendered as raw HTML |
+| Stored XSS via media_url | PASS | URLs validated against Supabase domain |
+| Rate limiting on POST | PASS | 30 req/min per IP |
+| Rate limiting on DELETE | PASS | 30 req/min per IP |
+| Rate limiting on GET | FAIL | No rate limiting (see BUG-3) |
+| Realtime channel auth | PARTIAL | Anon key only, see BUG-4 |
+| Storage URL enumeration | PASS | Media URLs are public but require knowledge of UUID paths |
+| Secrets in client bundle | PASS | Only NEXT_PUBLIC_ vars exposed |
+| CORS/origin checks | PASS | Next.js API routes are same-origin |
+
+---
+
+### Cross-Browser Testing (Code Review)
+
+| Feature | Chrome | Firefox | Safari | Notes |
+|---------|--------|---------|--------|-------|
+| Content cards render | OK | OK | OK | Standard HTML/CSS |
+| Lazy loading images | OK | OK | OK | Native `loading="lazy"` |
+| Lightbox Dialog | OK | OK | OK | shadcn Dialog (Radix) |
+| Video playsInline | OK | OK | OK | Explicit `playsInline` attr |
+| Swipe gestures (Pointer Events) | OK | OK | OK | PointerEvents API supported |
+| IntersectionObserver | OK | OK | OK | Supported since Safari 12.1 |
+| ScrollArea horizontal | OK | OK | OK | shadcn ScrollArea (Radix) |
+| formatDistanceToNow (de) | OK | OK | OK | Pure JS (date-fns) |
+
+### Responsive Testing (Code Review)
+
+| Breakpoint | Layout | Notes |
+|------------|--------|-------|
+| 375px (Mobile) | Single column grid, compact cards | `grid-cols-1` default |
+| 768px (Tablet) | Two column grid | `sm:grid-cols-2` at 640px+ |
+| 1440px (Desktop) | Two column grid, max-w-2xl centered | Constrained by parent `max-w-2xl` |
+| Filter bar | Horizontal scroll | `ScrollArea` + `whitespace-nowrap` |
+| Lightbox | Fullscreen on all sizes | `w-screen h-[100dvh]`, nav buttons hidden on mobile |
+
+---
+
+### Summary
+
+| Category | Count |
+|----------|-------|
+| Acceptance Criteria | 10 passed, 1 partial (AC-3/Realtime filter) |
+| Edge Cases | 5 passed, 1 failed (EC-5/stale filter) |
+| Bugs found | 5 total |
+| Critical | 0 |
+| High | 0 |
+| Medium | 2 (BUG-1 stale closure, BUG-2 no dedup) |
+| Low | 3 (BUG-3 no GET rate limit, BUG-4 Realtime auth, BUG-5 swipe) |
+
+### Production-Ready Decision: **READY** (conditional)
+
+No Critical or High bugs. The 2 Medium bugs (stale closure, missing deduplication) are edge cases that require specific timing to trigger. They should be fixed before heavy use but do not block an initial deployment.
+
+### Recommended Fix Priority:
+1. **BUG-1** (Medium) -- Stale closure in Realtime: most impactful UX issue
+2. **BUG-2** (Medium) -- Deduplication: prevents confusing duplicate cards
+3. **BUG-3** (Low) -- GET rate limiting: defense in depth
+4. **BUG-4** (Low) -- Realtime auth: acceptable for MVP
+5. **BUG-5** (Low) -- Swipe interference: minor UX polish
 
 ## Deployment
 _To be added by /deploy_

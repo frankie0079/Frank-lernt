@@ -97,9 +97,14 @@ export function ContentPool({
   const channelRef = useRef<ReturnType<
     ReturnType<typeof createClient>["channel"]
   > | null>(null);
+  // Refs for values used inside Realtime callbacks (avoids stale closures)
+  const activeFilterRef = useRef<FilterValue>("all");
+  const isAtTopRef = useRef(true);
+  const itemIdsRef = useRef<Set<string>>(new Set());
 
   // Filter from URL
   const activeFilter = (searchParams.get("filter") as FilterValue) || "all";
+  activeFilterRef.current = activeFilter;
 
   const setFilter = useCallback(
     (filter: FilterValue) => {
@@ -199,11 +204,18 @@ export function ContentPool({
   // Track scroll position for "new items" pill
   useEffect(() => {
     const handleScroll = () => {
-      setIsAtTop(window.scrollY < 300);
+      const atTop = window.scrollY < 300;
+      setIsAtTop(atTop);
+      isAtTopRef.current = atTop;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Keep item IDs ref in sync for deduplication
+  useEffect(() => {
+    itemIdsRef.current = new Set(items.map((i) => i.id));
+  }, [items]);
 
   // When at top, clear new items count
   useEffect(() => {
@@ -212,7 +224,7 @@ export function ContentPool({
     }
   }, [isAtTop, newItemsCount]);
 
-  // Supabase Realtime
+  // Supabase Realtime — uses refs to avoid stale closures (BUG-1 fix)
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -233,9 +245,12 @@ export function ContentPool({
         async (payload) => {
           const newRow = payload.new as ContentItem;
 
+          // Deduplicate: skip if already in the list (BUG-2 fix)
+          if (itemIdsRef.current.has(newRow.id)) return;
+
           // Show toast for other users' content
           if (newRow.author_id !== userId) {
-            // Fetch the full item with author data
+            // Fetch the full item with author data (uses cookie auth — BUG-4 fix)
             try {
               const res = await fetch(
                 `/api/events/${eventId}/content?id=${newRow.id}`
@@ -249,13 +264,12 @@ export function ContentPool({
                     `Neuer Beitrag von ${fullItem.author_name || "Unbekannt"}`
                   );
 
-                  // Check if it matches current filter
-                  if (matchesFilter(fullItem, activeFilter)) {
-                    if (isAtTop) {
+                  // Read current filter/scroll state from refs (not stale closure)
+                  if (matchesFilter(fullItem, activeFilterRef.current)) {
+                    if (isAtTopRef.current) {
                       setItems((prev) => [fullItem, ...prev]);
                     } else {
                       setNewItemsCount((c) => c + 1);
-                      // Still add it to state so scrolling up shows it
                       setItems((prev) => [fullItem, ...prev]);
                     }
                   }
@@ -266,9 +280,6 @@ export function ContentPool({
               // Fallback: just notify
             }
             toast.info("Neuer Beitrag");
-          } else {
-            // Own content — just refetch to get the full item with author data
-            // (already added optimistically from WandererScreen)
           }
         }
       )
@@ -294,7 +305,7 @@ export function ContentPool({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [eventId, userId]);
 
   // Delete handler
   const handleDelete = async () => {

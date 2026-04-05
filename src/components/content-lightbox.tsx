@@ -58,18 +58,23 @@ export function ContentLightbox({
     locale: de,
   });
 
+  // Only enable swipe on photo and text content (not video/audio where it
+  // interferes with controls and vertical scrolling — BUG-5 fix)
+  const swipeEnabled = item.type === "photo" || item.type === "text";
+
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (!swipeEnabled) return;
     touchStartX.current = e.clientX;
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (touchStartX.current === null) return;
+    if (!swipeEnabled || touchStartX.current === null) return;
     const diff = e.clientX - touchStartX.current;
     setSwipeOffset(diff);
   };
 
   const handlePointerUp = () => {
-    if (touchStartX.current === null) return;
+    if (!swipeEnabled || touchStartX.current === null) return;
     if (swipeOffset < -60) goNext();
     else if (swipeOffset > 60) goPrev();
     touchStartX.current = null;
@@ -81,9 +86,6 @@ export function ContentLightbox({
       <DialogContent
         className="max-w-[100vw] h-[100dvh] w-screen p-0 border-none bg-black/95 sm:rounded-none [&>button]:hidden"
         aria-label="Vollbild-Ansicht"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
       >
         <DialogTitle className="sr-only">
           Beitrag von {item.author_name || "Unbekannt"}
@@ -133,7 +135,12 @@ export function ContentLightbox({
         {/* Content area */}
         <div className="flex h-full flex-col">
           {/* Media */}
-          <div className="relative flex flex-1 items-center justify-center overflow-hidden touch-pan-y">
+          <div
+            className="relative flex flex-1 items-center justify-center overflow-hidden touch-pan-y"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
             {item.type === "photo" && item.media_url && (
               <img
                 src={item.media_url}
