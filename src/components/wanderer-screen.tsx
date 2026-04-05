@@ -209,6 +209,7 @@ export function WandererScreen({
         open={textSheetOpen}
         onOpenChange={setTextSheetOpen}
         eventId={eventId}
+        userId={userId}
         agendaItemId={selectedAgendaId}
         gpsPosition={position}
         onSubmitSuccess={handleSubmitSuccess}

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CaptionTextarea } from "@/components/caption-textarea";
 import { enqueue } from "@/lib/offline-queue";
+import { isNetworkError } from "@/lib/network-utils";
 import { CONTENT_MAX_CAPTION_LENGTH } from "@/lib/validations/content";
 import { Loader2, AlertCircle, X } from "lucide-react";
 import type { GpsPosition } from "@/hooks/use-geolocation";
@@ -20,6 +21,7 @@ interface TextCommentSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   eventId: string;
+  userId: string;
   agendaItemId: string | null;
   gpsPosition: GpsPosition | null;
   onSubmitSuccess: () => void;
@@ -32,6 +34,7 @@ export function TextCommentSheet({
   open,
   onOpenChange,
   eventId,
+  userId,
   agendaItemId,
   gpsPosition,
   onSubmitSuccess,
@@ -95,9 +98,9 @@ export function TextCommentSheet({
       handleOpenChange(false);
     } catch (err) {
       // If network error, queue for offline retry
-      if (err instanceof TypeError && err.message.includes("fetch")) {
+      if (isNetworkError(err)) {
         try {
-          await enqueue(eventId, {
+          await enqueue(eventId, userId, {
             type: "text",
             agenda_item_id: agendaItemId,
             caption: trimmed,
@@ -118,7 +121,7 @@ export function TextCommentSheet({
     } finally {
       setSubmitting(false);
     }
-  }, [caption, eventId, agendaItemId, gpsPosition, onSubmitSuccess, handleOpenChange]);
+  }, [caption, eventId, userId, agendaItemId, gpsPosition, onSubmitSuccess, handleOpenChange]);
 
   const isOverLimit = caption.length > CONTENT_MAX_CAPTION_LENGTH;
   const isEmpty = caption.trim().length === 0;

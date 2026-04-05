@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CaptionTextarea } from "@/components/caption-textarea";
 import { processAndUploadImage } from "@/lib/content-upload";
 import { enqueue } from "@/lib/offline-queue";
+import { isNetworkError } from "@/lib/network-utils";
 import { CONTENT_MAX_CAPTION_LENGTH } from "@/lib/validations/content";
 import { Loader2, AlertCircle, X } from "lucide-react";
 import type { GpsPosition } from "@/hooks/use-geolocation";
@@ -126,16 +127,21 @@ export function PhotoSheet({
       onSubmitSuccess();
       handleOpenChange(false);
     } catch (err) {
-      // If network error, queue for offline retry
-      if (err instanceof TypeError && err.message.includes("fetch")) {
+      // If network error, queue for offline retry (with original file blob)
+      if (isNetworkError(err)) {
         try {
-          await enqueue(eventId, {
-            type: "photo",
-            agenda_item_id: agendaItemId,
-            caption: caption.trim() || null,
-            latitude: gpsPosition?.latitude ?? null,
-            longitude: gpsPosition?.longitude ?? null,
-          });
+          await enqueue(
+            eventId,
+            userId,
+            {
+              type: "photo",
+              agenda_item_id: agendaItemId,
+              caption: caption.trim() || null,
+              latitude: gpsPosition?.latitude ?? null,
+              longitude: gpsPosition?.longitude ?? null,
+            },
+            file
+          );
           setError(
             "Kein Netz \u2014 Beitrag wird automatisch gesendet, sobald du wieder online bist."
           );

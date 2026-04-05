@@ -1,8 +1,8 @@
 # PROJ-27: Wanderer-Screen (Eingabe-Interface)
 
-## Status: In Progress
+## Status: In Review (QA Round 2 complete)
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-05
 
 ## Dependencies
 - Requires: PROJ-24 (Auth & User-Accounts) — Nutzer muss eingeloggt sein
@@ -142,7 +142,231 @@ Keine — `exifr` und `browser-image-compression` bereits im Projekt.
 - **In PROJ-28:** Content-Pool zeigt die hier gespeicherten Beiträge an
 
 ## QA Test Results
-_To be added by /qa_
+
+### Round 1 (2026-04-05)
+
+**Result:** 7 bugs found (0 critical, 1 high, 2 medium, 4 low). All 7 fixed in commit `847657e`.
+
+---
+
+### Round 2 (2026-04-05) -- Re-QA After Bug Fixes
+
+**Tested:** 2026-04-05
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Build:** Production build succeeds with no TypeScript errors.
+
+### Acceptance Criteria Status
+
+#### AC-1: Screen accessible under `/capture` or as tab navigation
+- [x] WandererScreen is embedded as the default "capture" tab on `/events/[id]` page
+- [x] Tab is the first/default tab when opening an event dashboard
+
+#### AC-2: 4 large, touch-optimized action buttons (Kamera, Video, Upload, Kommentar)
+- [x] ActionButtonGrid renders 2x2 grid with all 4 buttons
+- [x] Buttons have h-28 (mobile) / h-32 (sm+) height -- touch-friendly
+- [x] Video button is disabled placeholder with "Kommt bald" label (deferred to PROJ-29)
+- [x] All buttons have aria-labels for accessibility
+
+#### AC-3: Beitrag assigned to active agenda item (today auto-selected, changeable via dropdown)
+- [x] `findTodayAgendaItem()` matches today's date to agenda items
+- [x] AgendaSelector uses shadcn Select component with proper labeling
+- [x] Selected agenda ID passed through to PhotoSheet and TextCommentSheet
+
+#### AC-4: GPS auto-requested on screen open, saved with each contribution
+- [x] `useGeolocation` hook triggers `getCurrentPosition` on mount
+- [x] GPS position passed to both PhotoSheet and TextCommentSheet
+- [x] GPS is non-blocking (denied/unavailable status handled gracefully)
+
+#### AC-5: Photo workflow (camera -> preview -> optional caption -> submit)
+- [x] Hidden `<input capture="environment">` opens rear camera on iOS
+- [x] PhotoSheet shows image preview via `URL.createObjectURL`
+- [x] CaptionTextarea with 1000 char limit and counter
+- [x] Submit calls `processAndUploadImage` pipeline then POST API
+
+#### AC-6: Upload workflow (gallery -> EXIF -> compression -> thumbnail -> caption -> submit)
+- [x] Separate upload input with specific accept types (JPEG, PNG, WebP, HEIC, HEIF)
+- [x] EXIF extraction via `exifr` happens before compression (correct order)
+- [x] Compression to max 1920px / 1MB via `browser-image-compression`
+- [x] Thumbnail generated at 400px / 0.1MB
+- [x] Both full and thumbnail uploaded to Supabase Storage (`media` bucket)
+
+#### AC-7: Comment workflow (textarea -> agenda select -> submit)
+- [x] TextCommentSheet with required textarea
+- [x] Empty text blocked (submit disabled when isEmpty)
+- [x] 1000 char limit enforced client-side and server-side (Zod schema)
+- [x] GPS coordinates included if available
+
+#### AC-8: Author name and avatar auto-populated from logged-in profile
+- [x] `userId` (member.id) passed from authenticated page context
+- [x] `author_id` set server-side from cookie token lookup (cannot be spoofed)
+
+#### AC-9: Toast "Beitrag gespeichert" after submit, form cleared, GPS refreshed
+- [x] Toast shows "Beitrag gespeichert" with Unicode checkmark (BUG-6 FIXED)
+- [x] Sheet closes and state resets (caption cleared, progress reset)
+- [x] `refreshGps()` called after successful submit
+
+#### AC-10: Haptic feedback on successful submit
+- [x] `navigator.vibrate([50])` called in both PhotoSheet and TextCommentSheet
+- [x] Conditional check (`if (navigator.vibrate)`) prevents errors on unsupported devices
+
+#### AC-11: Agenda dropdown shows only current event items, today preselected
+- [x] AgendaSelector receives `agendaItems` filtered by event from API
+- [x] Items sorted by `sort_order`
+- [x] Date labels formatted in German locale
+
+#### AC-12: Beitrag without agenda possible ("Kein Tagesabschnitt" option)
+- [x] `NO_AGENDA_VALUE = "__none__"` option available in dropdown
+- [x] Server accepts `agenda_item_id: null` (Zod schema allows nullable)
+
+#### AC-13: Upload progress bar during save
+- [x] Progress component rendered during upload
+- [x] Progress updates: 0% -> 5% (EXIF) -> 30% (compress) -> 100% (upload complete)
+- [x] Percentage text shown below bar
+
+### Round 1 Bug Fix Verification
+
+| Bug | Status | Verification |
+|-----|--------|-------------|
+| BUG-1: Offline queue | PARTIALLY FIXED | IndexedDB queue + `startOnlineSync` listener implemented. Text comments queue correctly. **Photo queue is broken** -- see BUG-R2-1 below. |
+| BUG-2: Rate limit 20 vs 30 | FIXED | `rate-limit.ts` now uses `MAX_REQUESTS = 30`. |
+| BUG-3: media_url domain validation | FIXED | POST handler validates `media_url` and `thumbnail_url` start with `${NEXT_PUBLIC_SUPABASE_URL}/storage/`. |
+| BUG-4: Math.random file naming | FIXED | `content-upload.ts` now uses `crypto.randomUUID().slice(0, 8)`. |
+| BUG-5: No retry button | FIXED | PhotoSheet error alert includes "Erneut versuchen" button that re-triggers `handleSubmit`. |
+| BUG-6: Toast missing checkmark | FIXED | Toast text is `"Beitrag gespeichert \u2713"`. |
+| BUG-7: Camera denied error | FIXED | `handleCamera` checks `navigator.permissions.query({ name: "camera" })` and shows custom error with iOS settings hint. |
+
+### Edge Cases Status
+
+#### EC-1: No GPS access (denied or unavailable)
+- [x] GPS field stays null, contribution saved without GPS
+- [x] GpsStatusBadge shows "GPS blockiert" or "Kein GPS" with retry option
+
+#### EC-2: Camera access denied
+- [x] Custom error "Kamera-Zugriff blockiert..." with iOS settings hint (BUG-7 FIXED)
+
+#### EC-3: File > 20 MB
+- [x] `CONTENT_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024` checked before upload
+- [x] Error message "Datei zu gross (max. 20 MB)" shown in Alert
+
+#### EC-4: Wrong file format (not image/video)
+- [x] File type validation against `CONTENT_ALLOWED_IMAGE_TYPES`
+- [x] Fallback regex check for files with empty MIME type (`.heic`, `.heif`)
+
+#### EC-5: No agenda items (empty agenda)
+- [x] AgendaSelector returns `null` when `agendaItems.length === 0`
+- [x] Contribution saved without agenda assignment
+
+#### EC-6: Offline mode (IndexedDB queue + Background Sync)
+- [x] IndexedDB queue implemented (`offline-queue.ts`)
+- [x] `startOnlineSync` listens for `online` event and auto-flushes
+- [x] Text comments correctly queued and retried
+- [ ] BUG-R2-1: Photo offline queue does NOT store image blobs -- retry always fails (see below)
+
+#### EC-7: Caption 1001+ characters
+- [x] CaptionTextarea shows character counter in red when over limit
+- [x] Submit button disabled when `isOverLimit`
+- [x] Server-side Zod validation also enforces max 1000
+
+#### EC-8: Upload fails (network error)
+- [x] Error caught and displayed in Alert
+- [x] Retry button available in error state (BUG-5 FIXED)
+
+#### EC-9: User switches app during upload
+- [ ] Still no Service Worker upload support. Upload runs in main thread only. Acceptable for MVP -- Serwist BackgroundSyncPlugin integration deferred.
+
+#### EC-10: EXIF extraction failed
+- [x] `extractExif()` catches all errors, returns nulls
+- [x] Contribution saved without EXIF data, no error shown to user
+
+### Security Audit Results (Round 2)
+
+- [x] Authentication: API checks `member_token` cookie, returns 401 if missing/invalid
+- [x] Authorization: Event membership verified before GET and POST on content
+- [x] Authorization: DELETE only allowed for content author or event organizer
+- [x] Input validation: Zod schema validates all fields (type enum, caption length, coordinates range, UUIDs)
+- [x] UUID validation: Event ID and content ID validated with regex before DB queries
+- [x] IDOR prevention: `author_id` set server-side from cookie lookup, cannot be spoofed by client
+- [x] Rate limiting: Now correctly set to 30 req/min (BUG-2 FIXED)
+- [x] media_url domain validation: Validates against Supabase storage domain (BUG-3 FIXED)
+- [x] Storage file naming: Now uses `crypto.randomUUID()` (BUG-4 FIXED)
+- [x] No service role key exposed in client code
+- [x] Storage path includes eventId/userId scoping
+- [x] XSS: Caption stored as plain text, rendering depends on PROJ-28 to escape properly
+- [x] SQL injection: Supabase client uses parameterized queries
+- [ ] BUG-R2-2: GET API `singleId` query param not UUID-validated (low risk -- parameterized queries prevent injection, but inconsistent with event ID validation)
+- [ ] BUG-R2-3: GET API `cursor` and `agendaId` query params not validated (cursor not ISO-validated, agendaId not UUID-validated)
+
+### Cross-Browser Testing (Code Review)
+
+- [x] Chrome: Standard APIs used (Geolocation, File, Canvas, IndexedDB) -- expected to work
+- [x] Firefox: Same standard APIs -- expected to work
+- [x] Safari/iOS: `capture="environment"` attribute for rear camera -- iOS-optimized
+- [x] `navigator.vibrate` check prevents Safari errors (Safari does not support Vibration API)
+- [x] `navigator.permissions.query` for camera wrapped in try/catch (not supported everywhere)
+
+### Responsive Testing (Code Review)
+
+- [x] 375px (Mobile): Action buttons h-28, single-column text, max-w-lg sheets
+- [x] 768px (Tablet): Buttons scale to h-32 at sm breakpoint, max-w-2xl container
+- [x] 1440px (Desktop): Content centered in max-w-2xl container, sheets capped at max-w-lg
+- [x] Tab labels hidden on mobile (icon-only), shown on sm+ breakpoints
+
+### Regression Testing
+
+- [x] PROJ-24 (Auth): No API route changes, auth flow unaffected
+- [x] PROJ-25 (Event): No API route changes, event dashboard loads correctly with new WandererScreen tab
+- [x] PROJ-26 (Teilnehmer): No API route changes, invitation flow unaffected
+- [x] Build: Production build succeeds with zero TypeScript errors
+
+### New Bugs Found (Round 2)
+
+#### BUG-R2-1: Photo offline queue does not store image blobs -- retry always fails
+- **Severity:** High
+- **Steps to Reproduce:**
+  1. Go to `/events/[id]` capture tab
+  2. Select a photo (camera or gallery)
+  3. Disable network before submitting
+  4. Submit the photo
+  5. Expected: Photo binary + metadata queued in IndexedDB, uploaded when back online
+  6. Actual: Only metadata (type, caption, GPS) is queued. No `media_url` is stored because the image was never uploaded to Supabase Storage. When `flushQueue` retries the POST, the server rejects it with "Medien-URL ist erforderlich fuer diesen Beitragstyp" (line 193-196 of route.ts).
+- **Root Cause:** `photo-sheet.tsx` lines 131-137 enqueue the API payload without `media_url` or `thumbnail_url` because those are only available after the Storage upload succeeds. The image blob itself is not stored in IndexedDB.
+- **Impact:** Photo offline queue is fundamentally broken. Only text comments work offline. This is a design flaw, not a simple bug -- the offline queue would need to store raw image blobs in IndexedDB and re-run the full pipeline (EXIF + compress + upload + API call) on retry.
+- **Priority:** Fix before deployment (critical for hiking/outdoor use case)
+
+#### BUG-R2-2: Fragile network error detection for offline queueing
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Review `photo-sheet.tsx` line 129: `err instanceof TypeError && err.message.includes("fetch")`
+  2. Review `text-comment-sheet.tsx` line 98: same pattern
+  3. The Supabase Storage upload failure (from `processAndUploadImage`) may throw errors that are NOT `TypeError` with "fetch" in the message (e.g., Supabase SDK wraps errors differently).
+  4. Expected: All network failures trigger offline queueing
+  5. Actual: Only `TypeError` containing "fetch" triggers queueing; other network errors show generic error without queueing
+- **Impact:** Some network failures during photo upload will not be queued for offline retry
+- **Priority:** Fix in next sprint
+
+#### BUG-R2-3: GET API query parameters not validated
+- **Severity:** Low (Security)
+- **Steps to Reproduce:**
+  1. Call `GET /api/events/[id]/content?id=not-a-uuid` -- `singleId` not UUID-validated
+  2. Call `GET /api/events/[id]/content?agenda=not-a-uuid` -- `agendaId` not UUID-validated
+  3. Call `GET /api/events/[id]/content?cursor=not-a-date` -- `cursor` not ISO-date-validated
+  4. Expected: 400 error for invalid parameters
+  5. Actual: Query executes with invalid values, returns empty results or Supabase error bubbled as 500
+- **Impact:** Low -- parameterized queries prevent SQL injection. Invalid params return empty results or 500 errors. No data exposure risk.
+- **Priority:** Nice to have
+
+### Summary (Round 2)
+- **Acceptance Criteria:** 13/13 passed
+- **Edge Cases:** 8/10 handled (EC-6 partial for photos, EC-9 Service Worker deferred)
+- **Round 1 Bugs Fixed:** 7/7 fixed (BUG-1 partially -- text works, photos do not)
+- **New Bugs Found:** 3 total (1 high, 1 medium, 1 low)
+- **Security:** No critical/high security issues remaining. 1 low finding (BUG-R2-3: query param validation).
+- **Production Ready:** CONDITIONAL YES
+- **Recommendation:** BUG-R2-1 (photo offline queue) is High severity and critical for the hiking use case. However, all online functionality works correctly and all 13 acceptance criteria pass. Two options:
+  1. **Deploy now** with a known limitation that photo uploads require network connectivity. Text comments work offline. Acceptable for MVP if users will mostly have intermittent (not zero) connectivity.
+  2. **Fix BUG-R2-1 first** by storing image blobs in IndexedDB and re-running the full pipeline on retry. This is a significant implementation effort.
+  BUG-R2-2 and BUG-R2-3 can be fixed in the next sprint.
 
 ## Deployment
 _To be added by /deploy_

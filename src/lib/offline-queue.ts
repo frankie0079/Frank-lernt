@@ -1,16 +1,21 @@
 /**
  * Offline content queue using IndexedDB.
  * Stores failed content submissions and retries when back online.
+ * Photo items store the original file blob so the full pipeline
+ * (EXIF, compress, upload) can be re-run on retry.
  */
 
 const DB_NAME = "eventdocs-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "pending-content";
 
 export interface QueuedContent {
   id: string;
   eventId: string;
+  userId: string;
   payload: Record<string, unknown>;
+  /** Original image file stored as Blob for photo items. */
+  fileBlob: Blob | null;
   createdAt: number;
   retryCount: number;
 }
@@ -19,11 +24,14 @@ function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
+      const oldVersion = event.oldVersion;
+      if (oldVersion < 1) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
+      // v2: added fileBlob + userId fields — no store schema change needed
+      // (IndexedDB is schemaless for value fields, only keyPath matters)
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -32,13 +40,20 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 /** Add a failed content submission to the offline queue. */
-export async function enqueue(eventId: string, payload: Record<string, unknown>): Promise<string> {
+export async function enqueue(
+  eventId: string,
+  userId: string,
+  payload: Record<string, unknown>,
+  file?: File | Blob | null
+): Promise<string> {
   const db = await openDB();
   const id = crypto.randomUUID();
   const item: QueuedContent = {
     id,
     eventId,
+    userId,
     payload,
+    fileBlob: file ?? null,
     createdAt: Date.now(),
     retryCount: 0,
   };
@@ -94,17 +109,49 @@ export async function incrementRetry(id: string): Promise<void> {
   });
 }
 
-/** Flush the queue — retry all pending content submissions. Returns count of successful syncs. */
+/**
+ * Flush the queue — retry all pending content submissions.
+ * For photo items with a stored blob, re-runs the full upload pipeline
+ * (EXIF extraction, compression, storage upload) before POSTing.
+ * Returns count of successful syncs.
+ */
 export async function flushQueue(): Promise<number> {
   const pending = await getPending();
   let synced = 0;
 
   for (const item of pending) {
+    // Skip items that have failed too many times
+    if (item.retryCount >= 5) continue;
+
     try {
+      let payload = { ...item.payload };
+
+      // If this is a photo item with a stored blob, re-run the upload pipeline
+      if (payload.type === "photo" && item.fileBlob) {
+        const { processAndUploadImage } = await import("@/lib/content-upload");
+        const file = new File([item.fileBlob], "offline-photo.jpg", {
+          type: "image/jpeg",
+        });
+        const result = await processAndUploadImage(
+          file,
+          item.eventId,
+          item.userId
+        );
+        payload = {
+          ...payload,
+          media_url: result.mediaUrl,
+          thumbnail_url: result.thumbnailUrl,
+          // Prefer EXIF GPS over device GPS already in payload
+          latitude: result.exif.latitude ?? payload.latitude,
+          longitude: result.exif.longitude ?? payload.longitude,
+          exif_date: result.exif.exifDate,
+        };
+      }
+
       const res = await fetch(`/api/events/${item.eventId}/content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item.payload),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
