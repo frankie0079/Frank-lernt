@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { EventEditSheet } from "@/components/event-edit-sheet";
@@ -16,6 +16,8 @@ import {
   generateEventGradient,
   formatDateRange,
 } from "@/lib/event-utils";
+import { WandererScreen } from "@/components/wanderer-screen";
+import { ContentPool } from "@/components/content-pool";
 import {
   ArrowLeft,
   CalendarDays,
@@ -252,33 +254,22 @@ export default function EventDashboardPage() {
           </TabsList>
 
           <TabsContent value="capture" className="mt-6">
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <Camera
-                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <p className="text-sm font-medium text-foreground">
-                Wanderer-Screen
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Kommt in PROJ-27: Fotos, Videos, Texte und Sprachmemos erfassen
-              </p>
-            </div>
+            <WandererScreen
+              eventId={eventId}
+              userId={member.id}
+              agendaItems={agendaItems}
+            />
           </TabsContent>
 
           <TabsContent value="pool" className="mt-6">
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <LayoutGrid
-                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
-                aria-hidden="true"
+            <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+              <ContentPool
+                eventId={eventId}
+                userId={member.id}
+                isOrganizer={isOrganizer}
+                agendaItems={agendaItems}
               />
-              <p className="text-sm font-medium text-foreground">
-                Content-Pool
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Kommt in PROJ-28: Alle Beitraege als Realtime-Karteikarten
-              </p>
-            </div>
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="admin" className="mt-6">

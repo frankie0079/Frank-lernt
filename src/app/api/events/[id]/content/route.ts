@@ -62,18 +62,89 @@ export async function GET(
     return NextResponse.json({ error: "Kein Zugriff auf dieses Event" }, { status: 403 });
   }
 
-  const { data: items, error } = await supabase
+  // Parse and validate query params
+  const url = new URL(request.url);
+  const cursor = url.searchParams.get("cursor");
+  const filterType = url.searchParams.get("filter");
+  const agendaId = url.searchParams.get("agenda");
+  const singleId = url.searchParams.get("id");
+  const limitParam = url.searchParams.get("limit");
+  const limit = Math.min(Math.max(parseInt(limitParam || "20", 10) || 20, 1), 200);
+
+  // Validate UUID params
+  if (singleId && !isValidUUID(singleId)) {
+    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+  }
+  if (agendaId && !isValidUUID(agendaId)) {
+    return NextResponse.json({ error: "Ungueltiges Agenda-ID-Format" }, { status: 400 });
+  }
+  // Validate cursor is a plausible ISO timestamp
+  if (cursor && isNaN(Date.parse(cursor))) {
+    return NextResponse.json({ error: "Ungueltiges Cursor-Format" }, { status: 400 });
+  }
+
+  let query = supabase
     .from("content_items")
     .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at")
     .eq("event_id", id)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(limit);
+
+  // Single item fetch (for Realtime enrichment)
+  if (singleId) {
+    query = supabase
+      .from("content_items")
+      .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at")
+      .eq("event_id", id)
+      .eq("id", singleId)
+      .limit(1);
+  }
+
+  // Cursor pagination
+  if (cursor && !singleId) {
+    query = query.lt("created_at", cursor);
+  }
+
+  // Type filter
+  if (filterType && ["photo", "video", "text", "audio"].includes(filterType) && !singleId) {
+    query = query.eq("type", filterType);
+  }
+
+  // Agenda filter
+  if (agendaId && !singleId) {
+    query = query.eq("agenda_item_id", agendaId);
+  }
+
+  const { data: items, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ content_items: items || [] });
+  // Enrich with author data
+  const authorIds = [...new Set((items || []).map((i) => i.author_id))];
+  let authorMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
+
+  if (authorIds.length > 0) {
+    const { data: authors } = await supabase
+      .from("members")
+      .select("id, name, avatar_url")
+      .in("id", authorIds);
+
+    if (authors) {
+      authorMap = Object.fromEntries(
+        authors.map((a) => [a.id, { name: a.name, avatar_url: a.avatar_url }])
+      );
+    }
+  }
+
+  const enrichedItems = (items || []).map((item) => ({
+    ...item,
+    author_name: authorMap[item.author_id]?.name || null,
+    author_avatar_url: authorMap[item.author_id]?.avatar_url || null,
+  }));
+
+  return NextResponse.json({ content_items: enrichedItems });
 }
 
 // POST /api/events/[id]/content — Create content item

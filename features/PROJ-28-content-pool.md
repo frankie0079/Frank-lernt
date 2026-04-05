@@ -1,8 +1,8 @@
 # PROJ-28: Content-Pool (Karteikarten, Realtime-Ansicht)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-05
 
 ## Dependencies
 - Requires: PROJ-27 (Wanderer-Screen) — Content wird dort erstellt und in `content_items` gespeichert
@@ -50,7 +50,124 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Overview
+
+PROJ-28 replaces the "Pool"-Tab placeholder in `/events/[id]` with a live, scrollable card feed. Content was already created via PROJ-27 (Wanderer-Screen) and stored in `content_items`. This feature makes that content visible to all participants — in real time.
+
+The backend API already exists (`GET /api/events/[id]/content`). The main work is:
+1. Extend the API with cursor pagination + filter params
+2. Build 4 new frontend components
+3. Wire up Supabase Realtime
+
+---
+
+### Component Structure
+
+```
+Pool Tab (page.tsx — existing, replace placeholder)
+└── ContentPool                          ← new, main container
+    ├── FilterBar                        ← new, horizontal scroll
+    │   └── Filter Pills (shadcn Badge)
+    │       Alle | Fotos | Videos | Texte | Sprachmemos | [Agenda-Punkt…]
+    ├── Content List
+    │   ├── ContentCard × N              ← new, one per content_item
+    │   │   ├── Media Preview
+    │   │   │   ├── Foto → <img> thumbnail
+    │   │   │   ├── Video → Standbild (<img>) + Play-Icon overlay
+    │   │   │   ├── Sprachmemo → Mikrofon-Icon (teal)
+    │   │   │   └── Text → erster Absatz (abgeschnitten)
+    │   │   ├── Author Row
+    │   │   │   ├── Avatar (shadcn Avatar)
+    │   │   │   ├── Autorenname
+    │   │   │   ├── Relative Zeit ("vor 5 Min.", date-fns formatDistanceToNow)
+    │   │   │   └── Medientyp-Badge (shadcn Badge)
+    │   │   └── Löschen-Button (Papierkorb, nur sichtbar für Autor/Admin/Org)
+    │   ├── Skeleton Cards (shadcn Skeleton, beim Laden)
+    │   └── Infinite Scroll Trigger (IntersectionObserver, am Listenende)
+    ├── "Neue Beiträge" Pill-Button      ← erscheint wenn Realtime-Beitrag
+    │                                       reinkommt, während User hochgescrollt
+    └── Empty State                      ← Illustration + CTA → Capture-Tab
+ContentLightbox                          ← new, fullscreen modal (shadcn Dialog)
+    ├── Foto → Vollbild + Swipe (Pointer Events)
+    ├── Video → <video playsInline controls>
+    ├── Sprachmemo → <audio controls>
+    └── Text → Vollansicht
+DeleteConfirmDialog                      ← shadcn AlertDialog (wiederverwendbar)
+```
+
+---
+
+### Datenfluss
+
+| Schritt | Was passiert |
+|---------|-------------|
+| 1. Initialer Load | `GET /api/events/[id]/content?limit=20` → erste 20 Karten |
+| 2. Infinite Scroll | User scrollt ans Ende → `?cursor=[created_at]&limit=20` → 20 weitere |
+| 3. Filter wechseln | URL-Param `?filter=photos` → Liste neu laden (Reset cursor) |
+| 4. Realtime INSERT | Neuer Beitrag → Toast "Neuer Beitrag von [Name]" + bei passendem Filter: oben einfügen |
+| 5. Realtime DELETE | Beitrag gelöscht → sofort aus Liste entfernen |
+| 6. Optimistic Delete | User löscht → Karte sofort weg → API-Fehler → Karte zurück + Toast |
+
+**Wichtig:** Realtime INSERT liefert nur die rohen DB-Felder. Da die Karte Autorenname + Avatar braucht, wird beim INSERT-Event ein einzelner API-Fetch (`GET /api/events/[id]/content?id=[contentId]`) ausgelöst, um die vollständige Karte mit Author-Daten zu erhalten.
+
+---
+
+### Backend-Änderungen (minimal)
+
+`GET /api/events/[id]/content` — bereits vorhanden, braucht 2 Erweiterungen:
+
+1. **Cursor-Pagination:** neuer Query-Param `cursor` (ISO-Timestamp) → filtert auf `created_at < cursor`; Standard-Limit von 200 → 20 ändern
+2. **Filter-Param:** `filter=photos|videos|texts|voice` → filtert `type`-Spalte; `filter=agenda:[uuid]` → filtert `agenda_item_id`
+
+Keine neuen API-Routen, keine neuen DB-Tabellen, keine neuen RLS-Policies.
+
+---
+
+### Supabase Realtime
+
+- Kanal: `content_items:event_id=eq.[eventId]`
+- Events: `INSERT`, `DELETE`
+- Reconnect-Strategie: automatisch via Supabase-Client; bei Reconnect wird die Liste per API nachgeladen (fehlende Beiträge holen)
+- Scope: Realtime-Subscription wird nur aktiv, wenn der "Pool"-Tab geöffnet ist
+
+---
+
+### Tech-Entscheidungen
+
+| Entscheidung | Warum |
+|---|---|
+| IntersectionObserver statt react-virtual | Für MVP ausreichend; kein neues Paket; react-virtual kann später ergänzt werden |
+| URL-Params für Filter-State | Deep-Link-fähig; Browser-Back funktioniert; kein lokaler State nötig |
+| date-fns `formatDistanceToNow` | Bereits installiert; liefert "vor 5 Min." out-of-the-box |
+| shadcn Dialog für Lightbox | Bereits installiert; Accessibility (focus trap, Escape) gratis |
+| Optimistic Deletion | Sofortiges Feedback ohne Warten auf Server |
+
+---
+
+### Keine neuen Pakete nötig
+
+Alle benötigten Tools sind bereits installiert:
+- **Supabase Realtime** — `@supabase/supabase-js` (bereits im Projekt)
+- **Relative Zeit** — `date-fns` (bereits installiert)
+- **Swipe-Gesten** — native Pointer Events (kein Paket)
+- **Toast** — `sonner` (bereits installiert, `src/components/ui/sonner.tsx`)
+- **Alle UI-Primitive** — shadcn/ui (Card, Badge, Avatar, Skeleton, Dialog, AlertDialog, ScrollArea)
+
+---
+
+### Neue Dateien
+
+| Datei | Zweck |
+|---|---|
+| `src/components/content-pool.tsx` | Haupt-Container: Realtime + Pagination + Filter-State |
+| `src/components/content-card.tsx` | Einzelne Karteikarte |
+| `src/components/content-filter-bar.tsx` | Horizontale Filter-Leiste |
+| `src/components/content-lightbox.tsx` | Vollbild-Modal (Foto/Video/Audio/Text) |
+
+Geänderte Dateien:
+- `src/app/api/events/[id]/content/route.ts` — cursor + filter params ergänzen
+- `src/app/events/[id]/page.tsx` — Pool-Tab Placeholder durch `<ContentPool>` ersetzen
 
 ## QA Test Results
 _To be added by /qa_
