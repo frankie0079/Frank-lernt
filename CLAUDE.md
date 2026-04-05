@@ -102,9 +102,9 @@ npm run start      # Production server
 - **Projekt:** `xqopetmpzjbxksonmhjw` (Region: eu-west-1)
 - **Tabellen (geplant):** `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
 - **Auth:** Token-basierte Links (kein Supabase Auth)
-- **Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`
-- **Storage Buckets (live):** `photos`, `audio` (public, 20MB), `avatars` (public, 2MB, JPEG/PNG/WebP)
-- **Storage Buckets (geplant):** `media`, `slideshows`
+- **Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`, `content_items` (RLS enabled)
+- **Storage Buckets (live):** `photos`, `audio` (public, 20MB), `avatars` (public, 2MB, JPEG/PNG/WebP), `media` (public, 20MB)
+- **Storage Buckets (geplant):** `slideshows`
 
 ## Aktueller Stand
 
@@ -161,13 +161,36 @@ Fertiggestellt:
 
 QA für PROJ-26: 9/11 AC passed, BUG-1 (Redirect) gefixt. Verbleibende Bugs sind Low/Medium (Race Condition, Rate Limiting) — akzeptabel für MVP.
 
-**Nächster Schritt:** `/architecture` für PROJ-27 (Wanderer-Screen)
+**PROJ-27: Wanderer-Screen — In Review (Architecture ✅, Frontend ✅, Backend ✅)**
+
+Fertiggestellt:
+- `content_items` Tabelle in Supabase (RLS enabled, Indexes auf event_id/author_id/created_at)
+- `media` Storage Bucket (public, 20MB)
+- `/events/[id]` Capture-Tab: WandererScreen mit 4 Aktions-Buttons (Kamera, Video, Upload, Kommentar)
+- `ActionButtonGrid`: 2×2 Touch-optimierte Buttons (Video als Platzhalter für PROJ-29)
+- `PhotoSheet`: Bottom-Sheet mit Vorschau, Kommentar, Upload-Fortschritt
+- `TextCommentSheet`: Bottom-Sheet für reine Text-Beiträge
+- `AgendaSelector`: Dropdown mit Auto-Auswahl heutiger Agenda-Punkt
+- `GpsStatusBadge`: Farbcodierte GPS-Anzeige (grün/rot/grau)
+- `CaptionTextarea`: Wiederverwendbare Textarea mit Zeichenzähler (max 1000)
+- `useGeolocation` Hook: GPS mit Status-Tracking + Refresh
+- Foto-Pipeline: EXIF-Extraktion (exifr) → Kompression (1920px/1MB) → Thumbnail (400px) → Storage Upload
+- `POST /api/events/[id]/content`: Beitrag erstellen (Zod-validiert, Membership-Check, Rate-Limiting)
+- `GET /api/events/[id]/content`: Beiträge auflisten (max 200, neueste zuerst)
+- `DELETE /api/events/[id]/content/[contentId]`: Beitrag löschen (Autor oder Organisator, inkl. Storage-Cleanup)
+- Content-Validierung: `src/lib/validations/content.ts`
+- Content-Upload-Pipeline: `src/lib/content-upload.ts`
+
+Noch offen für PROJ-27:
+- `/qa`: Tests + Security Audit
+
+**Nächster Schritt:** `/qa` für PROJ-27
 
 Danach Build-Reihenfolge:
 1. ~~**PROJ-24: Auth**~~ ← In Review
 2. ~~**PROJ-25: Event-Erstellung**~~ ← In Review
 3. ~~**PROJ-26: Teilnehmer-Einladung**~~ ← In Review
-4. **PROJ-27: Wanderer-Screen** (Eingabe: Foto/Video/Text/Sprache)
+4. ~~**PROJ-27: Wanderer-Screen**~~ ← In Review
 5. **PROJ-28: Content-Pool** (Realtime-Karteikarten)
 6. **PROJ-29: Video-Aufnahme** + **PROJ-30: Sprachmemo**
 7. **PROJ-31: Reactions** + **PROJ-32: Kommentare**
