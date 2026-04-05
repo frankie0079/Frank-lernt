@@ -87,6 +87,7 @@ Alle Features in `features/INDEX.md`. Features: PROJ-24 bis PROJ-37. v1 (PROJ-1â
 - **Single Responsibility:** One feature per spec file
 - **shadcn/ui first:** NEVER create custom versions of installed shadcn components
 - **Human-in-the-loop:** All workflows have user approval checkpoints
+- **QA: Fix ALL bugs before deploy:** Always fix all QA bugs (including Low severity) before proceeding to deploy. Never skip or defer bugs to "next sprint".
 
 ## Build & Test Commands
 

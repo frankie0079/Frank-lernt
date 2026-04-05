@@ -445,5 +445,139 @@ No Critical or High bugs. The 2 Medium bugs (stale closure, missing deduplicatio
 4. **BUG-4** (Low) -- Realtime auth: acceptable for MVP
 5. **BUG-5** (Low) -- Swipe interference: minor UX polish
 
+---
+
+### Round 2 (2026-04-05) -- Re-QA After Bug Fixes
+
+**Tested:** 2026-04-05
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Build:** Production build succeeds with 0 errors, 7 warnings (all `<img>` vs `<Image>` -- acceptable for dynamic Supabase URLs).
+**Lint:** 0 errors, 7 warnings (same `<img>` warnings).
+
+---
+
+### Round 1 Bug Fix Verification
+
+| Bug | Status | Verification |
+|-----|--------|-------------|
+| BUG-1: Stale closure in Realtime INSERT handler | FIXED | `activeFilterRef` (line 101) and `isAtTopRef` (line 102) refs introduced. Updated in sync with state (lines 107, 209). Realtime handler reads from `activeFilterRef.current` (line 268) and `isAtTopRef.current` (line 269) instead of closure variables. Filter changes now correctly reflected in Realtime callback. |
+| BUG-2: No deduplication of Realtime items | FIXED | `itemIdsRef` (line 103) tracks all current item IDs, synced via `useEffect` (lines 216-218). Realtime INSERT handler checks `itemIdsRef.current.has(newRow.id)` (line 249) and returns early on duplicates. |
+| BUG-3: GET /api/events/[id]/content has no rate limiting | FIXED | GET handler now calls `isRateLimited(ip, "read")` (route.ts lines 46-51). `rate-limit.ts` has separate `MAX_READ_REQUESTS = 60` per minute per IP (line 7), higher threshold than write limit (30). |
+| BUG-4: Supabase Realtime client without user auth | NOT FIXED (Accepted) | The Realtime client still uses the anon key only (content-pool.tsx line 233). The commit comment says "BUG-4 fix" but refers to the enrichment fetch using cookie auth, which was already the case in Round 1. The underlying issue (anon-key Realtime subscriptions can listen to any event_id channel) remains. Accepted for MVP as noted in Round 1 -- actual content data requires authenticated API fetch. |
+| BUG-5: Lightbox swipe interferes with video/audio controls | FIXED | Swipe handlers moved from `DialogContent` to the inner media container div (line 139-142). New `swipeEnabled` guard (line 63) disables swipe for video and audio types. Photo and text still support swipe navigation. |
+
+### Acceptance Criteria Re-verification
+
+All 11 acceptance criteria verified passing:
+
+- [x] AC-1: Chronological list under /events/[id] Pool tab -- PASS (no regression)
+- [x] AC-2: Content cards with thumbnail, author, relative time, type badge -- PASS (no regression)
+- [x] AC-3: Realtime INSERT/DELETE -- PASS (stale closure fixed, filter now correctly applied)
+- [x] AC-4: Toast for other users' content -- PASS (no regression)
+- [x] AC-5: Filter bar with horizontal scroll badges -- PASS (no regression)
+- [x] AC-6: Active filter visually highlighted -- PASS (no regression)
+- [x] AC-7: Lightbox fullscreen with swipe/keyboard navigation -- PASS (swipe now scoped to media area)
+- [x] AC-8: Delete button on own content -- PASS (no regression)
+- [x] AC-9: Organizer can delete all content -- PASS (no regression)
+- [x] AC-10: Delete confirmation dialog -- PASS (no regression)
+- [x] AC-11: Optimistic deletion -- PASS (no regression)
+
+### Edge Cases Re-verification
+
+- [x] EC-1: Empty state -- PASS (no regression)
+- [x] EC-2: Infinite scroll -- PASS (no regression)
+- [x] EC-3: Image URL unreachable -- PASS (no regression)
+- [x] EC-4: "New items" pill button -- PASS (no regression)
+- [x] EC-5: Filter active + Realtime item does not match -- PASS (BUG-1 FIXED, now uses `activeFilterRef.current`)
+- [x] EC-6: Filter state in URL params -- PASS (no regression)
+
+### Security Audit (Round 2 -- Updated)
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Auth bypass on GET /content | PASS | Membership check before query |
+| Auth bypass on DELETE /content | PASS | Author + organizer check |
+| IDOR: Access other event's content | PASS | event_id filter on all queries |
+| Rate limiting on GET | PASS | 60 req/min (BUG-3 FIXED) |
+| Rate limiting on POST | PASS | 30 req/min |
+| Rate limiting on DELETE | PASS | 30 req/min |
+| Realtime channel auth | ACCEPTED | Anon key only (BUG-4 unchanged, accepted for MVP) |
+| XSS via caption | PASS | React auto-escapes |
+| Stored XSS via media_url | PASS | Validated against Supabase domain |
+| Secrets in client bundle | PASS | Only NEXT_PUBLIC_ vars |
+
+### New Bugs Found (Round 2)
+
+#### BUG-R2-1: Own content Realtime INSERT silently ignored
+
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. User A has Pool tab open
+  2. User A switches to Capture tab and submits a photo
+  3. User A switches back to Pool tab
+  4. Expected: The new photo appears in the pool list
+  5. Actual: The Realtime INSERT handler at line 252 checks `if (newRow.author_id !== userId)` and skips entirely for own content. The item only appears after a page refresh or filter change (which triggers a re-fetch). Previously there was an `else` branch that called refetch for own content -- this was removed in the bug fix commit.
+- **Impact:** Users do not see their own just-submitted content in the Pool tab without refreshing or switching filters. The content IS saved (verified via API), it just does not appear in the live list.
+- **Priority:** Fix in next sprint
+
+#### BUG-R2-2: Deduplication ref may miss items during rapid Realtime events
+
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Two Realtime INSERT events arrive in rapid succession
+  2. First event: `itemIdsRef.current.has(id1)` returns false, proceeds to fetch and add
+  3. Second event: runs before `setItems` from first event triggers the `useEffect` that syncs `itemIdsRef`
+  4. If second event has a different ID, no issue. But the `itemIdsRef` is always one render cycle behind `items` state.
+  5. Expected: `itemIdsRef` is always in sync
+  6. Actual: There is a brief window where `itemIdsRef` is stale (between `setItems` call and the next render cycle that triggers the sync `useEffect`)
+- **Impact:** Very minor race condition. In practice, two different Realtime events would have different IDs, so deduplication would not matter. The main dedup scenario (same event delivered twice) IS handled because the second delivery would happen after the sync. Low risk.
+- **Priority:** Nice to have
+
+#### BUG-R2-3: Fallback toast fires after successful enrichment returns no items
+
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Another user creates a content item
+  2. Realtime INSERT fires
+  3. The enrichment fetch at line 255 succeeds (res.ok) but returns `content_items: []` (possible if item was immediately deleted by another user)
+  4. The `if (fullItem)` check at line 262 fails
+  5. The code falls through to line 282: `toast.info("Neuer Beitrag")` -- a second, redundant fallback toast
+  6. Expected: No toast if item no longer exists
+  7. Actual: Generic "Neuer Beitrag" toast shown for a deleted item
+- **Impact:** Cosmetic -- user sees a toast about a content item that no longer exists. Very unlikely timing.
+- **Priority:** Nice to have
+
+### Cross-Browser & Responsive (Round 2)
+
+No new browser or responsive issues introduced by the bug fixes. The swipe fix (BUG-5) improves the Safari/iOS experience specifically by preventing swipe interference on video/audio controls.
+
+### Regression Testing (Round 2)
+
+- [x] PROJ-24 (Auth): No changes to auth files
+- [x] PROJ-25 (Event): Event dashboard page unchanged, tabs load correctly
+- [x] PROJ-26 (Teilnehmer): No changes to invitation files
+- [x] PROJ-27 (Wanderer-Screen): WandererScreen tab still renders correctly alongside ContentPool
+- [x] Build: Production build succeeds, 0 errors
+- [x] Lint: 0 errors, 7 warnings (img elements -- acceptable)
+
+### Summary (Round 2)
+
+| Category | Result |
+|----------|--------|
+| Acceptance Criteria | 11/11 passed |
+| Edge Cases | 6/6 passed |
+| Round 1 Bugs Fixed | 4/5 fixed (BUG-4 accepted for MVP) |
+| New Bugs Found | 3 total (0 critical, 0 high, 0 medium, 3 low) |
+| Security | No critical/high/medium issues. BUG-4 (Realtime auth) accepted for MVP. |
+
+### Production-Ready Decision: **YES**
+
+All 11 acceptance criteria pass. All 6 edge cases pass. The 4 Round 1 bugs that were fixable have been fixed correctly. BUG-4 (Realtime auth) is accepted for MVP. The 3 new findings are all Low severity:
+- BUG-R2-1 (own content not appearing in Realtime) is the most noticeable but has a natural workaround (switching filter or refreshing).
+- BUG-R2-2 and BUG-R2-3 are edge-case race conditions with minimal user impact.
+
+Deploy now. Address BUG-R2-1 in the next sprint alongside PROJ-29.
+
 ## Deployment
 _To be added by /deploy_

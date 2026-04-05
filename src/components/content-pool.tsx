@@ -245,41 +245,44 @@ export function ContentPool({
         async (payload) => {
           const newRow = payload.new as ContentItem;
 
-          // Deduplicate: skip if already in the list (BUG-2 fix)
+          // Deduplicate: skip if already in the list
           if (itemIdsRef.current.has(newRow.id)) return;
 
-          // Show toast for other users' content
-          if (newRow.author_id !== userId) {
-            // Fetch the full item with author data (uses cookie auth — BUG-4 fix)
-            try {
-              const res = await fetch(
-                `/api/events/${eventId}/content?id=${newRow.id}`
-              );
-              if (res.ok) {
-                const data = await res.json();
-                const fullItems: ContentItem[] = data.content_items || [];
-                const fullItem = fullItems[0];
-                if (fullItem) {
-                  toast.info(
-                    `Neuer Beitrag von ${fullItem.author_name || "Unbekannt"}`
-                  );
+          // Fetch the full item with author data (uses cookie auth)
+          try {
+            const res = await fetch(
+              `/api/events/${eventId}/content?id=${newRow.id}`
+            );
+            if (!res.ok) return;
+            const data = await res.json();
+            const fullItems: ContentItem[] = data.content_items || [];
+            const fullItem = fullItems[0];
+            // Guard: item may have been deleted before fetch completed
+            if (!fullItem) return;
 
-                  // Read current filter/scroll state from refs (not stale closure)
-                  if (matchesFilter(fullItem, activeFilterRef.current)) {
-                    if (isAtTopRef.current) {
-                      setItems((prev) => [fullItem, ...prev]);
-                    } else {
-                      setNewItemsCount((c) => c + 1);
-                      setItems((prev) => [fullItem, ...prev]);
-                    }
-                  }
-                  return;
-                }
-              }
-            } catch {
-              // Fallback: just notify
+            // Deduplicate again after async fetch
+            if (itemIdsRef.current.has(fullItem.id)) return;
+
+            // Toast for other users' content (not own)
+            if (fullItem.author_id !== userId) {
+              toast.info(
+                `Neuer Beitrag von ${fullItem.author_name || "Unbekannt"}`
+              );
             }
-            toast.info("Neuer Beitrag");
+
+            // Add to list if it matches current filter
+            if (matchesFilter(fullItem, activeFilterRef.current)) {
+              // Update ref immediately to prevent duplicates
+              itemIdsRef.current.add(fullItem.id);
+              if (isAtTopRef.current) {
+                setItems((prev) => [fullItem, ...prev]);
+              } else {
+                setNewItemsCount((c) => c + 1);
+                setItems((prev) => [fullItem, ...prev]);
+              }
+            }
+          } catch {
+            // Network error — silently ignore
           }
         }
       )
