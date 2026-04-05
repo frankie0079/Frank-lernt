@@ -137,6 +137,17 @@ export async function POST(
     );
   }
 
+  // Validate media_url points to our Supabase storage (prevent stored content injection)
+  const supabaseDomain = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  for (const url of [media_url, thumbnail_url]) {
+    if (url && !url.startsWith(`${supabaseDomain}/storage/`)) {
+      return NextResponse.json(
+        { error: "Medien-URL muss auf den eigenen Storage verweisen" },
+        { status: 400 }
+      );
+    }
+  }
+
   // Text requires caption
   if (type === "text" && (!caption || caption.trim().length === 0)) {
     return NextResponse.json(

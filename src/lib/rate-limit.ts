@@ -3,7 +3,7 @@
 const requests = new Map<string, number[]>();
 
 const WINDOW_MS = 60_000; // 1 minute
-const MAX_REQUESTS = 20; // max 20 POST requests per minute per IP
+const MAX_REQUESTS = 30; // max 30 POST requests per minute per IP
 
 export function isRateLimited(ip: string): boolean {
   const now = Date.now();
