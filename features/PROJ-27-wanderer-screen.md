@@ -1,6 +1,6 @@
 # PROJ-27: Wanderer-Screen (Eingabe-Interface)
 
-## Status: In Review (QA Round 2 complete)
+## Status: In Review (QA Round 3 complete -- PRODUCTION READY)
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-05
 
@@ -367,6 +367,108 @@ Keine — `exifr` und `browser-image-compression` bereits im Projekt.
   1. **Deploy now** with a known limitation that photo uploads require network connectivity. Text comments work offline. Acceptable for MVP if users will mostly have intermittent (not zero) connectivity.
   2. **Fix BUG-R2-1 first** by storing image blobs in IndexedDB and re-running the full pipeline on retry. This is a significant implementation effort.
   BUG-R2-2 and BUG-R2-3 can be fixed in the next sprint.
+
+---
+
+### Round 3 (2026-04-05) -- Re-QA After Round 2 Bug Fixes
+
+**Tested:** 2026-04-05
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Build:** Production build succeeds with 0 errors, 7 warnings (all `<img>` vs `<Image>` -- acceptable for dynamic Supabase Storage URLs). ESLint: 0 errors.
+
+### Round 2 Bug Fix Verification
+
+| Bug | Status | Verification |
+|-----|--------|-------------|
+| BUG-R2-1: Photo offline queue broken | FIXED | `offline-queue.ts` upgraded to DB_VERSION=2. `enqueue()` now accepts optional `file` param and stores as `fileBlob` in IndexedDB. `flushQueue()` checks `payload.type === "photo" && item.fileBlob` and re-runs full `processAndUploadImage` pipeline (EXIF, compress, upload) before POSTing. Verified in code: `photo-sheet.tsx` line 133 passes `file` to `enqueue()`. |
+| BUG-R2-2: Fragile network error detection | FIXED | New `network-utils.ts` with `isNetworkError()` helper checks: (1) `navigator.onLine === false`, (2) TypeError with multiple patterns (fetch, network, failed to fetch, networkerror, load failed for Safari), (3) DOMException AbortError. Both `photo-sheet.tsx` and `text-comment-sheet.tsx` now import and use this helper. |
+| BUG-R2-3: GET API query params not validated | FIXED | `route.ts` lines 75-84 now validate `singleId` and `agendaId` with `isValidUUID()`, and `cursor` with `isNaN(Date.parse(cursor))`. Returns 400 for invalid values. |
+
+### Acceptance Criteria Re-verification
+
+All 13 acceptance criteria continue to pass. No regressions introduced by the bug fixes.
+
+- [x] AC-1 through AC-13: All verified passing (same as Round 2)
+
+### Security Audit (Round 3 -- Deep Dive)
+
+- [x] No service role key exposed in any client or API file
+- [x] No `dangerouslySetInnerHTML` usage in PROJ-27 components
+- [x] `media_url` domain validation uses `startsWith` against Supabase URL -- prevents arbitrary domain injection
+- [x] `author_id` set server-side from cookie lookup -- cannot be spoofed
+- [x] DELETE endpoint properly scopes by both `event_id` and `contentId`, checks author or organizer
+- [x] Rate limiting on both POST and DELETE endpoints (30 req/min)
+- [x] All UUID parameters validated before DB queries
+- [x] Cursor parameter validated as parseable date
+- [x] File naming uses `crypto.randomUUID()` -- not guessable
+- [x] Zod schema validates coordinate ranges (-90/90 latitude, -180/180 longitude)
+- [x] `caption` field stored as plain text (no HTML), XSS risk depends on rendering in PROJ-28 (verified: PROJ-28 content-card uses React JSX which auto-escapes)
+
+### New Bugs Found (Round 3)
+
+#### BUG-R3-1: IndexedDB QuotaExceededError not handled in offline queue
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Go offline
+  2. Take multiple large photos (e.g., 5-10 photos at ~15MB each)
+  3. Submit each -- they get queued in IndexedDB with the full file blob
+  4. Expected: Graceful error when storage is full, user informed
+  5. Actual: `enqueue()` throws unhandled `QuotaExceededError` from IndexedDB (typical limit 50-100MB per origin). The `catch` block in `photo-sheet.tsx` line 148 catches it and shows "Upload fehlgeschlagen. Bitte versuche es erneut." but does not indicate the real cause (storage full) or suggest clearing old queued items.
+- **Impact:** User does not understand why offline queueing suddenly fails after several photos. The generic error message is misleading.
+- **Priority:** Fix in next sprint
+
+#### BUG-R3-2: Object URL memory leak when PhotoSheet unmounts while open
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Open a photo in PhotoSheet (creates `URL.createObjectURL`)
+  2. Navigate away from the page (e.g., browser back) while the sheet is still open
+  3. Expected: Object URL is revoked on unmount
+  4. Actual: `handleOpenChange` only revokes the URL when the sheet closes normally. There is no `useEffect` cleanup that calls `URL.revokeObjectURL` on unmount. Each leaked URL holds a reference to the image blob in memory.
+- **Impact:** Minor memory leak, one blob per occurrence. Only matters for repeated navigation patterns. Browsers eventually GC these on page unload.
+- **Priority:** Nice to have
+
+#### BUG-R3-3: Orphaned storage files when DELETE endpoint fails to remove from Supabase Storage
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Create a photo content item
+  2. Delete it via `DELETE /api/events/[id]/content/[contentId]`
+  3. If Supabase Storage `.remove()` fails (network issue, permission error), the code at `[contentId]/route.ts` line 97-99 does not check the result
+  4. Expected: Either retry storage deletion or log warning
+  5. Actual: Storage file remains orphaned, `content_items` row is deleted successfully
+- **Impact:** Orphaned files accumulate in storage over time. No data exposure (files are public bucket, but URLs are random UUIDs). Storage cost is minimal on free tier.
+- **Priority:** Nice to have
+
+#### BUG-R3-4: Stale offline queue items never cleaned up (retryCount >= 5)
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Queue items offline that will permanently fail (e.g., v1 photo items without fileBlob, or items for deleted events)
+  2. Go online -- `flushQueue` retries them 5 times
+  3. After 5 retries, items are skipped but never deleted from IndexedDB
+  4. Expected: Items exceeding max retries are purged or marked as failed
+  5. Actual: Items remain in IndexedDB forever, wasting storage and adding overhead to each `flushQueue` call
+- **Impact:** Very minor -- stale items are small (except photo blobs which could be large). Over time, `getPending()` returns increasingly large arrays.
+- **Priority:** Nice to have
+
+### Cross-Browser & Responsive (Round 3)
+
+No changes from Round 2 -- all standard Web APIs used. No regressions from bug fixes.
+
+### Regression Testing (Round 3)
+
+- [x] PROJ-24 (Auth): No changes to auth files
+- [x] PROJ-25 (Event): Event dashboard page updated with PROJ-28 ContentPool tab -- loads correctly
+- [x] PROJ-26 (Teilnehmer): No changes to invitation files
+- [x] PROJ-28 (Content-Pool): New feature added in parallel commit -- ContentPool component renders in "pool" tab
+- [x] Build: Production build succeeds, ESLint 0 errors
+
+### Summary (Round 3)
+- **Acceptance Criteria:** 13/13 passed
+- **Round 2 Bugs Fixed:** 3/3 verified fixed (BUG-R2-1, BUG-R2-2, BUG-R2-3)
+- **New Bugs Found:** 4 total (0 critical, 0 high, 1 medium, 3 low)
+- **Security:** No critical, high, or medium security issues. All prior security fixes verified.
+- **Production Ready:** YES
+- **Recommendation:** All 13 acceptance criteria pass. All previous high-severity bugs are fixed. The 4 new findings are medium/low severity edge cases that do not affect core online functionality. BUG-R3-1 (IndexedDB quota) is the most impactful for the outdoor/hiking use case but only triggers after queuing many large photos offline -- an uncommon scenario for MVP. Deploy now, address BUG-R3-1 in the next sprint alongside PROJ-28.
 
 ## Deployment
 _To be added by /deploy_

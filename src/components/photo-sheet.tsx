@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CaptionTextarea } from "@/components/caption-textarea";
 import { processAndUploadImage } from "@/lib/content-upload";
-import { enqueue } from "@/lib/offline-queue";
+import { enqueue, OfflineQuotaError } from "@/lib/offline-queue";
 import { isNetworkError } from "@/lib/network-utils";
 import { CONTENT_MAX_CAPTION_LENGTH } from "@/lib/validations/content";
 import { Loader2, AlertCircle, X } from "lucide-react";
@@ -145,8 +145,12 @@ export function PhotoSheet({
           setError(
             "Kein Netz \u2014 Beitrag wird automatisch gesendet, sobald du wieder online bist."
           );
-        } catch {
-          setError("Upload fehlgeschlagen. Bitte versuche es erneut.");
+        } catch (queueErr) {
+          if (queueErr instanceof OfflineQuotaError) {
+            setError(queueErr.message);
+          } else {
+            setError("Upload fehlgeschlagen. Bitte versuche es erneut.");
+          }
         }
       } else {
         setError(

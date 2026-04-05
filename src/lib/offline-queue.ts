@@ -5,6 +5,14 @@
  * (EXIF, compress, upload) can be re-run on retry.
  */
 
+/** Thrown when IndexedDB storage quota is exceeded. */
+export class OfflineQuotaError extends Error {
+  constructor() {
+    super("Offline-Speicher voll. Bitte verbinde dich mit dem Internet, um gestaute Beitr\u00e4ge zu senden.");
+    this.name = "OfflineQuotaError";
+  }
+}
+
 const DB_NAME = "eventdocs-offline";
 const DB_VERSION = 2;
 const STORE_NAME = "pending-content";
@@ -62,7 +70,15 @@ export async function enqueue(
     const tx = db.transaction(STORE_NAME, "readwrite");
     tx.objectStore(STORE_NAME).add(item);
     tx.oncomplete = () => resolve(id);
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => {
+      // QuotaExceededError: storage is full (typically 50–100 MB per origin)
+      const err = tx.error;
+      if (err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED")) {
+        reject(new OfflineQuotaError());
+      } else {
+        reject(err);
+      }
+    };
   });
 }
 
