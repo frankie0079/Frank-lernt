@@ -28,6 +28,19 @@ function createSupabase() {
   );
 }
 
+// BUG-6 fix: prefer service-role key for privileged operations (bypasses RLS).
+// Falls back to anon key if SERVICE_ROLE_KEY is not configured, preserving
+// current production behavior for deployments that haven't set the env var.
+function createSupabaseAdmin() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    return createSupabase();
+  }
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 // POST /api/invite/[token] — Join event via invitation token
 export async function POST(
   request: NextRequest,
@@ -48,7 +61,8 @@ export async function POST(
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
   }
 
-  const supabase = createSupabase();
+  // BUG-6 fix: use service-role client for privileged invite/join operations
+  const supabase = createSupabaseAdmin();
 
   // Find invitation by token
   const { data: invitation } = await supabase
@@ -104,38 +118,41 @@ export async function POST(
     });
   }
 
-  // Check member count (max 50)
-  const { count } = await supabase
-    .from("event_members")
-    .select("*", { count: "exact", head: true })
-    .eq("event_id", invitation.event_id);
+  // BUG-2 fix: atomic join via Postgres RPC with advisory lock.
+  // See supabase/migrations/20260406_join_event_rpc.sql.
+  // Race-free: count + insert run inside a transaction-scoped lock keyed on
+  // event_id, so concurrent join attempts for the same event serialize.
+  const { data: rpcResult, error: rpcError } = await supabase.rpc("join_event", {
+    p_event_id: invitation.event_id,
+    p_member_id: currentMember.id,
+  });
 
-  if (count !== null && count >= 50) {
+  if (rpcError) {
+    return NextResponse.json({ error: rpcError.message }, { status: 500 });
+  }
+
+  const result = rpcResult as { ok: boolean; status: string } | null;
+
+  if (result?.status === "already_member") {
+    return NextResponse.json({
+      already_member: true,
+      event_id: invitation.event_id,
+      event_name: event.name,
+    });
+  }
+
+  if (result?.status === "full") {
     return NextResponse.json(
       { error: "Maximale Teilnehmerzahl (50) erreicht" },
       { status: 422 }
     );
   }
 
-  // Add member to event
-  const { error: insertError } = await supabase
-    .from("event_members")
-    .insert({
-      event_id: invitation.event_id,
-      member_id: currentMember.id,
-      role: "member",
-    });
-
-  if (insertError) {
-    // Handle unique constraint violation (race condition)
-    if (insertError.code === "23505") {
-      return NextResponse.json({
-        already_member: true,
-        event_id: invitation.event_id,
-        event_name: event.name,
-      });
-    }
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  if (result?.status !== "joined") {
+    return NextResponse.json(
+      { error: "Beitritt fehlgeschlagen" },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

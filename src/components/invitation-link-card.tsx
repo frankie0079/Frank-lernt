@@ -88,6 +88,7 @@ export function InvitationLinkCard({
   onGenerate,
 }: InvitationLinkCardProps) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const inviteUrl = invitation
@@ -96,12 +97,20 @@ export function InvitationLinkCard({
 
   const handleCopy = useCallback(async () => {
     if (!inviteUrl) return;
+    setCopyFailed(false);
+    // BUG-3 fix: provide user feedback when Clipboard API is unavailable
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 4000);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback: select text for manual copy
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 4000);
     }
   }, [inviteUrl]);
 
@@ -197,6 +206,14 @@ export function InvitationLinkCard({
                 <Badge variant={expiryInfo.variant}>{expiryInfo.label}</Badge>
               )}
             </div>
+
+            {/* BUG-3 fix: clipboard fallback message */}
+            {copyFailed && (
+              <p className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                Kopieren nicht moeglich. Bitte den Link oben manuell auswaehlen.
+              </p>
+            )}
 
             {/* Action buttons */}
             <div className="flex flex-wrap items-center gap-2">

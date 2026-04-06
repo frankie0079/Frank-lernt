@@ -44,6 +44,15 @@ export async function GET(
     return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
   }
 
+  // BUG-5 fix: read rate limit
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip, "read")) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      { status: 429 }
+    );
+  }
+
   const currentMember = await getCurrentMember(request);
   if (!currentMember) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
@@ -69,11 +78,13 @@ export async function GET(
     );
   }
 
-  // Fetch the current invitation (latest one, not expired)
+  // BUG-7 fix: only return non-expired invitations
+  const nowIso = new Date().toISOString();
   const { data: invitation } = await supabase
     .from("invitations")
     .select("id, event_id, token, expires_at, created_at")
     .eq("event_id", id)
+    .gt("expires_at", nowIso)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();

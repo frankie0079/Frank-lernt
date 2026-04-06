@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -40,6 +41,15 @@ export async function GET(
 
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+  }
+
+  // BUG-4 fix: read rate limit on member enumeration
+  const ip = getRateLimitIp(request);
+  if (isRateLimited(ip, "read")) {
+    return NextResponse.json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      { status: 429 }
+    );
   }
 
   const currentMember = await getCurrentMember(request);
