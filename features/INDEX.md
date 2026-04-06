@@ -16,12 +16,12 @@
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
 | PROJ-24 | Auth & User-Accounts | In Review | [PROJ-24-auth-user-accounts.md](PROJ-24-auth-user-accounts.md) | 2026-03-08 |
-| PROJ-25 | Event-Erstellung & -Verwaltung | In Review | [PROJ-25-event-erstellung.md](PROJ-25-event-erstellung.md) | 2026-03-08 |
-| PROJ-26 | Teilnehmer-Einladung & Member-Management | In Review | [PROJ-26-teilnehmer-einladung.md](PROJ-26-teilnehmer-einladung.md) | 2026-03-08 |
+| PROJ-25 | Event-Erstellung & -Verwaltung | Deployed | [PROJ-25-event-erstellung.md](PROJ-25-event-erstellung.md) | 2026-03-08 |
+| PROJ-26 | Teilnehmer-Einladung & Member-Management | Deployed | [PROJ-26-teilnehmer-einladung.md](PROJ-26-teilnehmer-einladung.md) | 2026-03-08 |
 | PROJ-27 | Wanderer-Screen (Eingabe-Interface) | Deployed | [PROJ-27-wanderer-screen.md](PROJ-27-wanderer-screen.md) | 2026-03-08 |
 | PROJ-28 | Content-Pool (Realtime-Karteikarten) | Deployed | [PROJ-28-content-pool.md](PROJ-28-content-pool.md) | 2026-03-08 |
 | PROJ-29 | Video-Aufnahme (bis 90 Sekunden) | Deployed | [PROJ-29-video-aufnahme.md](PROJ-29-video-aufnahme.md) | 2026-03-08 |
-| PROJ-30 | Sprachmemo + Transkription (Web Speech API) | In Progress | [PROJ-30-sprachmemo.md](PROJ-30-sprachmemo.md) | 2026-03-08 |
+| PROJ-30 | Sprachmemo + Transkription (Web Speech API) | Deployed | [PROJ-30-sprachmemo.md](PROJ-30-sprachmemo.md) | 2026-03-08 |
 | PROJ-31 | Likes & Emoji-Reactions | Planned | [PROJ-31-reactions.md](PROJ-31-reactions.md) | 2026-03-08 |
 | PROJ-32 | Kommentar-Threads | Planned | [PROJ-32-kommentare.md](PROJ-32-kommentare.md) | 2026-03-08 |
 | PROJ-33 | Tages-Admin Kurations-Workflow | Planned | [PROJ-33-tages-admin-workflow.md](PROJ-33-tages-admin-workflow.md) | 2026-03-08 |

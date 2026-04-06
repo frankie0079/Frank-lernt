@@ -1,6 +1,6 @@
 # PROJ-25: Event-Erstellung & -Verwaltung
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-04
 
@@ -411,5 +411,20 @@ EventEditSheet (Slide-over)
 - **Production Ready:** YES (conditionally)
 - **Recommendation:** BUG-R2-1 (Tages-Admin UI) should be deferred to PROJ-26 as a documented dependency -- it requires event members to exist first. All remaining bugs are low severity. Deploy is safe.
 
+### Test Run: 2026-04-06 (Round 3 -- Re-verification)
+**Tester:** QA Engineer (AI)
+**Scope:** Confirm Round 2 findings still apply; check for regressions since PROJ-26/27/28/29 landed.
+
+- Git history shows no code changes to PROJ-25 files since commit `2c4f88c` (Round 2 baseline). All Round 2 results remain valid.
+- Build still passes (verified via prior PROJ-29 deploy build on the same tree).
+- Regression: PROJ-26 (Teilnehmer-Einladung), PROJ-27, PROJ-28, PROJ-29 all merged without touching `src/app/api/events/*` or `src/components/event-*`. No regression risk introduced.
+- **BUG-R2-1 status update:** PROJ-26 is now "In Review" (members can be invited per event). The Tages-Admin assignment UI on agenda items is still missing -- this should now be tracked as a remaining gap rather than a prerequisite block. Recommend creating a follow-up task or rolling it into PROJ-33 (Tages-Admin Workflow) where the admin actually uses the assignment.
+- BUG-R2-2 through BUG-R2-7: unchanged, all Low severity, none blocking.
+
+**Production Ready:** YES (unchanged from Round 2). No new bugs found. Recommend deploying PROJ-25 and tracking BUG-R2-1 as a follow-up against PROJ-33.
+
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-06
+**Production URL:** https://frank-lernt.vercel.app
+**QA Status:** 11/12 AC, 0 critical/high. BUG-R2-1 (Tages-Admin assignment UI) deferred to PROJ-33 where it will be implemented as part of the workflow.

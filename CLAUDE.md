@@ -111,29 +111,22 @@ npm run start      # Production server
 
 ### Deployed (Production)
 - **PROJ-24: Auth & User-Accounts** — QA Round 4 passed (14/14 AC, 0 bugs)
+- **PROJ-25: Event-Erstellung** — Deployed 2026-04-06 (BUG-R2-1 deferred to PROJ-33)
+- **PROJ-26: Teilnehmer-Einladung** — Deployed 2026-04-06, QA Round 4 (11/11 AC, 0 bugs). Requires migration `20260406_join_event_rpc.sql` applied in Supabase.
 - **PROJ-27: Wanderer-Screen** — Deployed, QA passed
 - **PROJ-28: Content-Pool** — Deployed, QA passed
-- **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 passed (6/6 bugs fixed)
-
-### In Review
-- **PROJ-25: Event-Erstellung** — QA: 11/12 AC, BUG-R2-1 (Tages-Admin UI) deferred to PROJ-26
-- **PROJ-26: Teilnehmer-Einladung** — QA: 9/11 AC, verbleibende Bugs Low/Medium (akzeptabel für MVP)
+- **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 (6/6 bugs fixed)
+- **PROJ-30: Sprachmemo + Transkription** — Deployed 2026-04-06, QA Round 2 (7/7 bugs fixed)
 
 ### Nächster Schritt
-`/architecture` für **PROJ-30: Sprachmemo + Transkription** (Web Speech API)
+`/architecture` für **PROJ-31: Reactions** (Likes & Emoji) oder **PROJ-32: Kommentare**
 
 ### Build-Reihenfolge
-1. ~~PROJ-24: Auth~~ ✅ Deployed
-2. ~~PROJ-25: Event-Erstellung~~ In Review
-3. ~~PROJ-26: Teilnehmer-Einladung~~ In Review
-4. ~~PROJ-27: Wanderer-Screen~~ ✅ Deployed
-5. ~~PROJ-28: Content-Pool~~ ✅ Deployed
-6. ~~PROJ-29: Video-Aufnahme~~ ✅ Deployed
-7. **PROJ-30: Sprachmemo** ← nächstes Feature
-8. **PROJ-31: Reactions** + **PROJ-32: Kommentare**
-9. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
-10. **PROJ-35: Öffentliche Event-Seite**
-11. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅
+2. **PROJ-31: Reactions** + **PROJ-32: Kommentare** ← nächstes
+3. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
+4. **PROJ-35: Öffentliche Event-Seite**
+5. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
 
 ## Product Context
 
