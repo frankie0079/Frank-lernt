@@ -22,7 +22,7 @@
 | PROJ-28 | Content-Pool (Realtime-Karteikarten) | Deployed | [PROJ-28-content-pool.md](PROJ-28-content-pool.md) | 2026-03-08 |
 | PROJ-29 | Video-Aufnahme (bis 90 Sekunden) | Deployed | [PROJ-29-video-aufnahme.md](PROJ-29-video-aufnahme.md) | 2026-03-08 |
 | PROJ-30 | Sprachmemo + Transkription (Web Speech API) | Deployed | [PROJ-30-sprachmemo.md](PROJ-30-sprachmemo.md) | 2026-03-08 |
-| PROJ-31 | Likes & Emoji-Reactions | Planned | [PROJ-31-reactions.md](PROJ-31-reactions.md) | 2026-03-08 |
+| PROJ-31 | Likes & Emoji-Reactions | In Progress | [PROJ-31-reactions.md](PROJ-31-reactions.md) | 2026-03-08 |
 | PROJ-32 | Kommentar-Threads | Planned | [PROJ-32-kommentare.md](PROJ-32-kommentare.md) | 2026-03-08 |
 | PROJ-33 | Tages-Admin Kurations-Workflow | Planned | [PROJ-33-tages-admin-workflow.md](PROJ-33-tages-admin-workflow.md) | 2026-03-08 |
 | PROJ-34 | Slideshow-Generierung & WhatsApp-Export | Planned | [PROJ-34-slideshow-generierung.md](PROJ-34-slideshow-generierung.md) | 2026-03-08 |

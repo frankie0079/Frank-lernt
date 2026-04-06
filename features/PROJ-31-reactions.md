@@ -2,7 +2,7 @@
 
 ## Status: Planned
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-06
 
 ## Dependencies
 - Requires: PROJ-28 (Content-Pool) — Reactions gehören zu Content-Items im Content-Pool
@@ -48,7 +48,96 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Übersicht
+
+Reactions sind ein rein ergänzendes Feature auf bestehenden Content-Karten. Die gesamte Logik liegt in einer einzigen neuen Komponente (`ReactionBar`). Diese wird unten in die bestehende `ContentCard` eingebettet — keine anderen Komponenten werden umgebaut.
+
+---
+
+### Component Structure
+
+```
+ContentCard (bestehend — src/components/content-card.tsx)
++-- [bestehend] Foto/Video/Text/Audio
++-- [bestehend] Autor, Zeitstempel, Caption
++-- ReactionBar (NEU — src/components/reaction-bar.tsx)
+    +-- ReactionButton × 5 (❤️ 🔥 😂 👏 😮)
+    |   +-- Emoji
+    |   +-- Zähler (ausgeblendet wenn 0, "99+" wenn > 99)
+    |   +-- Aktiv-Zustand: Teal-Hintergrund + 1.2x Skalierung
+    +-- [auf öffentlicher Event-Seite] read-only, nicht klickbar
+```
+
+---
+
+### Datenmodell
+
+**Neue Tabelle: `reactions`**
+
+| Feld | Inhalt |
+|---|---|
+| id | Eindeutige ID (UUID) |
+| content_item_id | Welcher Beitrag — CASCADE-Delete wenn Beitrag gelöscht |
+| member_id | Wer hat reagiert (FK → members) |
+| emoji | Welches Emoji (CHECK: nur ❤️ 🔥 😂 👏 😮 erlaubt) |
+| created_at | Wann |
+
+**UNIQUE Constraint** auf `(content_item_id, member_id, emoji)` — pro Person, Beitrag und Emoji maximal 1 Eintrag. Verhindert doppelte Reaktionen auf DB-Ebene.
+
+**RLS:**
+- SELECT: öffentlich (auch für nicht eingeloggte Besucher der öffentlichen Event-Seite)
+- INSERT: nur für eingeloggte Mitglieder (eigene Reaktion)
+- DELETE: nur eigene Reaktion (`member_id = current_member`)
+
+---
+
+### Ablauf (Tap-Logik)
+
+**Tap auf inaktives Emoji:**
+1. Zähler erhöht sich sofort lokal (Optimistic UI)
+2. API POST speichert im Hintergrund
+3. Bei Fehler → Rollback + Toast
+
+**Tap auf aktives Emoji (Toggle):**
+1. Zähler sinkt sofort lokal
+2. API DELETE entfernt im Hintergrund
+3. Bei Fehler → Rollback + Toast
+
+**Debounce:** 200ms Sperre nach jedem Tap — verhindert Doppeltippen und doppelte API-Calls.
+
+---
+
+### Realtime
+
+Supabase Realtime lauscht auf INSERT/DELETE in `reactions`. Wenn ein anderer Teilnehmer reagiert, aktualisieren sich alle Zähler live — kein Reload nötig. Bei Reconnect werden Zähler einmalig neu geladen.
+
+---
+
+### Neue API-Endpunkte
+
+| Route | Methode | Zweck |
+|---|---|---|
+| `/api/events/[id]/content/[itemId]/reactions` | POST | Reaktion hinzufügen (emoji im Body, Zod-validiert) |
+| `/api/events/[id]/content/[itemId]/reactions` | DELETE | Reaktion entfernen (?emoji=❤️ im Query) |
+
+Reaktions-Aggregation (Zähler pro Emoji) wird beim Laden der Content-Items mitgeliefert — kein separater Request.
+
+---
+
+### Tech-Entscheidungen
+
+**Optimistic UI:** Reaktionen müssen instant wirken. Wir updaten lokal sofort und korrigieren nur bei Server-Fehler. Standard-Pattern für alle Social-Features.
+
+**Realtime auf DB-Ebene:** Supabase Realtime auf `reactions`-Tabelle — dasselbe Muster das bereits für den Content-Pool genutzt wird (PROJ-28). Kein Polling, keine Custom WebSockets.
+
+**Keine neuen Pakete:** `Button`, `Badge` aus shadcn/ui bereits installiert. Realtime-Client bereits vorhanden.
+
+---
+
+### Abhängigkeiten
+
+Keine neuen npm-Pakete nötig.
 
 ## QA Test Results
 _To be added by /qa_
