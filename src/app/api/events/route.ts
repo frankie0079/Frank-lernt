@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { eventCreateSchema } from "@/lib/validations/event";
 import { generateSlug } from "@/lib/event-utils";
+import { serverError } from "@/lib/api-error";
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     .limit(100);
 
   if (memberError) {
-    return NextResponse.json({ error: memberError.message }, { status: 500 });
+    return serverError("events:list_member_check", memberError);
   }
 
   if (!memberships || memberships.length === 0) {
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
     .limit(100);
 
   if (eventsError) {
-    return NextResponse.json({ error: eventsError.message }, { status: 500 });
+    return serverError("events:list_events", eventsError);
   }
 
   // Get member counts for each event
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
     .in("event_id", eventIds);
 
   if (countsError) {
-    return NextResponse.json({ error: countsError.message }, { status: 500 });
+    return serverError("events:list_counts", countsError);
   }
 
   // Build count map
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (eventError) {
-    return NextResponse.json({ error: eventError.message }, { status: 500 });
+    return serverError("events:create_event", eventError);
   }
 
   // 2. Add creator as organizer in event_members
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
   if (memberError) {
     // Cleanup: delete the event if member insertion fails
     await supabase.from("events").delete().eq("id", event.id);
-    return NextResponse.json({ error: memberError.message }, { status: 500 });
+    return serverError("events:create_organizer_link", memberError);
   }
 
   // 3. Create agenda items if provided

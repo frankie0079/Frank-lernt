@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { contentCreateSchema } from "@/lib/validations/content";
+import { serverError } from "@/lib/api-error";
 
 async function getCurrentMember(request: NextRequest) {
   const token = request.cookies.get("member_token")?.value;
@@ -126,7 +127,7 @@ export async function GET(
   const { data: items, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError("events/[id]/content:list", error);
   }
 
   // Enrich with author data
@@ -270,7 +271,7 @@ export async function POST(
     .single();
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    return serverError("events/[id]/content:create", insertError);
   }
 
   return NextResponse.json({ content_item: item }, { status: 201 });

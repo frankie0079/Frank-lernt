@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+import { serverError } from "@/lib/api-error";
 
 const updateMemberSchema = z.object({
   name: z.string().max(50, "Max 50 Zeichen").nullable().optional(),
@@ -98,7 +99,7 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError("members/me:update", error);
   }
 
   return NextResponse.json({ member: updated });

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+import { serverError } from "@/lib/api-error";
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -107,7 +108,7 @@ export async function DELETE(
     .eq("member_id", memberId);
 
   if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    return serverError("events/[id]/members/[memberId]:delete", deleteError);
   }
 
   return NextResponse.json({ success: true });

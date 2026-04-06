@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+import { serverError } from "@/lib/api-error";
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -83,7 +84,7 @@ export async function GET(
     .limit(50);
 
   if (membersError) {
-    return NextResponse.json({ error: membersError.message }, { status: 500 });
+    return serverError("events/[id]/members:list", membersError);
   }
 
   // Fetch member profiles for all member_ids

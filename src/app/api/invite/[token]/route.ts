@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+import { serverError } from "@/lib/api-error";
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -128,7 +129,7 @@ export async function POST(
   });
 
   if (rpcError) {
-    return NextResponse.json({ error: rpcError.message }, { status: 500 });
+    return serverError("invite/[token]:join_rpc", rpcError);
   }
 
   const result = rpcResult as { ok: boolean; status: string } | null;

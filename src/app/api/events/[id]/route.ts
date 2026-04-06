@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { eventCreateSchema } from "@/lib/validations/event";
 import { generateSlug } from "@/lib/event-utils";
+import { serverError } from "@/lib/api-error";
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -213,7 +214,7 @@ export async function PATCH(
     .single();
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return serverError("events/[id]:update", updateError);
   }
 
   // Replace agenda items: delete all existing, then insert new ones
@@ -307,7 +308,7 @@ export async function DELETE(
     .eq("id", id);
 
   if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    return serverError("events/[id]:delete", deleteError);
   }
 
   return NextResponse.json({ success: true });

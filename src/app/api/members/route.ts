@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+import { serverError } from "@/lib/api-error";
 
 const createMemberSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich").max(50, "Max 50 Zeichen"),
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     .limit(100);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError("members:list", error);
   }
 
   return NextResponse.json({ members: data });
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError("members:create", error);
   }
 
   // Return the join link for sharing via WhatsApp

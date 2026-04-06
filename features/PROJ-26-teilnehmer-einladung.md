@@ -1,8 +1,52 @@
 # PROJ-26: Teilnehmer-Einladung & Member-Management
 
-## Status: Deployed
+## Status: In Review
 **Created:** 2026-03-08
-**Last Updated:** 2026-04-04
+**Last Updated:** 2026-04-06
+
+## QA Round 5 (Production E2E via Playwright, 2026-04-06)
+
+Test gegen Production (`https://frank-lernt.vercel.app`) deckte 3 kritische Bugs auf, die in QA Round 4 (lokaler Test) nicht erkannt wurden. **Schema-Drift zwischen lokaler DB und Production-DB.**
+
+### BUG-R5-1 (kritisch): `event_members.id` Spalte fehlt in Production
+- **Symptom:** `GET /api/events/[id]/members` → HTTP 500 `column event_members.id does not exist`
+- **Folge:** Teilnehmerliste lädt nicht, AC-4/AC-5 nicht erfüllbar
+- **Root Cause:** Tabelle wurde manuell im Supabase-Dashboard erstellt, dabei wurde die im Tech Design vorgesehene PK-Spalte `id UUID` vergessen. Im Repo gab es bisher **keine** CREATE-TABLE-Migration für `event_members`, daher konnte das Drift unerkannt bleiben.
+- **Fix:** Migration `supabase/migrations/20260406_event_members_id_column.sql` (idempotent: ADD COLUMN IF NOT EXISTS + bedingter PK).
+- **Status:** ⏳ Migration erstellt, **muss noch im Supabase Dashboard ausgeführt werden**.
+
+### BUG-R5-2 (kritisch): Beitritt komplett kaputt
+- **Symptom:** Klick auf Invite-Link → "Fehler: column id does not exist"
+- **Folge:** Niemand kann einem Event beitreten, AC-3/AC-7 nicht erfüllbar
+- **Root Cause:** Gleicher Schema-Drift. RPC `join_event` ([20260406_join_event_rpc.sql:32](../supabase/migrations/20260406_join_event_rpc.sql#L32)) selektiert ebenfalls `id`.
+- **Fix:** Mit BUG-R5-1 erledigt (gleiche Migration).
+
+### BUG-R5-3 (Security/UX): Rohe SQL-Fehlermeldungen im UI
+- **Symptom:** Endnutzer sieht wörtlich `column "id" does not exist` auf `/invite/[token]`
+- **Risiko:** Information Disclosure (Datenbank-Schema-Details an Angreifer)
+- **Scope:** 17 Stellen quer durch alle API-Routen folgten dem Anti-Pattern `error: error.message` bei Status 500.
+- **Fix:** Neuer Helper [src/lib/api-error.ts](../src/lib/api-error.ts) mit `serverError(context, error)`. Loggt server-seitig in Vercel-Logs, gibt generische Meldung zurück. Alle 17 Stellen umgestellt.
+- **Status:** ✅ Im Code gefixt.
+
+### Was funktioniert (verifiziert)
+- AC-1: "Noch 7 Tage gueltig" wird angezeigt
+- AC-2: Token mit 32 Zeichen generiert (Test-Token: `S1cgQF5IiUNr6pq5szjeceYQxEdpHVkq`)
+- AC-10/11: Kopier-, Teilen-, "Neuen Link generieren"-Buttons sichtbar in `/events/[id]/settings`
+- Cleanup: Test-Event ließ sich sauber via `DELETE /api/events/[id]` löschen
+
+### Blockiert (durch BUG-R5-1/2, nach Migration erneut testen)
+- AC-3: Login-Redirect bei nicht eingeloggtem User
+- AC-4: Teilnehmerliste mit Avatar/Name/Rolle/Beitrittsdatum
+- AC-5: Sichtbarkeit nur für Mitglieder
+- AC-6: Mitglied entfernen (Organisator)
+- AC-7: Selbst-Entfernen-Schutz
+- AC-9: Neuer Link invalidiert alten
+
+### Nächste Schritte
+1. Migration `20260406_event_members_id_column.sql` im Supabase SQL Editor ausführen
+2. Production-Deployment der Code-Fixes (BUG-R5-3)
+3. QA Round 6 in Production wiederholen — diesmal die blockierten ACs
+
 
 ## Dependencies
 - Requires: PROJ-24 (Auth & User-Accounts) — Eingeladene Person muss eingeloggt sein, um beizutreten

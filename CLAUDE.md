@@ -112,7 +112,7 @@ npm run start      # Production server
 ### Deployed (Production)
 - **PROJ-24: Auth & User-Accounts** — QA Round 4 passed (14/14 AC, 0 bugs)
 - **PROJ-25: Event-Erstellung** — Deployed 2026-04-06 (BUG-R2-1 deferred to PROJ-33)
-- **PROJ-26: Teilnehmer-Einladung** — Deployed 2026-04-06, QA Round 4 (11/11 AC, 0 bugs). Requires migration `20260406_join_event_rpc.sql` applied in Supabase.
+- **PROJ-26: Teilnehmer-Einladung** — ⚠️ **In Review**. QA Round 5 (Production E2E, 2026-04-06) deckte Schema-Drift auf: `event_members.id` fehlt in Production-DB → Beitritt + Teilnehmerliste komplett kaputt. Fix: Migration `20260406_event_members_id_column.sql` muss im Supabase Dashboard ausgeführt werden, danach redeploy.
 - **PROJ-27: Wanderer-Screen** — Deployed, QA passed
 - **PROJ-28: Content-Pool** — Deployed, QA passed
 - **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 (6/6 bugs fixed)
