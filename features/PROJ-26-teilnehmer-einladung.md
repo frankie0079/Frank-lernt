@@ -1,6 +1,6 @@
 # PROJ-26: Teilnehmer-Einladung & Member-Management
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-06
 
