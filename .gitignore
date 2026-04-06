@@ -45,3 +45,4 @@ public/serwist-worker-*.js
 public/serwist-worker-*.js.map
 
 .mcp.json
+.playwright-mcp/
