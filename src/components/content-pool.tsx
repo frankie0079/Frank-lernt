@@ -22,6 +22,11 @@ import {
   type ContentItem,
 } from "@/components/content-card";
 import {
+  REACTION_EMOJIS,
+  emptyReactionState,
+  type ReactionEmoji,
+} from "@/components/reaction-bar";
+import {
   ContentFilterBar,
   type FilterValue,
 } from "@/components/content-filter-bar";
@@ -304,6 +309,77 @@ export function ContentPool({
       .subscribe();
 
     channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId, userId]);
+
+  // Realtime: reactions INSERT/DELETE — patches items[*].reactions
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return;
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const isValidEmoji = (e: unknown): e is ReactionEmoji =>
+      typeof e === "string" &&
+      (REACTION_EMOJIS as readonly string[]).includes(e);
+
+    const applyDelta = (
+      contentItemId: string,
+      emoji: ReactionEmoji,
+      delta: number,
+      memberId: string | null
+    ) => {
+      setItems((prev) =>
+        prev.map((it) => {
+          if (it.id !== contentItemId) return it;
+          const r = it.reactions ?? emptyReactionState();
+          const counts = { ...r.counts };
+          counts[emoji] = Math.max(0, (counts[emoji] ?? 0) + delta);
+          let userReactions = r.userReactions;
+          if (memberId && memberId === userId) {
+            if (delta > 0 && !userReactions.includes(emoji)) {
+              userReactions = [...userReactions, emoji];
+            } else if (delta < 0) {
+              userReactions = userReactions.filter((e) => e !== emoji);
+            }
+          }
+          return { ...it, reactions: { counts, userReactions } };
+        })
+      );
+    };
+
+    const channel = supabase
+      .channel(`reactions:event=${eventId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reactions" },
+        (payload) => {
+          const row = payload.new as {
+            content_item_id?: string;
+            emoji?: string;
+            member_id?: string;
+          };
+          if (!row.content_item_id || !isValidEmoji(row.emoji)) return;
+          applyDelta(row.content_item_id, row.emoji, 1, row.member_id ?? null);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "reactions" },
+        (payload) => {
+          const row = payload.old as {
+            content_item_id?: string;
+            emoji?: string;
+            member_id?: string;
+          };
+          if (!row.content_item_id || !isValidEmoji(row.emoji)) return;
+          applyDelta(row.content_item_id, row.emoji, -1, row.member_id ?? null);
+        }
+      )
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

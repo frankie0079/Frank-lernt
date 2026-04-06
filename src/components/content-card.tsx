@@ -16,6 +16,7 @@ import {
   ImageOff,
 } from "lucide-react";
 import { useState } from "react";
+import { ReactionBar, type ReactionState } from "@/components/reaction-bar";
 
 export interface ContentItem {
   id: string;
@@ -32,6 +33,7 @@ export interface ContentItem {
   created_at: string;
   author_name?: string | null;
   author_avatar_url?: string | null;
+  reactions?: ReactionState;
 }
 
 const typeConfig = {
@@ -51,6 +53,7 @@ interface ContentCardProps {
   isOrganizer: boolean;
   onTap: (item: ContentItem) => void;
   onDelete: (item: ContentItem) => void;
+  reactionsReadOnly?: boolean;
 }
 
 export function ContentCard({
@@ -59,6 +62,7 @@ export function ContentCard({
   isOrganizer,
   onTap,
   onDelete,
+  reactionsReadOnly = false,
 }: ContentCardProps) {
   const [imgError, setImgError] = useState(false);
   const config = typeConfig[item.type];
@@ -236,6 +240,14 @@ export function ContentCard({
           )}
         </div>
       </div>
+
+      {/* Reactions */}
+      <ReactionBar
+        eventId={item.event_id}
+        contentItemId={item.id}
+        initialState={item.reactions}
+        readOnly={reactionsReadOnly}
+      />
     </Card>
   );
 }

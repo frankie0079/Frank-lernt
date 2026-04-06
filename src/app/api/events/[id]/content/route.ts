@@ -147,10 +147,49 @@ export async function GET(
     }
   }
 
+  // Reactions aggregate per item: counts by emoji + which emojis the
+  // current user has reacted with. Single query, no N+1.
+  const itemIds = (items || []).map((i) => i.id);
+  const REACTION_EMOJIS = ["❤️", "🔥", "😂", "👏", "😮"] as const;
+  type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+  const emptyCounts = (): Record<ReactionEmoji, number> => ({
+    "❤️": 0, "🔥": 0, "😂": 0, "👏": 0, "😮": 0,
+  });
+
+  const reactionsByItem = new Map<
+    string,
+    { counts: Record<ReactionEmoji, number>; userReactions: ReactionEmoji[] }
+  >();
+  for (const itemId of itemIds) {
+    reactionsByItem.set(itemId, { counts: emptyCounts(), userReactions: [] });
+  }
+
+  if (itemIds.length > 0) {
+    const { data: reactions } = await supabase
+      .from("reactions")
+      .select("content_item_id, emoji, member_id")
+      .in("content_item_id", itemIds);
+
+    for (const r of reactions || []) {
+      const bucket = reactionsByItem.get(r.content_item_id);
+      if (!bucket) continue;
+      const emoji = r.emoji as ReactionEmoji;
+      if (!REACTION_EMOJIS.includes(emoji)) continue;
+      bucket.counts[emoji] += 1;
+      if (r.member_id === currentMember.id) {
+        bucket.userReactions.push(emoji);
+      }
+    }
+  }
+
   const enrichedItems = (items || []).map((item) => ({
     ...item,
     author_name: authorMap[item.author_id]?.name || null,
     author_avatar_url: authorMap[item.author_id]?.avatar_url || null,
+    reactions: reactionsByItem.get(item.id) ?? {
+      counts: emptyCounts(),
+      userReactions: [],
+    },
   }));
 
   return NextResponse.json({ content_items: enrichedItems });
