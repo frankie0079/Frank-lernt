@@ -54,7 +54,71 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Overview
+Sprachmemo folgt dem gleichen Muster wie Video-Aufnahme (PROJ-29): Button → Bottom-Sheet → Upload → API. Kein neues Backend, keine neue DB-Tabelle. Besonderheit: Live-Transkription läuft parallel zur Aufnahme über die Web Speech API.
+
+### Component Structure
+
+```
+WandererScreen (modified)
++-- ActionButtonGrid (modified: 5. Mic-Button, Layout 2×3)
++-- AudioSheet (NEW — Bottom Sheet, 3 Zustände)
+    +-- [idle] "Aufnahme starten" Button mit Mikrofon-Icon
+    +-- [recording]
+    |   +-- WaveformVisualizer (Canvas, Amplitude-Balken, 60fps)
+    |   +-- Live-Timer (0:00 → 3:00, Warnung ab 2:45)
+    |   +-- Transkriptions-Textarea (live interim results, editierbar)
+    |   +-- Stopp-Button
+    +-- [preview]
+        +-- <audio controls> Player mit Play/Pause + Seekbar
+        +-- Transkriptions-Textarea (vollständig editierbar, max 2000 Zeichen)
+        +-- Optionaler Kommentar (max 500 Zeichen)
+        +-- Progress Bar + "Verwenden" / "Neu aufnehmen" Buttons
+
+useAudioRecorder Hook (NEW)
++-- getUserMedia (audio-only)
++-- MediaRecorder (WebM/Opus → OGG/Opus → MP4 Fallback)
++-- SpeechRecognition (Web Speech API, de-DE, interimResults, continuous)
++-- AnalyserNode (Web Audio API, Amplitude für Waveform)
++-- 3-Minuten Auto-Stopp + Stille-Erkennung (5s Toast)
++-- Gibt zurück: isRecording, elapsedSeconds, blob, transcript, amplitudeData, start(), stop()
+
+ContentCard (modified)
++-- [type='audio'] Mikrofon-Icon + Transkript in Anführungszeichen + kompakter Player
+```
+
+### Datenmodell
+Keine DB-Änderungen. `content_items` unterstützt bereits `type='audio'`, `media_url`, `caption`.
+
+- Storage: `audio` Bucket (bereits live), Pfad `[event_id]/audio/[user_id]/[timestamp]-[uuid].webm`
+- `caption` = finaler Transkriptions-Text nach User-Korrektur
+
+### Tech-Entscheidungen
+
+| Entscheidung | Gewählt | Warum |
+|---|---|---|
+| Aufnahme | MediaRecorder API (audio-only) | Browser-nativ, kostenlos, gleiche Pipeline wie PROJ-29 |
+| Format | WebM/Opus → OGG/Opus → MP4 Fallback | Kleinste Dateigröße für Sprache; MIME-Erkennung wie bei PROJ-29 |
+| Transkription | Web Speech API (Browser-nativ) | Kostenlos, kein Server, läuft live parallel zur Aufnahme |
+| Waveform | Canvas + Web Audio API (AnalyserNode) | Browser-nativ, kein extra Paket |
+| Audio-Player | Natives `<audio>` + Range-Input als Seekbar | Keine Bibliothek nötig, iOS-kompatibel |
+| Storage | `audio` Bucket (bereits live, 20 MB) | Schon vorhanden, kein Setup nötig |
+| API-Endpunkt | `POST /api/events/[id]/content` (bestehend) | Akzeptiert bereits `type: 'audio'` und `caption` |
+
+### Was sich ändert vs. was neu ist
+
+**Neu:** `AudioSheet`, `useAudioRecorder` (inkl. WaveformVisualizer als inline Canvas)
+
+**Modifiziert:**
+- `ActionButtonGrid` — 5. Mic-Button, Grid wird 2×3
+- `WandererScreen` — AudioSheet-State + Handler
+- `ContentCard` — Audio-Karte: Mikrofon-Icon, Transkript, kompakter Player
+
+**Unverändert:** Alle API-Routen, DB-Schema, `ContentLightbox` (behandelt `audio` bereits), `VideoSheet`, `PhotoSheet`
+
+### Dependencies
+Keine neuen Pakete — Web Speech API, MediaRecorder, Web Audio API und Canvas API sind Browser-nativ.
 
 ## QA Test Results
 _To be added by /qa_
