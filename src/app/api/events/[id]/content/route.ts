@@ -256,10 +256,27 @@ export async function POST(
     );
   }
 
-  // Validate media_url points to our Supabase storage (prevent stored content injection)
-  const supabaseDomain = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  // Validate media_url points to our Supabase storage (prevent stored content
+  // injection). Robust check via URL parsing — string prefix matching is
+  // fragile against trailing slashes / IPv6 / encoding differences.
+  let supabaseHost: string;
+  try {
+    supabaseHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).host;
+  } catch {
+    return serverError("events/[id]/content:create_env", new Error("invalid SUPABASE_URL"));
+  }
   for (const url of [media_url, thumbnail_url]) {
-    if (url && !url.startsWith(`${supabaseDomain}/storage/`)) {
+    if (!url) continue;
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return NextResponse.json(
+        { error: "Medien-URL ist ungueltig" },
+        { status: 400 }
+      );
+    }
+    if (parsed.host !== supabaseHost || !parsed.pathname.startsWith("/storage/")) {
       return NextResponse.json(
         { error: "Medien-URL muss auf den eigenen Storage verweisen" },
         { status: 400 }
