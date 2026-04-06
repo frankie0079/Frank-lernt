@@ -11,6 +11,7 @@ import { ActionButtonGrid } from "@/components/action-button-grid";
 import { PhotoSheet } from "@/components/photo-sheet";
 import { VideoSheet } from "@/components/video-sheet";
 import { TextCommentSheet } from "@/components/text-comment-sheet";
+import { AudioSheet } from "@/components/audio-sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import {
@@ -67,6 +68,7 @@ export function WandererScreen({
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [videoSheetOpen, setVideoSheetOpen] = useState(false);
   const [textSheetOpen, setTextSheetOpen] = useState(false);
+  const [audioSheetOpen, setAudioSheetOpen] = useState(false);
 
   // Validate selected file — images open PhotoSheet, videos open VideoSheet
   const validateAndSetFile = useCallback((file: File | undefined) => {
@@ -129,6 +131,12 @@ export function WandererScreen({
     setVideoSheetOpen(true);
   }, []);
 
+  // Audio button handler
+  const handleAudio = useCallback(() => {
+    setFileError(null);
+    setAudioSheetOpen(true);
+  }, []);
+
   // Upload button handler
   const handleUpload = useCallback(() => {
     setFileError(null);
@@ -188,9 +196,10 @@ export function WandererScreen({
       <ActionButtonGrid
         onCamera={handleCamera}
         onVideo={handleVideo}
+        onAudio={handleAudio}
         onUpload={handleUpload}
         onComment={handleComment}
-        disabled={photoSheetOpen || videoSheetOpen || textSheetOpen}
+        disabled={photoSheetOpen || videoSheetOpen || textSheetOpen || audioSheetOpen}
       />
 
       {/* Hidden file inputs */}
@@ -234,6 +243,17 @@ export function WandererScreen({
         gpsPosition={position}
         onSubmitSuccess={handleSubmitSuccess}
         file={selectedVideoFile}
+      />
+
+      {/* Audio Sheet */}
+      <AudioSheet
+        open={audioSheetOpen}
+        onOpenChange={setAudioSheetOpen}
+        eventId={eventId}
+        userId={userId}
+        agendaItemId={selectedAgendaId}
+        gpsPosition={position}
+        onSubmitSuccess={handleSubmitSuccess}
       />
 
       {/* Text Comment Sheet */}

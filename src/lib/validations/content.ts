@@ -12,7 +12,7 @@ export const contentCreateSchema = z.object({
   thumbnail_url: z.string().url().nullable().optional(),
   caption: z
     .string()
-    .max(1000, "Maximal 1000 Zeichen")
+    .max(2500, "Maximal 2500 Zeichen")
     .optional()
     .or(z.literal("")),
   latitude: z.number().min(-90).max(90).nullable().optional(),
@@ -37,6 +37,6 @@ export const CONTENT_ALLOWED_VIDEO_TYPES = [
   "video/quicktime",
   "video/webm",
 ] as const;
-export const CONTENT_MAX_CAPTION_LENGTH = 1000;
+export const CONTENT_MAX_CAPTION_LENGTH = 2500;
 export const CONTENT_MAX_IMAGE_DIMENSION = 1920; // px
 export const CONTENT_THUMBNAIL_DIMENSION = 400; // px

@@ -143,8 +143,31 @@ export function ContentCard({
         )}
 
         {item.type === "audio" && (
-          <div className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100">
-            <Mic className="h-12 w-12 text-purple-400" aria-hidden="true" />
+          <div className="flex w-full flex-col gap-2 bg-gradient-to-br from-purple-50 to-purple-100 p-4">
+            <div className="flex items-start gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-200">
+                <Mic className="h-4 w-4 text-purple-700" aria-hidden="true" />
+              </div>
+              {item.caption ? (
+                <p className="line-clamp-4 text-sm italic text-purple-900">
+                  {item.caption}
+                </p>
+              ) : (
+                <p className="text-sm italic text-purple-700/70">
+                  Sprachmemo ohne Transkription
+                </p>
+              )}
+            </div>
+            {item.media_url && (
+              <audio
+                src={item.media_url}
+                controls
+                preload="none"
+                className="h-8 w-full"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Sprachmemo abspielen"
+              />
+            )}
           </div>
         )}
 
@@ -157,8 +180,8 @@ export function ContentCard({
         )}
       </div>
 
-      {/* Caption (for non-text types) */}
-      {item.type !== "text" && item.caption && (
+      {/* Caption (for non-text/non-audio types) */}
+      {item.type !== "text" && item.type !== "audio" && item.caption && (
         <div className="px-3 pt-2">
           <p className="line-clamp-2 text-sm text-muted-foreground">
             {item.caption}

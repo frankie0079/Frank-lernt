@@ -164,6 +164,25 @@ export async function flushQueue(): Promise<number> {
         };
       }
 
+      // If this is an audio item with a stored blob, re-upload to storage
+      if (payload.type === "audio" && item.fileBlob) {
+        const { uploadAudioToStorage } = await import("@/lib/content-upload");
+        const mimeType =
+          (payload.audio_mime_type as string | undefined) || "audio/webm";
+        const result = await uploadAudioToStorage(
+          item.eventId,
+          item.userId,
+          item.fileBlob,
+          mimeType
+        );
+        payload = {
+          ...payload,
+          media_url: result.mediaUrl,
+        };
+        // Strip the helper field — backend doesn't expect it
+        delete (payload as Record<string, unknown>).audio_mime_type;
+      }
+
       const res = await fetch(`/api/events/${item.eventId}/content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -315,3 +315,52 @@ export async function uploadVideoToStorage(
     thumbnailUrl,
   };
 }
+
+// --- Audio Upload (PROJ-30) ---
+
+/** Max audio file size: 20 MB */
+export const AUDIO_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Upload an audio blob to Supabase Storage.
+ * Returns the public URL.
+ */
+export async function uploadAudioToStorage(
+  eventId: string,
+  userId: string,
+  audioBlob: Blob,
+  mimeType: string,
+  onProgress?: (percent: number) => void
+): Promise<{ mediaUrl: string }> {
+  const supabase = createSupabaseBrowserClient();
+  const timestamp = Date.now();
+  const randomId = crypto.randomUUID().slice(0, 8);
+  let ext = "webm";
+  if (mimeType.includes("ogg")) ext = "ogg";
+  else if (mimeType.includes("mp4")) ext = "m4a";
+  else if (mimeType.includes("webm")) ext = "webm";
+  const audioPath = `${eventId}/audio/${userId}/${timestamp}-${randomId}.${ext}`;
+
+  onProgress?.(10);
+
+  const { error: audioError } = await supabase.storage
+    .from("media")
+    .upload(audioPath, audioBlob, {
+      contentType: mimeType,
+      cacheControl: "3600",
+    });
+
+  if (audioError) {
+    throw new Error(`Audio-Upload fehlgeschlagen: ${audioError.message}`);
+  }
+
+  onProgress?.(90);
+
+  const { data: audioUrlData } = supabase.storage
+    .from("media")
+    .getPublicUrl(audioPath);
+
+  onProgress?.(100);
+
+  return { mediaUrl: audioUrlData.publicUrl };
+}
