@@ -37,6 +37,8 @@ export interface ContentItem {
   author_avatar_url?: string | null;
   reactions?: ReactionState;
   comment_count?: number;
+  /** True if viewer is event organizer OR daily-admin of this item's agenda */
+  viewer_can_moderate_comments?: boolean;
 }
 
 const typeConfig = {
@@ -267,7 +269,9 @@ export function ContentCard({
         eventId={item.event_id}
         contentItemId={item.id}
         currentMemberId={currentUserId || null}
-        canModerate={isOrganizer}
+        canModerate={
+          isOrganizer || item.viewer_can_moderate_comments === true
+        }
         onCountChange={setCommentCount}
       />
     </Card>

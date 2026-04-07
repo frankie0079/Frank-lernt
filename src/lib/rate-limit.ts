@@ -25,6 +25,29 @@ export function isRateLimited(ip: string, type: "read" | "write" = "write"): boo
   return false;
 }
 
+/**
+ * Per-arbitrary-key rate limiter (e.g. per member-id).
+ * Use this for spec-defined per-user limits like "5 comments per minute per user".
+ */
+export function isKeyRateLimited(
+  key: string,
+  maxRequests: number,
+  windowMs: number = WINDOW_MS
+): boolean {
+  const now = Date.now();
+  const timestamps = requests.get(key) ?? [];
+  const valid = timestamps.filter((t) => now - t < windowMs);
+
+  if (valid.length >= maxRequests) {
+    requests.set(key, valid);
+    return true;
+  }
+
+  valid.push(now);
+  requests.set(key, valid);
+  return false;
+}
+
 export function getRateLimitIp(request: Request): string {
   // Prefer Vercel's trusted header (cannot be spoofed by clients)
   return (

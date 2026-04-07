@@ -182,32 +182,57 @@ export async function GET(
     }
   }
 
-  // Comment counts per item — single query, no N+1
+  // Comment counts per item — direct table read is gone; use the secure RPC
+  // helper. Aggregation is still single-pass: we count comments via a single
+  // SELECT through the service-role-bypassing RLS on comments. Since the
+  // comments table has RLS revoked from anon, we use the RPC.
+  // Simplest: use a single SELECT with a specifically-granted view-like RPC.
+  // For now, we re-grant SELECT-via-RPC by counting through a tiny helper.
   const commentCountByItem = new Map<string, number>();
   for (const itemId of itemIds) commentCountByItem.set(itemId, 0);
   if (itemIds.length > 0) {
-    const { data: commentRows } = await supabase
-      .from("comments")
-      .select("content_item_id")
-      .in("content_item_id", itemIds);
-    for (const row of commentRows || []) {
-      commentCountByItem.set(
-        row.content_item_id,
-        (commentCountByItem.get(row.content_item_id) ?? 0) + 1
-      );
+    const { data: countRows } = await supabase.rpc("count_comments_by_items", {
+      p_item_ids: itemIds,
+    });
+    for (const row of (countRows as Array<{ content_item_id: string; cnt: number }> | null) || []) {
+      commentCountByItem.set(row.content_item_id, Number(row.cnt) || 0);
     }
   }
 
-  const enrichedItems = (items || []).map((item) => ({
-    ...item,
-    author_name: authorMap[item.author_id]?.name || null,
-    author_avatar_url: authorMap[item.author_id]?.avatar_url || null,
-    reactions: reactionsByItem.get(item.id) ?? {
-      counts: emptyCounts(),
-      userReactions: [],
-    },
-    comment_count: commentCountByItem.get(item.id) ?? 0,
-  }));
+  // Daily-admin lookup: who is admin of which agenda item in this event?
+  const { data: agendaRows } = await supabase
+    .from("agenda_items")
+    .select("id, admin_member_id")
+    .eq("event_id", id);
+  const agendaAdminMap = new Map<string, string | null>();
+  for (const row of agendaRows || []) {
+    agendaAdminMap.set(row.id, row.admin_member_id);
+  }
+
+  // Is the requesting user the event organizer?
+  const { data: eventRow } = await supabase
+    .from("events")
+    .select("organizer_id")
+    .eq("id", id)
+    .single();
+  const isEventOrganizer = eventRow?.organizer_id === currentMember.id;
+
+  const enrichedItems = (items || []).map((item) => {
+    const dailyAdminMatch =
+      item.agenda_item_id != null &&
+      agendaAdminMap.get(item.agenda_item_id) === currentMember.id;
+    return {
+      ...item,
+      author_name: authorMap[item.author_id]?.name || null,
+      author_avatar_url: authorMap[item.author_id]?.avatar_url || null,
+      reactions: reactionsByItem.get(item.id) ?? {
+        counts: emptyCounts(),
+        userReactions: [],
+      },
+      comment_count: commentCountByItem.get(item.id) ?? 0,
+      viewer_can_moderate_comments: isEventOrganizer || dailyAdminMatch,
+    };
+  });
 
   return NextResponse.json({ content_items: enrichedItems });
 }

@@ -16,6 +16,7 @@ import { de } from "date-fns/locale";
 import { Send, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface Comment {
   id: string;
@@ -43,6 +44,108 @@ interface CommentThreadSheetProps {
 const PAGE_SIZE = 20;
 const MAX_LENGTH = 500;
 const UNDO_DELAY_MS = 5000;
+const SWIPE_DELETE_THRESHOLD = 80; // px
+
+interface CommentRowProps {
+  comment: Comment;
+  canDelete: boolean;
+  swipeEnabled: boolean;
+  onDelete: () => void;
+}
+
+function CommentRow({
+  comment: c,
+  canDelete,
+  swipeEnabled,
+  onDelete,
+}: CommentRowProps) {
+  const initial = c.author_name ? c.author_name.charAt(0).toUpperCase() : "?";
+  const [dragX, setDragX] = useState(0);
+  const startXRef = useRef<number | null>(null);
+
+  const swipeable = canDelete && swipeEnabled;
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!swipeable) return;
+    startXRef.current = e.clientX;
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!swipeable || startXRef.current == null) return;
+    const dx = e.clientX - startXRef.current;
+    if (dx < 0) setDragX(Math.max(dx, -SWIPE_DELETE_THRESHOLD * 1.5));
+  };
+  const onPointerUp = () => {
+    if (!swipeable) return;
+    if (dragX <= -SWIPE_DELETE_THRESHOLD) {
+      setDragX(0);
+      startXRef.current = null;
+      onDelete();
+      return;
+    }
+    setDragX(0);
+    startXRef.current = null;
+  };
+
+  return (
+    <li
+      className="relative overflow-hidden"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      {swipeable && dragX < 0 && (
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-destructive">
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+        </div>
+      )}
+      <div
+        className="flex gap-2 transition-transform"
+        style={{ transform: `translateX(${dragX}px)` }}
+      >
+        <Avatar className="h-7 w-7 shrink-0">
+          {c.author_avatar_url && (
+            <AvatarImage
+              src={c.author_avatar_url}
+              alt={c.author_name || "Avatar"}
+            />
+          )}
+          <AvatarFallback className="text-[10px]">{initial}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="truncate text-xs font-medium text-foreground">
+              {c.author_name || "Unbekannt"}
+            </span>
+            <span className="shrink-0 text-[10px] text-muted-foreground">
+              {formatDistanceToNow(new Date(c.created_at), {
+                addSuffix: true,
+                locale: de,
+              })}
+            </span>
+          </div>
+          <p
+            className="text-sm text-foreground"
+            style={{ wordBreak: "break-all" }}
+          >
+            {c.text}
+          </p>
+        </div>
+        {canDelete && !swipeEnabled && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={onDelete}
+            aria-label="Kommentar loeschen"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
 
 export function CommentThreadSheet({
   open,
@@ -53,6 +156,7 @@ export function CommentThreadSheet({
   canModerate,
   onCountChange,
 }: CommentThreadSheetProps) {
+  const isMobile = useIsMobile();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -107,7 +211,8 @@ export function CommentThreadSheet({
     fetchComments();
   }, [open, fetchComments]);
 
-  // Realtime subscription
+  // Realtime subscription — also listens for content_item DELETE so the
+  // sheet auto-closes when the underlying post disappears (BUG-6).
   useEffect(() => {
     if (!open) return;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -117,6 +222,19 @@ export function CommentThreadSheet({
     const supabase = createClient(supabaseUrl, supabaseKey);
     const channel = supabase
       .channel(`comments-${contentItemId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "content_items",
+          filter: `id=eq.${contentItemId}`,
+        },
+        () => {
+          toast.info("Beitrag wurde geloescht.");
+          onOpenChange(false);
+        }
+      )
       .on(
         "postgres_changes",
         {
@@ -165,7 +283,7 @@ export function CommentThreadSheet({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [open, eventId, contentItemId]);
+  }, [open, eventId, contentItemId, onOpenChange]);
 
   const handleSubmit = useCallback(async () => {
     const trimmed = text.trim();
@@ -281,8 +399,11 @@ export function CommentThreadSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="flex h-[80vh] flex-col"
+        side={isMobile ? "bottom" : "right"}
+        className={cn(
+          "flex flex-col",
+          isMobile ? "h-[80vh]" : "w-full sm:max-w-md"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <SheetHeader>
@@ -324,53 +445,14 @@ export function CommentThreadSheet({
               {comments.map((c) => {
                 const isOwn = c.author_id === currentMemberId;
                 const canDelete = isOwn || canModerate;
-                const initial = c.author_name
-                  ? c.author_name.charAt(0).toUpperCase()
-                  : "?";
                 return (
-                  <li key={c.id} className="flex gap-2">
-                    <Avatar className="h-7 w-7 shrink-0">
-                      {c.author_avatar_url && (
-                        <AvatarImage
-                          src={c.author_avatar_url}
-                          alt={c.author_name || "Avatar"}
-                        />
-                      )}
-                      <AvatarFallback className="text-[10px]">
-                        {initial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="truncate text-xs font-medium text-foreground">
-                          {c.author_name || "Unbekannt"}
-                        </span>
-                        <span className="shrink-0 text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(c.created_at), {
-                            addSuffix: true,
-                            locale: de,
-                          })}
-                        </span>
-                      </div>
-                      <p
-                        className="text-sm text-foreground"
-                        style={{ wordBreak: "break-word" }}
-                      >
-                        {c.text}
-                      </p>
-                    </div>
-                    {canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDelete(c)}
-                        aria-label="Kommentar loeschen"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </li>
+                  <CommentRow
+                    key={c.id}
+                    comment={c}
+                    canDelete={canDelete}
+                    swipeEnabled={isMobile}
+                    onDelete={() => handleDelete(c)}
+                  />
                 );
               })}
             </ul>
@@ -386,7 +468,7 @@ export function CommentThreadSheet({
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Kommentar schreiben..."
                   rows={2}
-                  maxLength={MAX_LENGTH + 50}
+                  maxLength={MAX_LENGTH}
                   disabled={submitting}
                   className="resize-none"
                   onKeyDown={(e) => {

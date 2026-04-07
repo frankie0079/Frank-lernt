@@ -1,12 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
+import {
+  isRateLimited,
+  isKeyRateLimited,
+  getRateLimitIp,
+} from "@/lib/rate-limit";
 import { serverError } from "@/lib/api-error";
 
 const PAGE_SIZE_DEFAULT = 20;
 const PAGE_SIZE_MAX = 100;
 const TEXT_MAX = 500;
+const PER_USER_COMMENTS_PER_MIN = 5;
 
 const commentCreateSchema = z.object({
   text: z
@@ -14,21 +19,6 @@ const commentCreateSchema = z.object({
     .min(1, "Kommentar darf nicht leer sein")
     .max(TEXT_MAX, `Maximal ${TEXT_MAX} Zeichen`),
 });
-
-async function getCurrentMember(request: NextRequest) {
-  const token = request.cookies.get("member_token")?.value;
-  if (!token) return null;
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase
-    .from("members")
-    .select("id")
-    .eq("token", token)
-    .single();
-  return data;
-}
 
 function createSupabase() {
   return createClient(
@@ -41,63 +31,43 @@ function isValidUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-// Verify content item exists in this event. Membership is NOT required for
-// SELECT (public event page reads comments). For POST we additionally check
-// that the requesting member is in the event.
-async function assertContentExists(
-  supabase: ReturnType<typeof createSupabase>,
-  eventId: string,
-  contentId: string
-): Promise<NextResponse | null> {
-  const { data: item } = await supabase
-    .from("content_items")
-    .select("id, event_id")
-    .eq("id", contentId)
-    .single();
-  if (!item || item.event_id !== eventId) {
-    return NextResponse.json({ error: "Beitrag nicht gefunden" }, { status: 404 });
-  }
-  return null;
+function memberToken(request: NextRequest): string | null {
+  return request.cookies.get("member_token")?.value ?? null;
 }
 
-async function assertMembership(
-  supabase: ReturnType<typeof createSupabase>,
-  eventId: string,
-  memberId: string
-): Promise<NextResponse | null> {
-  const { data: membership } = await supabase
-    .from("event_members")
-    .select("role")
-    .eq("event_id", eventId)
-    .eq("member_id", memberId)
-    .single();
-  if (!membership) {
-    return NextResponse.json(
-      { error: "Kein Zugriff auf dieses Event" },
-      { status: 403 }
-    );
+// Map RPC error codes to HTTP responses
+function rpcErrorResponse(code: string): NextResponse {
+  switch (code) {
+    case "unauthorized":
+      return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+    case "forbidden":
+      return NextResponse.json(
+        { error: "Kein Zugriff auf dieses Event" },
+        { status: 403 }
+      );
+    case "not_found":
+      return NextResponse.json(
+        { error: "Beitrag nicht gefunden" },
+        { status: 404 }
+      );
+    case "empty":
+      return NextResponse.json(
+        { error: "Kommentar darf nicht leer sein" },
+        { status: 400 }
+      );
+    case "too_long":
+      return NextResponse.json(
+        { error: `Maximal ${TEXT_MAX} Zeichen` },
+        { status: 400 }
+      );
+    default:
+      return NextResponse.json({ error: "Fehler" }, { status: 500 });
   }
-  return null;
-}
-
-async function enrichWithAuthors(
-  supabase: ReturnType<typeof createSupabase>,
-  comments: Array<{ author_id: string }>
-) {
-  const ids = [...new Set(comments.map((c) => c.author_id))];
-  if (ids.length === 0) return new Map<string, { name: string | null; avatar_url: string | null }>();
-  const { data: authors } = await supabase
-    .from("members")
-    .select("id, name, avatar_url")
-    .in("id", ids);
-  return new Map(
-    (authors || []).map((a) => [a.id, { name: a.name, avatar_url: a.avatar_url }])
-  );
 }
 
 // GET /api/events/[id]/content/[contentId]/comments
-//   ?cursor=<iso>&limit=20      → page (older than cursor)
-//   ?id=<commentId>             → single comment (used by Realtime enrichment)
+//   ?cursor=<iso>&limit=20  → page (older than cursor)
+//   ?id=<commentId>         → single comment (Realtime enrichment)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; contentId: string }> }
@@ -116,10 +86,10 @@ export async function GET(
     );
   }
 
-  const supabase = createSupabase();
-
-  const guard = await assertContentExists(supabase, id, contentId);
-  if (guard) return guard;
+  const token = memberToken(request);
+  if (!token) {
+    return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+  }
 
   const url = new URL(request.url);
   const singleId = url.searchParams.get("id");
@@ -131,42 +101,34 @@ export async function GET(
   );
 
   if (singleId && !isValidUUID(singleId)) {
-    return NextResponse.json({ error: "Ungueltiges Comment-ID-Format" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Ungueltiges Comment-ID-Format" },
+      { status: 400 }
+    );
   }
   if (cursor && isNaN(Date.parse(cursor))) {
     return NextResponse.json({ error: "Ungueltiges Cursor-Format" }, { status: 400 });
   }
 
-  let query = supabase
-    .from("comments")
-    .select("id, content_item_id, author_id, text, created_at")
-    .eq("content_item_id", contentId);
+  const supabase = createSupabase();
+  const { data, error } = await supabase.rpc("read_comments", {
+    p_token: token,
+    p_content_item_id: contentId,
+    p_cursor: cursor || null,
+    p_limit: limit,
+    p_single_id: singleId || null,
+  });
 
-  if (singleId) {
-    query = query.eq("id", singleId).limit(1);
-  } else {
-    query = query.order("created_at", { ascending: false }).limit(limit);
-    if (cursor) query = query.lt("created_at", cursor);
-  }
-
-  const { data: rows, error } = await query;
   if (error) {
-    return serverError("comments:list", error);
+    return serverError("comments:read_rpc", error);
   }
 
-  const authorMap = await enrichWithAuthors(supabase, rows || []);
+  const result = data as { ok: boolean; error?: string; comments?: unknown[] };
+  if (!result?.ok) {
+    return rpcErrorResponse(result?.error || "unknown");
+  }
 
-  // For paginated list reverse so the client receives chronological order
-  // (oldest first within the page). For singleId mode keep as-is.
-  const ordered = singleId ? rows || [] : (rows || []).slice().reverse();
-
-  const enriched = ordered.map((c) => ({
-    ...c,
-    author_name: authorMap.get(c.author_id)?.name ?? null,
-    author_avatar_url: authorMap.get(c.author_id)?.avatar_url ?? null,
-  }));
-
-  return NextResponse.json({ comments: enriched });
+  return NextResponse.json({ comments: result.comments ?? [] });
 }
 
 // POST /api/events/[id]/content/[contentId]/comments
@@ -180,20 +142,26 @@ export async function POST(
     return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
   }
 
-  // Spec wants 5/min per user, but the shared limiter is per-IP. 30/min for
-  // writes is the global cap and is sufficient as a first-line defense.
-  // Tighten via Upstash/KV if comment spam ever becomes a real problem.
+  // First-line IP-based defense
   const ip = getRateLimitIp(request);
   if (isRateLimited(ip, "write")) {
     return NextResponse.json(
-      { error: "Zu viele Kommentare. Bitte warte einen Moment." },
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
       { status: 429 }
     );
   }
 
-  const currentMember = await getCurrentMember(request);
-  if (!currentMember) {
+  const token = memberToken(request);
+  if (!token) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+  }
+
+  // Spec-mandated per-user limit: 5 comments / minute / member token
+  if (isKeyRateLimited(`comments:${token}`, PER_USER_COMMENTS_PER_MIN)) {
+    return NextResponse.json(
+      { error: "Zu viele Kommentare. Bitte warte einen Moment." },
+      { status: 429 }
+    );
   }
 
   const body = await request.json().catch(() => null);
@@ -209,48 +177,48 @@ export async function POST(
     );
   }
 
-  const trimmed = parsed.data.text.trim();
-  if (trimmed.length === 0) {
-    return NextResponse.json(
-      { error: "Kommentar darf nicht leer sein" },
-      { status: 400 }
-    );
+  const supabase = createSupabase();
+  const { data, error } = await supabase.rpc("create_comment", {
+    p_token: token,
+    p_content_item_id: contentId,
+    p_text: parsed.data.text,
+  });
+
+  if (error) {
+    return serverError("comments:create_rpc", error);
   }
 
-  const supabase = createSupabase();
+  const result = data as {
+    ok: boolean;
+    error?: string;
+    comment?: {
+      id: string;
+      content_item_id: string;
+      author_id: string;
+      text: string;
+      created_at: string;
+    };
+  };
 
-  const itemGuard = await assertContentExists(supabase, id, contentId);
-  if (itemGuard) return itemGuard;
-
-  const memberGuard = await assertMembership(supabase, id, currentMember.id);
-  if (memberGuard) return memberGuard;
-
-  const { data: inserted, error: insertError } = await supabase
-    .from("comments")
-    .insert({
-      content_item_id: contentId,
-      author_id: currentMember.id,
-      text: trimmed,
-    })
-    .select("id, content_item_id, author_id, text, created_at")
-    .single();
-
-  if (insertError) {
-    return serverError("comments:create", insertError);
+  if (!result?.ok) {
+    return rpcErrorResponse(result?.error || "unknown");
   }
 
   // Enrich with author info for the response
-  const { data: author } = await supabase
-    .from("members")
-    .select("name, avatar_url")
-    .eq("id", currentMember.id)
-    .single();
+  const inserted = result.comment!;
+  const { data: author } = await supabase.rpc("read_comments", {
+    p_token: token,
+    p_content_item_id: contentId,
+    p_single_id: inserted.id,
+  });
+  const authorComments = (author as { comments?: Array<{ id: string; author_name: string | null; author_avatar_url: string | null }> })?.comments;
+  const enriched = authorComments?.[0];
 
   return NextResponse.json({
-    comment: {
+    comment: enriched ?? {
       ...inserted,
-      author_name: author?.name ?? null,
-      author_avatar_url: author?.avatar_url ?? null,
+      author_name: null,
+      author_avatar_url: null,
     },
   });
 }
