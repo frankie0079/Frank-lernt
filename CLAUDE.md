@@ -120,16 +120,18 @@ npm run start      # Production server
 - **PROJ-28: Content-Pool** — Deployed, QA passed
 - **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 (6/6 bugs fixed)
 - **PROJ-30: Sprachmemo + Transkription** — Deployed 2026-04-06, QA Round 2 (7/7 bugs fixed)
+- **PROJ-31: Likes & Emoji-Reactions** — Deployed 2026-04-06
+- **PROJ-32: Kommentar-Threads** — Deployed 2026-04-06, 9 QA bugs fixed (incl. BUG-8/9 RLS bypass)
+- **PROJ-33: Tages-Admin Kurations-Workflow** — Deployed 2026-04-07, QA Round 3 in Production passed via Playwright E2E (5 original bugs + 2 newly found BUG-6/7 fixed). Migrations `20260407_daily_reports.sql` + `20260407_fix_report_items.sql` angewendet.
 
 ### Nächster Schritt
-`/architecture` für **PROJ-31: Reactions** (Likes & Emoji) oder **PROJ-32: Kommentare**
+`/architecture` für **PROJ-34: Slideshow-Generierung & WhatsApp-Export**
 
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅
-2. **PROJ-31: Reactions** + **PROJ-32: Kommentare** ← nächstes
-3. **PROJ-33: Tages-Admin Workflow** + **PROJ-34: Slideshow**
-4. **PROJ-35: Öffentliche Event-Seite**
-5. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅
+2. **PROJ-34: Slideshow** ← nächstes
+3. **PROJ-35: Öffentliche Event-Seite**
+4. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
 
 ## Product Context
 

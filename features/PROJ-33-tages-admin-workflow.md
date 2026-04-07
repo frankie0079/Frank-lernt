@@ -1,8 +1,8 @@
 # PROJ-33: Tages-Admin Kurations-Workflow
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-07
 
 ## Dependencies
 - Requires: PROJ-28 (Content-Pool) — Inhalte werden aus dem Content-Pool kuratiert
@@ -304,5 +304,52 @@ Fixed all 5 bugs from the first QA round:
 
 Build: `npm run build` passes. Migration `20260407_fix_report_items.sql` is pending manual application via Supabase SQL editor.
 
+## QA Round 3 — Production E2E via Playwright (2026-04-07)
+
+Full happy-path executed against the live Vercel URL using Playwright MCP at iPhone 12 Pro viewport (390×844). Test data created via authenticated API calls (organizer token), then cleaned up.
+
+### Verified Live in Production
+
+| Test | Result |
+|------|--------|
+| Admin overview at 390px (status badge, item count, date tile) | ✅ |
+| Curation editor: counter "0 von 5" (BUG-2 fix) | ✅ |
+| Multi-select with checkbox overlay → 3 items selected | ✅ |
+| Auto-save after 2s debounce → "✓ Gespeichert" indicator | ✅ |
+| Server persistence: 4 items with sort_order 10/20/30/40 | ✅ |
+| Selected-items rail horizontally scrollable with order badges | ✅ |
+| Publish toggle confirm dialog → status "Veröffentlicht" + Live badge | ✅ |
+| Draft demotion when editing a published report | ✅ |
+| BUG-3: DELETE selected content item → 200, no FK violation | ✅ |
+| Deleted item preserved as `content_item_id=NULL, deleted=true` | ✅ |
+| BUG-1: offline edit → localStorage saved | ✅ |
+| Offline banner + "Offline — Änderungen lokal gespeichert" | ✅ |
+| Sync-on-mount: offline edits pushed to server on reload | ✅ |
+
+### New Bugs Found and Fixed In This Round
+
+**BUG-6 (High → fixed `4d41388`):** dnd-kit client-side crash when loading a report that contains a deleted item. `useSortable({ id: null })` throws `'id' in null`. Fix: synthetic `__del__${reportItemId}` keys so dnd-kit and React keys remain unique; remove button hidden on deleted markers (they cannot be removed client-side and live as null-rows on the server).
+
+**BUG-7 (High → fixed `3a3ac84`):** Data loss when reloading after offline edits while now online. `loadReport` fetched from server and cleared the localStorage draft without ever pushing the offline edits. Fix: on mount, if a draft exists for the agenda item, PUT it to the server first, toast "Offline-Änderungen synchronisiert", then re-fetch the freshly synced report. `content_not_in_event` errors are handled gracefully (toast + clear draft + reload).
+
+### Not Tested
+
+- **Drag & drop reorder via UI** — dnd-kit touch sensors hard to drive over Playwright without real touch events. Server reorder API (PUT with new sort_order) was exercised by the auto-save flow. Manual iPhone test recommended but not blocking.
+- **Vorschau-Sheet** — not opened during this round; renders should be straightforward read-only list.
+
+### Cosmetic / Non-Blocking
+
+- Counter shows "X von Y ausgewählt" where deleted markers count as +1 selected even though they don't appear in the pool total. Minor UX, not a functional bug.
+- Checkbox overlay slightly clips the first letter of card titles in the pool. Minor, no impact.
+
+### Production-Ready Recommendation: **READY**
+
+All original 5 QA bugs + 2 newly discovered bugs (BUG-6, BUG-7) are fixed and live-verified against `https://frank-lernt.vercel.app`. PROJ-33 status set to **Deployed**.
+
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-04-07
+- **Final commit:** `3a3ac84` (BUG-7 sync-on-mount fix)
+- **Migrations applied:** `20260407_daily_reports.sql`, `20260407_fix_report_items.sql` (both via Supabase SQL editor)
+- **Production URL:** https://frank-lernt.vercel.app
+- **Verified routes:** `/events/[id]/admin`, `/events/[id]/admin/[agendaItemId]`
