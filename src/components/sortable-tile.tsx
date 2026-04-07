@@ -109,17 +109,20 @@ export function SortableTile({ item, index, onRemove }: SortableTileProps) {
           {index + 1}
         </Badge>
 
-        {/* Remove button */}
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="absolute right-1 top-1 h-6 w-6 rounded-full bg-black/60 text-white hover:bg-black/80"
-          onClick={() => onRemove(item.content_item_id)}
-          aria-label="Aus Auswahl entfernen"
-        >
-          <X className="h-3 w-3" />
-        </Button>
+        {/* Remove button — hidden for deleted markers (they cannot be
+            removed by the client; they live as null-rows on the server). */}
+        {!item.deleted && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute right-1 top-1 h-6 w-6 rounded-full bg-black/60 text-white hover:bg-black/80"
+            onClick={() => onRemove(item.content_item_id)}
+            aria-label="Aus Auswahl entfernen"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        )}
 
         {/* Drag handle — ONLY this gets listeners */}
         <button

@@ -160,12 +160,18 @@ export function ReportEditor({
       const sorted = [...data.items].sort(
         (a, b) => a.sort_order - b.sort_order
       );
-      const ids = sorted.map((i) => i.content_item_id);
+      // Deleted items have content_item_id = null (BUG-3 fix). Use the
+      // report_items.id as a synthetic key so dnd-kit / React keys stay
+      // unique and the tile can still render as "nicht verfügbar".
+      const keyOf = (it: ReportItemShape) =>
+        it.content_item_id ?? `__del__${it.id}`;
+      const ids = sorted.map(keyOf);
       const map = new Map<string, SelectedTileItem>();
       for (const it of sorted) {
-        map.set(it.content_item_id, {
+        const key = keyOf(it);
+        map.set(key, {
           id: it.id,
-          content_item_id: it.content_item_id,
+          content_item_id: key,
           sort_order: it.sort_order,
           deleted: it.deleted,
           type: it.type,
@@ -264,8 +270,12 @@ export function ReportEditor({
       }
       setSaveState("saving");
       try {
+        // Filter out synthetic keys for deleted items — they exist only on
+        // the client to keep dnd-kit happy. The server preserves null-marker
+        // rows automatically (save_report_items v2).
+        const persistable = ids.filter((id) => !id.startsWith("__del__"));
         const body = {
-          items: ids.map((id, i) => ({
+          items: persistable.map((id, i) => ({
             content_item_id: id,
             sort_order: (i + 1) * 10,
           })),
