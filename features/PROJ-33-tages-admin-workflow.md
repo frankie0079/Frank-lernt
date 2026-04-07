@@ -55,7 +55,129 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Übersicht
+
+Zwei neue Seiten + ein Kurations-Editor. Der Tages-Admin wählt aus dem vorhandenen Content-Pool aus, ordnet per Drag & Drop, speichert automatisch und veröffentlicht auf die Landing Page.
+
+### Seiten-Struktur
+
+```
+/events/[id]/admin                      ← Organisator-Übersicht
++-- AdminOverviewPage
+    +-- AgendaReportList
+    |   +-- AgendaReportRow (pro Tag)
+    |       +-- StatusBadge (draft | published | leer)
+    |       +-- ItemCountBadge ("7 Beiträge")
+    |       +-- LastUpdatedTimestamp
+    |       +-- "Kuratieren"-Link → /admin/[agendaItemId]
+    +-- EmptyState ("Noch keine Tagesberichte")
+
+/events/[id]/admin/[agendaItemId]       ← Kurations-Interface
++-- ReportEditorPage
+    +-- CurationToolbar
+    |   +-- SelectionCounter ("3 von 12 ausgewählt")
+    |   +-- AutoSaveIndicator ("Gespeichert" / "Speichert…" / "Fehler")
+    |   +-- PreviewButton → ReportPreviewSheet
+    |   +-- PublishToggle → PublishConfirmDialog
+    +-- SelectedItemsSection (oben, nur sichtbar wenn ≥1 ausgewählt)
+    |   +-- SortableTileGrid
+    |       +-- SortableTile (Vorschau-Kachel, draggable)
+    +-- ContentPoolSelectable (wiederverwendet bestehende ContentPool-Logik)
+        +-- ContentFilterBar (vorhanden, wiederverwenden)
+        +-- ContentCard (vorhanden) + CheckboxOverlay (neu, oben-links)
+
++-- ReportPreviewSheet (Sheet, Read-Only)
++-- PublishConfirmDialog (AlertDialog)
++-- DraftWarningBanner (wenn published → bearbeitet wird)
+```
+
+### Datenhaltung
+
+**Neue Datenbank-Tabellen:**
+
+```
+daily_reports
+  id              UUID (PK)
+  event_id        UUID → events (CASCADE DELETE)
+  agenda_item_id  UUID → agenda_items (CASCADE DELETE, UNIQUE)
+  status          TEXT ("draft" | "published")
+  published_at    TIMESTAMPTZ (null wenn draft)
+  created_by      UUID → members
+  updated_at      TIMESTAMPTZ
+
+report_items
+  id              UUID (PK)
+  report_id       UUID → daily_reports (CASCADE DELETE)
+  content_item_id UUID → content_items (kein CASCADE — gelöschte Items grau markieren)
+  sort_order      INT (10, 20, 30 … Lücken für späteres Einfügen ohne Re-Nummerierung)
+  created_at      TIMESTAMPTZ
+  
+  UNIQUE(report_id, content_item_id)
+```
+
+**Client-State während Kuratierung:**
+- `selectedIds`: Set von content_item_ids (welche angehakt)
+- `sortedOrder`: Array von content_item_ids (Drag & Drop-Reihenfolge)
+- `isDirty`: Boolean (ungespeicherte Änderungen vorhanden)
+- `offlineBuffer`: localStorage-Backup der aktuellen Auswahl (Offline-Fallback)
+
+### API-Routen (neu)
+
+| Route | Methode | Wer | Was |
+|-------|---------|-----|-----|
+| `/api/events/[id]/reports` | GET | Organisator | Alle Tagesberichte für Event laden (Übersicht) |
+| `/api/events/[id]/reports/[agendaItemId]` | GET | Admin + Organisator | Bericht + Items + Content-Details laden |
+| `/api/events/[id]/reports/[agendaItemId]` | PUT | Admin + Organisator | Items + Reihenfolge bulk-speichern |
+| `/api/events/[id]/reports/[agendaItemId]/publish` | PATCH | Admin + Organisator | Status toggling (draft ↔ published) |
+
+**Zugriffskontrolle:** SECURITY DEFINER PostgreSQL-Funktionen (gleiche Architektur wie PROJ-31/32). Token aus Cookie → Member-ID → Prüfung ob Admin dieses Agenda-Eintrags oder Organisator. Direkter PostgREST-Zugriff auf `daily_reports` und `report_items` gesperrt.
+
+### Auto-Save
+
+Benutzer wählt/sortiert → isDirty = true → 2s Debounce → PUT Request → "Gespeichert ✓". Publish-Aktion erzwingt sofortiges Speichern (kein Warten auf Debounce).
+
+### Drag & Drop
+
+- Library: `@dnd-kit/sortable` (Touch-Support eingebaut, kein zusätzlicher Wrapper nötig)
+- Nur im SelectedItemsSection (nicht im Content-Pool)
+- Touch-Aktivierung: langer Tap (400ms Delay) für iPhone-Kompatibilität
+- Touch-Targets: Kacheln mind. 44×44px
+
+### Publish-Flow
+
+1. Admin tippt "Veröffentlichen" → PublishConfirmDialog
+2. Bestätigung → PATCH → status = "published", published_at = now()
+3. Bericht erneut bearbeiten → DraftWarningBanner → Auto-Save setzt status = "draft"
+4. Erneutes "Veröffentlichen" nötig
+
+### Gelöschter Beitrag (Edge Case)
+
+`report_items` hat kein CASCADE auf `content_items`. Beim Laden werden fehlende Items als `{ deleted: true }` markiert — UI zeigt ausgegraut "Nicht mehr verfügbar", kein automatisches Entfernen.
+
+### Wiederverwendete Komponenten
+
+| Komponente | Nutzung |
+|------------|---------|
+| `content-card.tsx` | Im Pool mit Checkbox-Overlay erweitern |
+| `content-pool.tsx` | Selectable-Variante ableiten |
+| `content-filter-bar.tsx` | Unverändert weiterverwenden |
+| `AlertDialog`, `Sheet`, `Badge`, `Switch` (shadcn) | Vorhanden, direkt nutzen |
+
+### Neue Dependencies
+
+| Package | Zweck |
+|---------|-------|
+| `@dnd-kit/core` | Drag & Drop Kern-Engine |
+| `@dnd-kit/sortable` | Sortierbare Listen |
+| `@dnd-kit/utilities` | CSS-Hilfsfunktionen |
+| `use-debounce` | Auto-Save Debounce Hook |
+
+### Build-Reihenfolge
+
+1. Backend — Tabellen, RLS, SECURITY DEFINER RPCs, API-Routen
+2. Frontend — Übersichtsseite → Kurations-Interface → Auto-Save → Publish-Flow
+3. QA — gegen Production testen
 
 ## QA Test Results
 _To be added by /qa_
