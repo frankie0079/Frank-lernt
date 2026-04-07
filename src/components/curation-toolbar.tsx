@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Eye, Check, Loader2, AlertCircle } from "lucide-react";
 
-export type SaveState = "idle" | "saving" | "saved" | "error";
+export type SaveState = "idle" | "saving" | "saved" | "error" | "offline-pending";
 
 interface CurationToolbarProps {
   selectedCount: number;
@@ -143,6 +143,14 @@ function SaveIndicator({ state }: { state: SaveState }) {
       <span className="flex items-center gap-1 text-xs text-green-600">
         <Check className="h-3 w-3" aria-hidden="true" />
         Gespeichert
+      </span>
+    );
+  }
+  if (state === "offline-pending") {
+    return (
+      <span className="flex items-center gap-1 text-xs text-amber-600">
+        <AlertCircle className="h-3 w-3" aria-hidden="true" />
+        Offline — Änderungen lokal gespeichert
       </span>
     );
   }

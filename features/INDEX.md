@@ -24,7 +24,7 @@
 | PROJ-30 | Sprachmemo + Transkription (Web Speech API) | Deployed | [PROJ-30-sprachmemo.md](PROJ-30-sprachmemo.md) | 2026-03-08 |
 | PROJ-31 | Likes & Emoji-Reactions | Deployed | [PROJ-31-reactions.md](PROJ-31-reactions.md) | 2026-03-08 |
 | PROJ-32 | Kommentar-Threads | Deployed | [PROJ-32-kommentare.md](PROJ-32-kommentare.md) | 2026-03-08 |
-| PROJ-33 | Tages-Admin Kurations-Workflow | In Progress | [PROJ-33-tages-admin-workflow.md](PROJ-33-tages-admin-workflow.md) | 2026-03-08 |
+| PROJ-33 | Tages-Admin Kurations-Workflow | In Review | [PROJ-33-tages-admin-workflow.md](PROJ-33-tages-admin-workflow.md) | 2026-03-08 |
 | PROJ-34 | Slideshow-Generierung & WhatsApp-Export | Planned | [PROJ-34-slideshow-generierung.md](PROJ-34-slideshow-generierung.md) | 2026-03-08 |
 | PROJ-35 | Öffentliche Event-Seite | Planned | [PROJ-35-oeffentliche-event-seite.md](PROJ-35-oeffentliche-event-seite.md) | 2026-03-08 |
 | PROJ-36 | Post-Event Tagebuch | Planned | [PROJ-36-postevent-tagebuch.md](PROJ-36-postevent-tagebuch.md) | 2026-03-08 |

@@ -42,6 +42,51 @@ interface ReportItemShape {
   author_avatar_url: string | null;
 }
 
+// --- localStorage draft helpers (BUG-1) ---
+interface DraftPayload {
+  selectedIds: string[];
+  itemsById: [string, SelectedTileItem][];
+  savedAt: string;
+  eventId: string;
+  status: "draft" | "published" | "empty";
+}
+
+function draftStorageKey(agendaItemId: string) {
+  return `proj33-report-draft-${agendaItemId}`;
+}
+
+function loadDraftFromStorage(agendaItemId: string): DraftPayload | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(draftStorageKey(agendaItemId));
+    if (!raw) return null;
+    return JSON.parse(raw) as DraftPayload;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraftToStorage(agendaItemId: string, payload: DraftPayload) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      draftStorageKey(agendaItemId),
+      JSON.stringify(payload)
+    );
+  } catch {
+    /* quota / unavailable — ignore */
+  }
+}
+
+function clearDraftFromStorage(agendaItemId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(draftStorageKey(agendaItemId));
+  } catch {
+    /* ignore */
+  }
+}
+
 interface ReportEditorProps {
   eventId: string;
   agendaItemId: string;
@@ -80,6 +125,12 @@ export function ReportEditor({
 
   const totalCountRef = useRef(0);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Always-fresh view of itemsById for async callbacks (e.g. offline save).
+  const itemsByIdRef = useRef<Map<string, SelectedTileItem>>(new Map());
+  useEffect(() => {
+    itemsByIdRef.current = itemsById;
+  }, [itemsById]);
 
   // --- Initial load ---
   const loadReport = useCallback(async () => {
@@ -132,10 +183,29 @@ export function ReportEditor({
       setStatus(nextStatus);
       prevStatusRef.current = nextStatus;
       setLoadError(null);
+      // Server is source of truth — clear any stale localStorage draft.
+      clearDraftFromStorage(agendaItemId);
     } catch (err) {
-      setLoadError(
-        err instanceof Error ? err.message : "Ein Fehler ist aufgetreten."
-      );
+      // Offline fallback: use localStorage draft if present.
+      const draft = loadDraftFromStorage(agendaItemId);
+      if (
+        draft &&
+        draft.eventId === eventId &&
+        typeof navigator !== "undefined" &&
+        !navigator.onLine
+      ) {
+        setSelectedIds(draft.selectedIds);
+        setItemsById(new Map(draft.itemsById));
+        setStatus(draft.status);
+        prevStatusRef.current =
+          draft.status === "empty" ? "empty" : draft.status;
+        setSaveState("offline-pending");
+        setLoadError(null);
+      } else {
+        setLoadError(
+          err instanceof Error ? err.message : "Ein Fehler ist aufgetreten."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -145,21 +215,21 @@ export function ReportEditor({
     loadReport();
   }, [loadReport]);
 
-  // Track total count for selection counter (approximate — we fetch event content list size from the grid's total via a tiny fetch)
-  // We just use the currently known selection count vs. an incremental counter seen from grid Fetch.
-  // For simplicity we query a single HEAD-ish call via the content API with limit=1 once on mount.
+  // Fetch total count for "X von Y ausgewählt" counter (BUG-2)
   useEffect(() => {
     let aborted = false;
     (async () => {
       try {
-        // Small heuristic: fetch first page to get a lower bound estimate
         const res = await fetch(
-          `/api/events/${eventId}/content?limit=100`
+          `/api/events/${eventId}/content?limit=1`
         );
         if (!res.ok) return;
         const data = await res.json();
         if (aborted) return;
-        const n = (data.content_items || []).length;
+        const n =
+          typeof data.total_count === "number"
+            ? data.total_count
+            : (data.content_items || []).length;
         totalCountRef.current = n;
         setTotalCount(n);
       } catch {
@@ -174,7 +244,24 @@ export function ReportEditor({
   // --- Auto-save ---
   const performSave = useCallback(
     async (ids: string[]) => {
-      if (!isOnline) return;
+      if (!isOnline) {
+        // Persist to localStorage and surface an offline-pending state.
+        const itemEntries: [string, SelectedTileItem][] = [];
+        const cur = itemsByIdRef.current;
+        for (const id of ids) {
+          const v = cur.get(id);
+          if (v) itemEntries.push([id, v]);
+        }
+        saveDraftToStorage(agendaItemId, {
+          selectedIds: ids,
+          itemsById: itemEntries,
+          savedAt: new Date().toISOString(),
+          eventId,
+          status: status === "empty" ? "draft" : status,
+        });
+        setSaveState("offline-pending");
+        return;
+      }
       setSaveState("saving");
       try {
         const body = {
@@ -193,7 +280,16 @@ export function ReportEditor({
         );
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || "Speichern fehlgeschlagen");
+          const errMsg: string = data.error || "Speichern fehlgeschlagen";
+          if (/content_not_in_event/i.test(errMsg)) {
+            toast.error(
+              "Einige Offline-Änderungen konnten nicht synchronisiert werden"
+            );
+            clearDraftFromStorage(agendaItemId);
+            await loadReport();
+            return;
+          }
+          throw new Error(errMsg);
         }
         const data = (await res.json()) as {
           report: ReportShape;
@@ -213,6 +309,7 @@ export function ReportEditor({
         setStatus(nextStatus);
         prevStatusRef.current = nextStatus;
         setSaveState("saved");
+        clearDraftFromStorage(agendaItemId);
       } catch (err) {
         setSaveState("error");
         toast.error(
@@ -220,7 +317,7 @@ export function ReportEditor({
         );
       }
     },
-    [eventId, agendaItemId, isOnline]
+    [eventId, agendaItemId, isOnline, status, loadReport]
   );
 
   const debouncedSave = useDebouncedCallback(
@@ -236,9 +333,32 @@ export function ReportEditor({
       loadedOnceRef.current = true;
       return;
     }
-    if (!isOnline) return;
     debouncedSave(selectedIds);
   }, [selectedIds, loading, isOnline, debouncedSave]);
+
+  // BUG-1: Reconnect sync — when transitioning offline → online, flush pending draft.
+  const wasOfflineRef = useRef(false);
+  useEffect(() => {
+    if (!isOnline) {
+      wasOfflineRef.current = true;
+      return;
+    }
+    if (!wasOfflineRef.current) return;
+    wasOfflineRef.current = false;
+    const draft = loadDraftFromStorage(agendaItemId);
+    if (!draft || draft.eventId !== eventId) return;
+    (async () => {
+      try {
+        await performSave(draft.selectedIds);
+        // performSave clears localStorage on success; surface toast if still cleared.
+        if (!loadDraftFromStorage(agendaItemId)) {
+          toast.success("Offline-Änderungen synchronisiert");
+        }
+      } catch {
+        /* performSave already surfaces the error */
+      }
+    })();
+  }, [isOnline, agendaItemId, eventId, performSave]);
 
   // --- Selection handlers ---
   const handleToggle = useCallback(
@@ -344,7 +464,7 @@ export function ReportEditor({
     );
   }
 
-  const effectiveTotal = Math.max(totalCount, selectedIds.length);
+  const effectiveTotal = totalCount;
 
   return (
     <div className="space-y-4">

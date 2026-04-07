@@ -94,7 +94,7 @@ export async function GET(
 
   let query = supabase
     .from("content_items")
-    .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at")
+    .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at", { count: "exact" })
     .eq("event_id", id)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -124,7 +124,7 @@ export async function GET(
     query = query.eq("agenda_item_id", agendaId);
   }
 
-  const { data: items, error } = await query;
+  const { data: items, error, count: totalCount } = await query;
 
   if (error) {
     return serverError("events/[id]/content:list", error);
@@ -234,7 +234,7 @@ export async function GET(
     };
   });
 
-  return NextResponse.json({ content_items: enrichedItems });
+  return NextResponse.json({ content_items: enrichedItems, total_count: totalCount ?? enrichedItems.length });
 }
 
 // POST /api/events/[id]/content — Create content item
