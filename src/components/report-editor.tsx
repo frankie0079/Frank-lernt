@@ -1,0 +1,391 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useDebouncedCallback } from "use-debounce";
+import { CurationToolbar, type SaveState } from "@/components/curation-toolbar";
+import { SelectedItemsRail } from "@/components/selected-items-rail";
+import { SelectableContentGrid } from "@/components/selectable-content-grid";
+import { ReportPreviewSheet } from "@/components/report-preview-sheet";
+import { OfflineBanner } from "@/components/offline-banner";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import type { SelectedTileItem } from "@/components/sortable-tile";
+import type { ContentItem } from "@/components/content-card";
+import type { AgendaItem } from "@/lib/event-utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+
+interface ReportShape {
+  id: string;
+  event_id: string;
+  agenda_item_id: string;
+  status: "draft" | "published";
+  published_at: string | null;
+  updated_at: string;
+  created_by: string;
+}
+
+interface ReportItemShape {
+  id: string;
+  content_item_id: string;
+  sort_order: number;
+  deleted: boolean;
+  type: "photo" | "video" | "text" | "audio" | null;
+  media_url: string | null;
+  thumbnail_url: string | null;
+  caption: string | null;
+  content_created_at: string | null;
+  author_id: string | null;
+  author_name: string | null;
+  author_avatar_url: string | null;
+}
+
+interface ReportEditorProps {
+  eventId: string;
+  agendaItemId: string;
+  userId: string;
+  isOrganizer: boolean;
+  agendaItems: AgendaItem[];
+  agendaTitle?: string;
+}
+
+export function ReportEditor({
+  eventId,
+  agendaItemId,
+  userId,
+  isOrganizer,
+  agendaItems,
+  agendaTitle,
+}: ReportEditorProps) {
+  const router = useRouter();
+  const isOnline = useOnlineStatus();
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [itemsById, setItemsById] = useState<Map<string, SelectedTileItem>>(
+    new Map()
+  );
+  const [status, setStatus] = useState<"draft" | "published" | "empty">(
+    "empty"
+  );
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Track the "last known" status to detect demotion on save
+  const prevStatusRef = useRef<"draft" | "published" | "empty">("empty");
+
+  const totalCountRef = useRef(0);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // --- Initial load ---
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/events/${eventId}/reports/${agendaItemId}`
+      );
+      if (res.status === 403) {
+        toast.error("Kein Zugriff auf diesen Bericht");
+        router.push(`/events/${eventId}`);
+        return;
+      }
+      if (res.status === 404) {
+        setLoadError("Bericht nicht gefunden.");
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Bericht konnte nicht geladen werden.");
+      }
+      const data = (await res.json()) as {
+        report: ReportShape;
+        items: ReportItemShape[];
+      };
+
+      const sorted = [...data.items].sort(
+        (a, b) => a.sort_order - b.sort_order
+      );
+      const ids = sorted.map((i) => i.content_item_id);
+      const map = new Map<string, SelectedTileItem>();
+      for (const it of sorted) {
+        map.set(it.content_item_id, {
+          id: it.id,
+          content_item_id: it.content_item_id,
+          sort_order: it.sort_order,
+          deleted: it.deleted,
+          type: it.type,
+          media_url: it.media_url,
+          thumbnail_url: it.thumbnail_url,
+          caption: it.caption,
+          author_name: it.author_name,
+          author_avatar_url: it.author_avatar_url,
+        });
+      }
+      setSelectedIds(ids);
+      setItemsById(map);
+      const nextStatus: "draft" | "published" | "empty" =
+        data.report?.status ?? "draft";
+      setStatus(nextStatus);
+      prevStatusRef.current = nextStatus;
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(
+        err instanceof Error ? err.message : "Ein Fehler ist aufgetreten."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId, agendaItemId, router]);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
+
+  // Track total count for selection counter (approximate — we fetch event content list size from the grid's total via a tiny fetch)
+  // We just use the currently known selection count vs. an incremental counter seen from grid Fetch.
+  // For simplicity we query a single HEAD-ish call via the content API with limit=1 once on mount.
+  useEffect(() => {
+    let aborted = false;
+    (async () => {
+      try {
+        // Small heuristic: fetch first page to get a lower bound estimate
+        const res = await fetch(
+          `/api/events/${eventId}/content?limit=100`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (aborted) return;
+        const n = (data.content_items || []).length;
+        totalCountRef.current = n;
+        setTotalCount(n);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [eventId]);
+
+  // --- Auto-save ---
+  const performSave = useCallback(
+    async (ids: string[]) => {
+      if (!isOnline) return;
+      setSaveState("saving");
+      try {
+        const body = {
+          items: ids.map((id, i) => ({
+            content_item_id: id,
+            sort_order: (i + 1) * 10,
+          })),
+        };
+        const res = await fetch(
+          `/api/events/${eventId}/reports/${agendaItemId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Speichern fehlgeschlagen");
+        }
+        const data = (await res.json()) as {
+          report: ReportShape;
+          item_count: number;
+        };
+        const nextStatus = (data.report?.status ?? "draft") as
+          | "draft"
+          | "published";
+        if (
+          prevStatusRef.current === "published" &&
+          nextStatus === "draft"
+        ) {
+          toast.warning(
+            "Bericht wird von Landing Page entfernt bis du erneut veröffentlichst"
+          );
+        }
+        setStatus(nextStatus);
+        prevStatusRef.current = nextStatus;
+        setSaveState("saved");
+      } catch (err) {
+        setSaveState("error");
+        toast.error(
+          err instanceof Error ? err.message : "Speichern fehlgeschlagen"
+        );
+      }
+    },
+    [eventId, agendaItemId, isOnline]
+  );
+
+  const debouncedSave = useDebouncedCallback(
+    (ids: string[]) => performSave(ids),
+    2000
+  );
+
+  // Skip auto-save on the very first render after load
+  const loadedOnceRef = useRef(false);
+  useEffect(() => {
+    if (loading) return;
+    if (!loadedOnceRef.current) {
+      loadedOnceRef.current = true;
+      return;
+    }
+    if (!isOnline) return;
+    debouncedSave(selectedIds);
+  }, [selectedIds, loading, isOnline, debouncedSave]);
+
+  // --- Selection handlers ---
+  const handleToggle = useCallback(
+    (item: ContentItem) => {
+      setSelectedIds((prev) => {
+        if (prev.includes(item.id)) {
+          return prev.filter((id) => id !== item.id);
+        }
+        return [...prev, item.id];
+      });
+      setItemsById((prev) => {
+        if (prev.has(item.id)) {
+          const next = new Map(prev);
+          next.delete(item.id);
+          return next;
+        }
+        const next = new Map(prev);
+        next.set(item.id, {
+          id: "",
+          content_item_id: item.id,
+          sort_order: 0,
+          deleted: false,
+          type: item.type,
+          media_url: item.media_url,
+          thumbnail_url: item.thumbnail_url,
+          caption: item.caption,
+          author_name: item.author_name ?? null,
+          author_avatar_url: item.author_avatar_url ?? null,
+        });
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleRemove = useCallback((contentItemId: string) => {
+    setSelectedIds((prev) => prev.filter((id) => id !== contentItemId));
+    setItemsById((prev) => {
+      const next = new Map(prev);
+      next.delete(contentItemId);
+      return next;
+    });
+  }, []);
+
+  const handleReorder = useCallback((newOrder: string[]) => {
+    setSelectedIds(newOrder);
+  }, []);
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  // --- Publish / unpublish ---
+  const handleTogglePublish = useCallback(
+    async (publish: boolean) => {
+      // Flush pending debounced save first
+      await debouncedSave.flush();
+      try {
+        const res = await fetch(
+          `/api/events/${eventId}/reports/${agendaItemId}/publish`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ publish }),
+          }
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Aktion fehlgeschlagen");
+        }
+        const data = (await res.json()) as { report: ReportShape };
+        const nextStatus = (data.report?.status ?? "draft") as
+          | "draft"
+          | "published";
+        setStatus(nextStatus);
+        prevStatusRef.current = nextStatus;
+        toast.success(
+          publish ? "Bericht veröffentlicht" : "Bericht zurück auf Entwurf"
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Aktion fehlgeschlagen"
+        );
+      }
+    },
+    [debouncedSave, eventId, agendaItemId]
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{loadError}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  const effectiveTotal = Math.max(totalCount, selectedIds.length);
+
+  return (
+    <div className="space-y-4">
+      <OfflineBanner visible={!isOnline} />
+
+      <CurationToolbar
+        selectedCount={selectedIds.length}
+        totalCount={effectiveTotal}
+        saveState={saveState}
+        status={status}
+        onTogglePublish={handleTogglePublish}
+        onOpenPreview={() => setPreviewOpen(true)}
+        disabled={!isOnline}
+      />
+
+      {agendaTitle && (
+        <h2 className="text-lg font-semibold text-foreground">{agendaTitle}</h2>
+      )}
+
+      <SelectedItemsRail
+        selectedIds={selectedIds}
+        itemsById={itemsById}
+        onReorder={handleReorder}
+        onRemove={handleRemove}
+      />
+
+      <SelectableContentGrid
+        eventId={eventId}
+        userId={userId}
+        isOrganizer={isOrganizer}
+        agendaItems={agendaItems}
+        selectedIds={selectedSet}
+        onToggle={handleToggle}
+      />
+
+      <ReportPreviewSheet
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        selectedIds={selectedIds}
+        itemsById={itemsById}
+      />
+    </div>
+  );
+}
