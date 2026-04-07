@@ -157,19 +157,67 @@ export function ReportEditor({
         items: ReportItemShape[];
       };
 
-      const sorted = [...data.items].sort(
-        (a, b) => a.sort_order - b.sort_order
-      );
       // Deleted items have content_item_id = null (BUG-3 fix). Use the
       // report_items.id as a synthetic key so dnd-kit / React keys stay
       // unique and the tile can still render as "nicht verfügbar".
       const keyOf = (it: ReportItemShape) =>
         it.content_item_id ?? `__del__${it.id}`;
-      const ids = sorted.map(keyOf);
-      const map = new Map<string, SelectedTileItem>();
-      for (const it of sorted) {
+      // Reconnect-on-mount: if a localStorage draft exists from an offline
+      // session, push it to the server BEFORE rendering server state — the
+      // user's offline edits would otherwise be silently dropped.
+      const pendingDraft = loadDraftFromStorage(agendaItemId);
+      if (pendingDraft && pendingDraft.eventId === eventId) {
+        const persistable = pendingDraft.selectedIds.filter(
+          (id) => !id.startsWith("__del__")
+        );
+        const syncRes = await fetch(
+          `/api/events/${eventId}/reports/${agendaItemId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: persistable.map((id, i) => ({
+                content_item_id: id,
+                sort_order: (i + 1) * 10,
+              })),
+            }),
+          }
+        );
+        if (syncRes.ok) {
+          toast.success("Offline-Änderungen synchronisiert");
+          clearDraftFromStorage(agendaItemId);
+          // Re-fetch the freshly-synced report so client state matches server
+          const r2 = await fetch(
+            `/api/events/${eventId}/reports/${agendaItemId}`
+          );
+          if (r2.ok) {
+            const d2 = (await r2.json()) as {
+              report: ReportShape;
+              items: ReportItemShape[];
+            };
+            data.report = d2.report;
+            data.items = d2.items;
+          }
+        } else {
+          const errBody = await syncRes.json().catch(() => ({}));
+          if (/content_not_in_event/i.test(errBody.error || "")) {
+            toast.error(
+              "Einige Offline-Änderungen konnten nicht synchronisiert werden"
+            );
+          }
+          clearDraftFromStorage(agendaItemId);
+        }
+      }
+
+      // Recompute keys/ids from (possibly refreshed) data
+      const finalSorted = [...data.items].sort(
+        (a, b) => a.sort_order - b.sort_order
+      );
+      const finalIds = finalSorted.map(keyOf);
+      const finalMap = new Map<string, SelectedTileItem>();
+      for (const it of finalSorted) {
         const key = keyOf(it);
-        map.set(key, {
+        finalMap.set(key, {
           id: it.id,
           content_item_id: key,
           sort_order: it.sort_order,
@@ -182,8 +230,8 @@ export function ReportEditor({
           author_avatar_url: it.author_avatar_url,
         });
       }
-      setSelectedIds(ids);
-      setItemsById(map);
+      setSelectedIds(finalIds);
+      setItemsById(finalMap);
       const nextStatus: "draft" | "published" | "empty" =
         data.report?.status ?? "draft";
       setStatus(nextStatus);
