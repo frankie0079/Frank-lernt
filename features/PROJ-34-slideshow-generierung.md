@@ -1,6 +1,6 @@
 # PROJ-34: Slideshow-MP4 Generierung & WhatsApp-Export
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-08
 **Last Updated:** 2026-03-08
 
@@ -57,7 +57,114 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Übersicht
+
+PROJ-34 ist ein **reines Frontend-Feature** mit zwei kleinen Backend-Ergänzungen:
+1. Ein neuer Datenbank-Eintrag für Event-Einstellungen (Übergangseffekt, Anzeigedauer)
+2. Upload der fertigen Slideshow in Supabase Storage (Bucket `slideshows`)
+
+Alles andere — Rendering, Encoding, Preview — passiert vollständig im Browser des Admins. Kein Server, keine bezahlte API.
+
+---
+
+### Komponenten-Struktur
+
+```
+/events/[id]/admin  (bestehende Seite — Admin Workflow)
+└── ReportEditor (bestehend: src/components/report-editor.tsx)
+    └── SlideshowGeneratorPanel  ← NEU
+        ├── GenerateButton  ("Slideshow erstellen" / "Bereits erstellt — neu generieren?")
+        ├── SlideshowProgressBar  (während Generierung: "Bild X von Y — 60%", Abbrechen-Button)
+        ├── SlideshowPreviewPlayer  ← NEU (nach Generierung: natives <video> mit Blob-URL)
+        ├── ExportActions  (Download-Button + Teilen-Button — Teilen nur wenn Web Share API mit Files vorhanden)
+        └── SlideshowWarningBanner  (Datei > 16 MB → WhatsApp-Limit-Hinweis, Safari-Fallback-Hinweis)
+
+Web Worker (src/workers/slideshow-worker.ts)  ← NEU
+    Rendert Frame für Frame auf OffscreenCanvas
+    Schickt Fortschritts-Updates ans UI
+    Liefert fertigen Blob zurück
+
+Event-Einstellungen (Erweiterung bestehender event-edit-sheet.tsx)
+    ├── Übergang: Fade / Slide von rechts  (Radio Group)
+    ├── Foto-Anzeigedauer: 1–8 Sekunden  (Slider oder Select)
+    └── Format: 9:16 Hochformat / 16:9 Querformat  (Toggle)
+```
+
+---
+
+### Datenmodell (Ergänzungen)
+
+**Neue Tabelle: `event_settings`**
+- Verknüpft mit einem Event (1:1)
+- Felder: `slideshow_transition` (fade oder slide, Standard: fade), `photo_duration_sec` (Zahl 1–8, Standard: 3), `slideshow_format` (portrait oder landscape, Standard: portrait)
+- Wird nur beim Ändern der Event-Einstellungen angelegt/aktualisiert
+
+**Supabase Storage — Bucket `slideshows`** (bereits im Spec geplant)
+- Pfad: `[event_id]/[agenda_item_id].webm`
+- Wird nach Generierung hochgeladen — schlägt der Upload fehl, bleibt der lokale Blob trotzdem verfügbar
+
+**Keine neuen Spalten in bestehenden Tabellen nötig** — `daily_reports` bleibt unverändert.
+
+---
+
+### Tech-Entscheidungen
+
+| Entscheidung | Warum |
+|---|---|
+| **Web Worker + OffscreenCanvas** | Rendering blockiert nicht den UI-Thread — Fortschrittsbalken bleibt flüssig, Seite friert nicht ein |
+| **MediaRecorder / WebM** | Einziges Format, das client-side ohne externe Libraries encodiert werden kann. Chrome + Firefox: WebM/VP8. Safari iOS: kein MediaRecorder → ZIP-Fallback |
+| **Safari-Fallback: JPEG-Sequenz als ZIP** | Statt nichts zu liefern bekommt der Admin einzelne Bilder zum manuellen Zusammenfügen — besser als Fehlermeldung |
+| **Kein FFmpeg.wasm, kein Remotion** | Beide Optionen kosten entweder Geld (Remotion Lambda) oder erzeugen ~30 MB Bundle-Größe (FFmpeg). Native APIs reichen |
+| **Blob-URL für Preview** | Fertige Slideshow liegt als Blob im Speicher → sofortiger Preview im Browser ohne Upload-Wartezeit |
+| **Upload erst nach Preview** | Admin kann Qualität prüfen bevor Datei hochgeladen wird — verhindert unnötige Storage-Kosten |
+| **Einstellungen in Event-Settings, nicht Report** | Übergang + Dauer sind globale Event-Präferenzen, nicht pro Tagesbericht — konsistentes Aussehen über alle Tage |
+
+---
+
+### Neue Dateien (Übersicht)
+
+| Datei | Zweck |
+|---|---|
+| `src/components/slideshow-generator-panel.tsx` | Haupt-UI: Button, Fortschritt, Preview, Export |
+| `src/components/slideshow-preview-player.tsx` | Video-Player für Blob-URL |
+| `src/workers/slideshow-worker.ts` | Web Worker: Canvas-Rendering + Encoding |
+| `src/app/api/events/[id]/settings/route.ts` | GET + PUT Event-Einstellungen |
+| `supabase/migrations/20260407_event_settings.sql` | Neue Tabelle `event_settings` mit RLS |
+
+### Geänderte Dateien (Übersicht)
+
+| Datei | Änderung |
+|---|---|
+| `src/components/report-editor.tsx` | SlideshowGeneratorPanel einbinden |
+| `src/components/event-edit-sheet.tsx` | Slideshow-Einstellungen (Übergang, Dauer, Format) hinzufügen |
+
+---
+
+### Abhängigkeiten (neue Packages)
+
+| Package | Zweck |
+|---|---|
+| `jszip` | ZIP-Download-Fallback für Safari (JPEG-Sequenz) |
+
+Alle anderen Tools (Canvas API, MediaRecorder, Web Share API, OffscreenCanvas) sind Browser-nativ — kein weiteres Package nötig.
+
+---
+
+### Generierungs-Ablauf (plain language)
+
+1. Admin klickt "Slideshow erstellen"
+2. Browser lädt alle Bilder des kuratierten Berichts vor (CORS-konform aus Supabase Storage)
+3. Web Worker startet — rendert Frame für Frame auf OffscreenCanvas:
+   - Deckblatt (Event-Name, Datum, Agenda-Titel, Cover-Foto mit Dunkel-Overlay)
+   - Pro Beitrag: Vollbild-Foto / Gradient-Karte (Text) / Video-Standbild mit Video-Icon
+   - Autoren-Badge unten links (Avatar-Kreis + Name)
+   - Übergänge (Fade oder Slide) zwischen Frames
+4. MediaRecorder zeichnet den Canvas-Stream auf → WebM-Datei entsteht
+5. Fortschrittsbalken zeigt "Bild X von Y" in Echtzeit
+6. Fertig: Video-Preview erscheint im Browser
+7. Admin wählt: Herunterladen oder Teilen (WhatsApp via Web Share API)
+8. Im Hintergrund: Upload nach Supabase Storage
 
 ## QA Test Results
 _To be added by /qa_

@@ -8,6 +8,7 @@ import { CurationToolbar, type SaveState } from "@/components/curation-toolbar";
 import { SelectedItemsRail } from "@/components/selected-items-rail";
 import { SelectableContentGrid } from "@/components/selectable-content-grid";
 import { ReportPreviewSheet } from "@/components/report-preview-sheet";
+import { SlideshowGeneratorPanel } from "@/components/slideshow-generator-panel";
 import { OfflineBanner } from "@/components/offline-banner";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { SelectedTileItem } from "@/components/sortable-tile";
@@ -563,6 +564,12 @@ export function ReportEditor({
         onOpenChange={setPreviewOpen}
         selectedIds={selectedIds}
         itemsById={itemsById}
+      />
+
+      <SlideshowGeneratorPanel
+        eventId={eventId}
+        agendaItemId={agendaItemId}
+        hasItems={selectedIds.filter((id) => !id.startsWith("__del__")).length > 0}
       />
     </div>
   );

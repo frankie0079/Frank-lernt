@@ -46,3 +46,6 @@ public/serwist-worker-*.js.map
 
 .mcp.json
 .playwright-mcp/
+
+# QA / debug screenshots from skill runs (not source)
+/*.png

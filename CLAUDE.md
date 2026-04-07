@@ -107,8 +107,8 @@ npm run start      # Production server
 - **Tabellen (geplant):** `agenda_items`, `content_items`, `reactions`, `comments`, `daily_reports`
 - **Auth:** Token-basierte Links (kein Supabase Auth)
 - **Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`, `content_items` (RLS enabled)
-- **Storage Buckets (live):** `media` (public, 20MB, alle photo/video/audio MIME-Types), `avatars` (public, 2MB, JPEG/PNG/WebP), `covers` (public, 5MB, JPEG/PNG/WebP) — angelegt via `20260406_storage_buckets.sql`
-- **Storage Buckets (geplant):** `slideshows`
+- **Storage Buckets (live):** `media` (public, 20MB, alle photo/video/audio MIME-Types), `avatars` (public, 2MB, JPEG/PNG/WebP), `covers` (public, 5MB, JPEG/PNG/WebP) — angelegt via `20260406_storage_buckets.sql`. `slideshows` (public, 50MB, video/webm + video/mp4 + application/zip) — angelegt via `20260407_slideshow.sql` (PROJ-34, applies after migration).
+- **Env Vars (server):** `ANTHROPIC_API_KEY` für Claude Haiku Storyboard-Generierung in PROJ-34
 
 ## Aktueller Stand
 

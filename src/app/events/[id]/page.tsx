@@ -18,6 +18,7 @@ import {
 } from "@/lib/event-utils";
 import { WandererScreen } from "@/components/wanderer-screen";
 import { ContentPool } from "@/components/content-pool";
+import { SlideshowFeed } from "@/components/slideshow-feed";
 import {
   ArrowLeft,
   CalendarDays,
@@ -288,18 +289,7 @@ export default function EventDashboardPage() {
           </TabsContent>
 
           <TabsContent value="book" className="mt-6">
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <BookOpen
-                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <p className="text-sm font-medium text-foreground">
-                Event-Buch
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Kommt in PROJ-36: Post-Event Tagebuch + PDF-Export
-              </p>
-            </div>
+            <SlideshowFeed eventId={eventId} />
           </TabsContent>
         </Tabs>
 

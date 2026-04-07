@@ -85,7 +85,7 @@ Erste Anwendung: Wandergruppen und Reise-Events.
 
 - **Authentifizierung:** Supabase Auth (Magic Link)
 - **Kosten:** Free Tiers wo möglich (Supabase, Vercel)
-- **Keine bezahlten APIs:** Web Speech API statt Whisper, Canvas statt Remotion Lambda
+- **Bezahlte APIs nur sparsam:** Claude Haiku als LLM-Cutter für Slideshow-Storyboards in PROJ-34 (~$0.02 pro Film). Kein TTS, kein AI-Video-Gen, kein Whisper. Web Speech API für Transkription, Canvas + MediaRecorder statt Remotion Lambda.
 - **Gruppe:** 5–50 Personen pro Event
 - **Geräte:** iPhone PWA (Hauptgerät), Desktop als Ergänzung
 - **Offline:** PWA Background Sync für Content-Uploads
