@@ -91,13 +91,15 @@ export default function EventsPage() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Meine Events</h1>
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="min-w-0 truncate text-2xl font-bold text-foreground">
+            Meine Events
+          </h1>
+          <div className="flex shrink-0 items-center gap-2">
             <Button size="sm" asChild>
-              <Link href="/events/new">
-                <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-                Neues Event
+              <Link href="/events/new" aria-label="Neues Event erstellen">
+                <Plus className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+                <span className="hidden sm:inline">Neues Event</span>
               </Link>
             </Button>
             <Link href="/profile" aria-label="Profil bearbeiten">
