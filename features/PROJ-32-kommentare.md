@@ -2,7 +2,7 @@
 
 ## Status: Planned
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-07
 
 ## Dependencies
 - Requires: PROJ-28 (Content-Pool) — Kommentare gehören zu Content-Items im Content-Pool
@@ -53,7 +53,80 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Übersicht
+Additives Feature auf bestehenden Content-Karten — gleicher Pattern wie PROJ-31 (Reactions). Sprechblasen-Badge oben in der Karte, Klick öffnet ein Bottom Sheet (Mobile) bzw. Inline-Expand (Desktop) mit Thread + Eingabefeld.
+
+### Component Structure
+
+```
+ContentCard (bestehend)
++-- [bestehend] Inhalt + ReactionBar (PROJ-31)
++-- CommentBadge (NEU — src/components/comment-badge.tsx)
+    +-- Sprechblasen-Icon
+    +-- Anzahl-Badge (versteckt bei 0)
+    +-- onClick → öffnet CommentThreadSheet
+
+CommentThreadSheet (NEU — src/components/comment-thread-sheet.tsx)
++-- Header: "Kommentare (N)"
++-- "Ältere laden"-Button (oben, ab > 20)
++-- CommentList
+|   +-- CommentRow × N
+|       +-- Avatar + Anzeigename
+|       +-- Text (word-break: break-all)
+|       +-- Zeitstempel relativ
+|       +-- [eigenes / Organisator / Admin] Löschen-Button
++-- CommentInput (nur eingeloggte Mitglieder)
+    +-- Textarea (max 500, Zeichenzähler)
+    +-- Senden-Button (deaktiviert wenn leer)
+```
+
+### Datenmodell — Neue Tabelle `comments`
+
+| Feld | Typ | Beschreibung |
+|---|---|---|
+| id | UUID PK | |
+| content_item_id | UUID FK → content_items CASCADE | |
+| author_id | UUID FK → members CASCADE | |
+| text | TEXT NOT NULL CHECK length 1–500 | |
+| created_at | timestamptz default now() | |
+
+**Indexe:** `(content_item_id, created_at desc)` für schnelle Pagination, `(author_id)` für eigene Liste.
+
+**RLS:** SELECT public, INSERT/DELETE via API (gleicher Pattern wie reactions).
+
+**Migration:** `supabase/migrations/20260407_comments.sql` (Schema-only-via-Migration-Regel — kein manuelles Dashboard-Klicken).
+
+### Neue API-Endpunkte
+
+| Route | Methode | Zweck |
+|---|---|---|
+| `/api/events/[id]/content/[contentId]/comments` | GET | Liste mit Cursor-Pagination (`?cursor=&limit=20`) |
+| `/api/events/[id]/content/[contentId]/comments` | POST | Neuer Kommentar (Zod-validiert, Rate-Limit 5/min) |
+| `/api/events/[id]/content/[contentId]/comments/[commentId]` | DELETE | Eigener / Organisator / Admin |
+
+GET liefert Kommentare in einem Query mit Author-Daten (analog zur reactions-Aggregation in PROJ-31).
+
+### Realtime
+Channel `comments-<itemId>` lauscht auf INSERT/DELETE der `comments`-Tabelle gefiltert nach `content_item_id`. Reuse des Patterns aus PROJ-28/31.
+
+### Undo-Mechanismus
+Client-seitig: Delete wird **erst nach Toast-Ablauf** (5s) an die API geschickt. Bei "Rückgängig"-Klick wird der API-Call abgebrochen — der Kommentar war serverseitig nie weg. Kein Re-Insert nötig, keine Race Conditions.
+
+### Rate-Limiting
+Bestehender `isRateLimited`-Helper aus `src/lib/rate-limit.ts` mit neuem Tag `comments-write`, 5 Requests pro Minute pro Member-ID.
+
+### Tech-Entscheidungen
+- **shadcn/ui Sheet** für Bottom Sheet — bereits installiert
+- **Cursor-Pagination** statt "alles laden" — spart Bandbreite bei vielen Kommentaren
+- **Optimistic UI für POST** wie bei Reactions — sofortiges Feedback
+- **Keine Edit-Funktion** (nicht in den ACs) — nur Löschen + Neuschreiben
+
+### Abhängigkeiten
+Keine neuen npm-Pakete. `Sheet`, `Button`, `Textarea`, `Avatar`, `Badge` aus shadcn/ui bereits installiert.
+
+### Was nicht angefasst wird
+`ContentCard` bekommt **nur** das CommentBadge unten ergänzt — gleicher Stil wie ReactionBar bei PROJ-31. Alle anderen Komponenten bleiben unverändert.
 
 ## QA Test Results
 _To be added by /qa_
