@@ -88,6 +88,9 @@ Alle Features in `features/INDEX.md`. Features: PROJ-24 bis PROJ-37. v1 (PROJ-1â
 - **shadcn/ui first:** NEVER create custom versions of installed shadcn components
 - **Human-in-the-loop:** All workflows have user approval checkpoints
 - **QA: Fix ALL bugs before deploy:** Always fix all QA bugs (including Low severity) before proceeding to deploy. Never skip or defer bugs to "next sprint".
+- **Schema only via Migration:** NEVER create tables, columns, indexes, RLS policies or storage buckets manually in the Supabase Dashboard. Every schema change MUST be a SQL file in `supabase/migrations/`, committed to git, and applied via SQL Editor. Manual dashboard changes caused 4 critical production outages on 2026-04-06.
+- **"Deployed" requires Production verification:** A feature may only be marked `Deployed` after at least one happy-path action has succeeded against the live Vercel URL â€” not just localhost. The `/qa` skill enforces this.
+- **CLAUDE.md states only verified facts:** Never claim "live" / "Deployed" without verifying via REST introspection or an actual API call against production.
 
 ## Build & Test Commands
 

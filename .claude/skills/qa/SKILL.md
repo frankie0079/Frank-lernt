@@ -36,6 +36,26 @@ Test the feature systematically in the browser:
 - Cross-browser: Chrome, Firefox, Safari
 - Responsive: Mobile (375px), Tablet (768px), Desktop (1440px)
 
+### 2b. MANDATORY Production Smoke Test (Schema-Drift Defense)
+Before marking anything as production-ready, run at least ONE happy-path
+action against the live Vercel URL — not localhost. Localhost-only QA has
+historically missed schema-drift bugs that broke production silently.
+
+Required steps:
+1. Hit production (`https://frank-lernt.vercel.app`) via Playwright
+2. Execute the feature's primary write operation end-to-end
+3. Verify the data lands correctly via API GET
+4. If the feature touches new tables, columns, RLS policies, or storage
+   buckets — explicitly verify they exist in production via REST
+   introspection BEFORE testing:
+   - Tables: `GET /rest/v1/<table>?select=*&limit=0` must return 200
+   - Buckets: upload a tiny dummy blob and confirm 200
+5. Clean up any test data afterwards
+
+If ANY production check fails, the feature is NOT production-ready —
+regardless of how green the localhost tests were. Report the schema drift
+as a blocker bug.
+
 ### 3. Security Audit (Red Team)
 Think like an attacker:
 - Test authentication bypass attempts
@@ -84,12 +104,14 @@ If your context was compacted mid-task:
 - Be thorough and objective: report even small bugs
 
 ## Production-Ready Decision
-- **READY:** No Critical or High bugs remaining
-- **NOT READY:** Critical or High bugs exist (must be fixed first)
+- **READY:** No Critical or High bugs remaining AND production smoke test (step 2b) passed
+- **NOT READY:** Critical or High bugs exist OR production smoke test failed OR was skipped
 
 ## Checklist
 - [ ] Feature spec fully read and understood
 - [ ] All acceptance criteria tested (each has pass/fail)
+- [ ] **Production smoke test executed against live Vercel URL (step 2b)**
+- [ ] **New tables / columns / buckets verified to exist in production**
 - [ ] All documented edge cases tested
 - [ ] Additional edge cases identified and tested
 - [ ] Cross-browser tested (Chrome, Firefox, Safari)
