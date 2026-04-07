@@ -182,6 +182,22 @@ export async function GET(
     }
   }
 
+  // Comment counts per item — single query, no N+1
+  const commentCountByItem = new Map<string, number>();
+  for (const itemId of itemIds) commentCountByItem.set(itemId, 0);
+  if (itemIds.length > 0) {
+    const { data: commentRows } = await supabase
+      .from("comments")
+      .select("content_item_id")
+      .in("content_item_id", itemIds);
+    for (const row of commentRows || []) {
+      commentCountByItem.set(
+        row.content_item_id,
+        (commentCountByItem.get(row.content_item_id) ?? 0) + 1
+      );
+    }
+  }
+
   const enrichedItems = (items || []).map((item) => ({
     ...item,
     author_name: authorMap[item.author_id]?.name || null,
@@ -190,6 +206,7 @@ export async function GET(
       counts: emptyCounts(),
       userReactions: [],
     },
+    comment_count: commentCountByItem.get(item.id) ?? 0,
   }));
 
   return NextResponse.json({ content_items: enrichedItems });

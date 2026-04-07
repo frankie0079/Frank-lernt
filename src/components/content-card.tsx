@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { ReactionBar, type ReactionState } from "@/components/reaction-bar";
+import { CommentBadge } from "@/components/comment-badge";
+import { CommentThreadSheet } from "@/components/comment-thread-sheet";
 
 export interface ContentItem {
   id: string;
@@ -34,6 +36,7 @@ export interface ContentItem {
   author_name?: string | null;
   author_avatar_url?: string | null;
   reactions?: ReactionState;
+  comment_count?: number;
 }
 
 const typeConfig = {
@@ -65,6 +68,8 @@ export function ContentCard({
   reactionsReadOnly = false,
 }: ContentCardProps) {
   const [imgError, setImgError] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(item.comment_count ?? 0);
   const config = typeConfig[item.type];
   const TypeIcon = config.icon;
   const canDelete = item.author_id === currentUserId || isOrganizer;
@@ -241,12 +246,29 @@ export function ContentCard({
         </div>
       </div>
 
-      {/* Reactions */}
-      <ReactionBar
+      {/* Reactions + Comments */}
+      <div className="flex items-center justify-between gap-1 pr-2">
+        <ReactionBar
+          eventId={item.event_id}
+          contentItemId={item.id}
+          initialState={item.reactions}
+          readOnly={reactionsReadOnly}
+          className="flex-1"
+        />
+        <CommentBadge
+          count={commentCount}
+          onClick={() => setCommentsOpen(true)}
+        />
+      </div>
+
+      <CommentThreadSheet
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
         eventId={item.event_id}
         contentItemId={item.id}
-        initialState={item.reactions}
-        readOnly={reactionsReadOnly}
+        currentMemberId={currentUserId || null}
+        canModerate={isOrganizer}
+        onCountChange={setCommentCount}
       />
     </Card>
   );
