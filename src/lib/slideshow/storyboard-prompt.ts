@@ -67,8 +67,7 @@ export function buildStoryboardUserPrompt(input: StoryboardInput, availableTrack
         `  author: ${it.author_name ?? "anonym"}`,
         `  created: ${it.created_at}`,
       ];
-      if (it.caption) lines.push(`  caption: ${it.caption.slice(0, 200)}`);
-      if (it.transcript) lines.push(`  transcript: ${it.transcript.slice(0, 400)}`);
+      if (it.caption) lines.push(`  caption: ${it.caption.slice(0, 600)}`);
       if (it.comments.length > 0) {
         lines.push(`  comments:`);
         for (const c of it.comments.slice(0, 5)) {

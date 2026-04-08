@@ -88,7 +88,6 @@ export interface StoryboardInputItem {
   media_url: string | null;
   thumbnail_url: string | null;
   caption: string | null;
-  transcript: string | null;
   created_at: string;
   author_id: string | null;
   author_name: string | null;

@@ -240,7 +240,6 @@ begin
       c.media_url,
       c.thumbnail_url,
       c.caption,
-      c.transcript,
       c.created_at,
       m.id              as author_id,
       m.name            as author_name,
