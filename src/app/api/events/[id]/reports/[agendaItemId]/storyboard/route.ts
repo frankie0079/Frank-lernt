@@ -20,6 +20,10 @@ import {
 } from "@/lib/slideshow/storyboard-prompt";
 import { MUSIC_LIBRARY, pickDefaultTrack } from "@/lib/slideshow/music-library";
 
+// Claude Haiku calls can take 10-30s with large prompts; Vercel Hobby
+// default is 10s which causes Anthropic SDK to throw "Connection error".
+export const maxDuration = 60;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isValidUUID(id: string) {
   return UUID.test(id);
