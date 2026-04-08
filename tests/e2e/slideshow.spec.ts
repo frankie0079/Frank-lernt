@@ -29,17 +29,7 @@ test.describe("PROJ-34 slideshow", () => {
     agendaItemId = event.agendaItemId;
     if (!agendaItemId) return;
 
-    // Probe whether the storyboard route is deployed (PROJ-34 may be unpushed)
-    const probe = await request.get(
-      `/api/events/${event.id}/reports/${agendaItemId}/storyboard`
-    );
-    endpointAvailable = probe.status() !== 404;
-    if (!endpointAvailable) {
-      console.warn(
-        "[slideshow] Storyboard endpoint returns 404 — PROJ-34 not deployed. Skipping all slideshow tests."
-      );
-      return;
-    }
+    endpointAvailable = true;
 
     for (const i of [1, 2]) {
       const c = await createTextContent(
