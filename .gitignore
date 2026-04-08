@@ -47,5 +47,10 @@ public/serwist-worker-*.js.map
 .mcp.json
 .playwright-mcp/
 
+# Playwright E2E
+/playwright-report/
+/test-results/
+/tests/e2e/.auth/
+
 # QA / debug screenshots from skill runs (not source)
 /*.png
