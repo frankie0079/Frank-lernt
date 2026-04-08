@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 
 export async function GET(
@@ -16,11 +16,9 @@ export async function GET(
 
   const { token } = await params;
 
-  // Validate token
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Validate token via service-role: anon SELECT on members was revoked by
+  // 20260408_lockdown_anon_rls.sql to close BUG-1 (members.token leak).
+  const supabase = getSupabaseAdmin();
 
   const { data: member } = await supabase
     .from("members")

@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { z } from "zod";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { serverError } from "@/lib/api-error";
@@ -11,10 +11,7 @@ const reactionSchema = z.object({
 });
 
 function createSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return getSupabaseAdmin();
 }
 
 function isValidUUID(id: string): boolean {

@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { z } from "zod";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { serverError } from "@/lib/api-error";
@@ -15,11 +15,10 @@ const updateMemberSchema = z.object({
   ).nullable().optional(),
 });
 
+// Service-role client: anon SELECT on members was revoked by
+// 20260408_lockdown_anon_rls.sql to close BUG-1 (members.token leak).
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return getSupabaseAdmin();
 }
 
 // GET /api/members/me — Get current member (without token!)

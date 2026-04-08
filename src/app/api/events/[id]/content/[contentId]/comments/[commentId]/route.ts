@@ -1,13 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { serverError } from "@/lib/api-error";
 
 function createSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return getSupabaseAdmin();
 }
 
 function isValidUUID(id: string): boolean {

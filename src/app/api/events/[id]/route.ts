@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { eventCreateSchema } from "@/lib/validations/event";
 import { generateSlug } from "@/lib/event-utils";
@@ -10,10 +10,7 @@ async function getCurrentMember(request: NextRequest) {
   const token = request.cookies.get("member_token")?.value;
   if (!token) return null;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseAdmin();
 
   const { data } = await supabase
     .from("members")
@@ -25,10 +22,7 @@ async function getCurrentMember(request: NextRequest) {
 }
 
 function createSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return getSupabaseAdmin();
 }
 
 // Validate UUID format

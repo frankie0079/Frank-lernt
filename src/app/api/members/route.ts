@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { z } from "zod";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { serverError } from "@/lib/api-error";
@@ -14,10 +14,7 @@ async function getCurrentMember(request: NextRequest) {
   const token = request.cookies.get("member_token")?.value;
   if (!token) return null;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseAdmin();
 
   const { data } = await supabase
     .from("members")
@@ -35,10 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from("members")
@@ -88,10 +82,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from("members")

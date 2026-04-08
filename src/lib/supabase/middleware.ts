@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -42,10 +42,9 @@ export async function updateSession(request: NextRequest) {
   // Validate token against database on every request.
   // Trade-off: one DB query per request for security. Could add in-memory
   // caching later if this becomes a performance concern.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Service-role client: anon SELECT on members was revoked by
+  // 20260408_lockdown_anon_rls.sql to close BUG-1 (members.token leak).
+  const supabase = getSupabaseAdmin();
 
   const { data: member } = await supabase
     .from("members")

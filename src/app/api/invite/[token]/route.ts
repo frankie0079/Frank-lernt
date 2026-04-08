@@ -8,10 +8,9 @@ async function getCurrentMember(request: NextRequest) {
   const token = request.cookies.get("member_token")?.value;
   if (!token) return null;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Service-role: anon SELECT on members was revoked by
+  // 20260408_lockdown_anon_rls.sql to close BUG-1 (members.token leak).
+  const supabase = createSupabaseAdmin();
 
   const { data } = await supabase
     .from("members")
@@ -22,20 +21,15 @@ async function getCurrentMember(request: NextRequest) {
   return data;
 }
 
-function createSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
-
-// BUG-6 fix: prefer service-role key for privileged operations (bypasses RLS).
-// Falls back to anon key if SERVICE_ROLE_KEY is not configured, preserving
-// current production behavior for deployments that haven't set the env var.
+// Service-role client for privileged operations (bypasses RLS).
+// After 20260408_lockdown_anon_rls.sql the anon fallback path no longer
+// works for these tables, so SUPABASE_SERVICE_ROLE_KEY is now mandatory.
 function createSupabaseAdmin() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
-    return createSupabase();
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required (anon SELECT on members/events/event_members is locked down)"
+    );
   }
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },

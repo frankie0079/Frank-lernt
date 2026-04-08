@@ -4,7 +4,7 @@
 //   PUT  saves a manually edited storyboard
 
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { isKeyRateLimited, isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
@@ -30,10 +30,7 @@ function isValidUUID(id: string) {
 }
 
 function createSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return getSupabaseAdmin();
 }
 
 function mapRpcError(code: string | undefined): { status: number; error: string } {
