@@ -108,7 +108,8 @@ npm run start      # Production server
 - **Auth:** Token-basierte Links (kein Supabase Auth)
 - **Tabellen (live):** `members` (Token-Auth, RLS enabled), `events` (RLS enabled), `event_members`, `invitations`, `content_items` (RLS enabled)
 - **Storage Buckets (live):** `media` (public, 20MB, alle photo/video/audio MIME-Types), `avatars` (public, 2MB, JPEG/PNG/WebP), `covers` (public, 5MB, JPEG/PNG/WebP) — angelegt via `20260406_storage_buckets.sql`. `slideshows` (public, 50MB, video/webm + video/mp4 + application/zip) — angelegt via `20260407_slideshow.sql` (PROJ-34, applies after migration).
-- **Env Vars (server):** `ANTHROPIC_API_KEY` für Claude Haiku Storyboard-Generierung in PROJ-34
+- **Env Vars (server):** `ANTHROPIC_API_KEY` für Claude Haiku Storyboard-Generierung in PROJ-34, `SUPABASE_SERVICE_ROLE_KEY` für alle Server-Routes (seit PROJ-35 BUG-1 Lockdown zwingend erforderlich)
+- **Env Vars (public):** `NEXT_PUBLIC_SITE_URL=https://frank-lernt.vercel.app` für kanonische OG-URLs (seit PROJ-35)
 
 ## Aktueller Stand
 
@@ -124,14 +125,16 @@ npm run start      # Production server
 - **PROJ-32: Kommentar-Threads** — Deployed 2026-04-06, 9 QA bugs fixed (incl. BUG-8/9 RLS bypass)
 - **PROJ-33: Tages-Admin Kurations-Workflow** — Deployed 2026-04-07, QA Round 3 in Production passed via Playwright E2E (5 original bugs + 2 newly found BUG-6/7 fixed). Migrations `20260407_daily_reports.sql` + `20260407_fix_report_items.sql` angewendet.
 - **PROJ-34: Slideshow-Generierung (Claude Haiku Storyboard)** — Deployed 2026-04-08, 51/51 Playwright E2E green in Production (incl. live Claude Haiku 4.5 call). Migration `20260407_slideshow.sql` angewendet. 4 Bugs by E2E caught + fixed: (1) RPC referenced non-existent `c.transcript` column, (2) missing `maxDuration=60s` caused Anthropic SDK timeout on Vercel Hobby, (3) trailing newline in `ANTHROPIC_API_KEY` env var → `.trim()` added defensively, (4) URL `event_id` wasn't validated against `agenda_item.event_id` (URL-tampering loophole).
+- **PROJ-35: Öffentliche Event-Seite** — Deployed 2026-04-08, QA Round 5 green. Migrations `20260408_public_event_rls.sql` (SECURITY DEFINER RPC `get_public_event`) + `20260408_lockdown_anon_rls.sql` (BUG-1: anon-Lockdown auf 5 Tabellen, schließt kritische Token-Leak-Lücke) angewendet. 10 Bugs (1 Critical, 1 High, 2 Medium, 6 Low) gefunden + gefixt. Known regression: Realtime-Subscriptions auf `content_items` im Content-Pool → tracked als PROJ-38.
 
 ### Nächster Schritt
-`/architecture` für **PROJ-35: Öffentliche Event-Seite**
+`/architecture` für **PROJ-36: Post-Event Tagebuch**
 
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅
-2. **PROJ-35: Öffentliche Event-Seite** ← nächstes
-4. **PROJ-36: Post-Event Tagebuch** + **PROJ-37: PDF-Export**
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅
+2. **PROJ-36: Post-Event Tagebuch** ← nächstes
+3. **PROJ-37: PDF-Export**
+4. **PROJ-38: Realtime-Fix Content-Pool** (Regression aus PROJ-35 BUG-1 Lockdown)
 
 ## Product Context
 
