@@ -76,10 +76,11 @@ test.describe("PROJ-34 slideshow", () => {
     const json = await res.json();
     const sb = json.storyboard ?? json;
     expect(sb).toBeTruthy();
-    expect(Array.isArray(sb.frames)).toBeTruthy();
-    expect(sb.frames.length).toBeGreaterThan(0);
-    for (const frame of sb.frames) {
-      expect((frame.duration_sec ?? frame.duration ?? 0) > 0).toBeTruthy();
+    expect(Array.isArray(sb.scenes)).toBeTruthy();
+    expect(sb.scenes.length).toBeGreaterThan(0);
+    for (const scene of sb.scenes) {
+      expect(typeof scene.duration_ms).toBe("number");
+      expect(scene.duration_ms).toBeGreaterThan(0);
     }
   });
 
@@ -97,12 +98,12 @@ test.describe("PROJ-34 slideshow", () => {
       `/api/events/${event.id}/reports/${agendaItemId}/storyboard`
     );
     const json = await get.json();
-    const sb = json.storyboard ?? json;
-    if (!sb || !Array.isArray(sb.frames)) {
+    const sb = json.input?.existing_storyboard ?? json.storyboard ?? null;
+    if (!sb || !Array.isArray(sb.scenes)) {
       test.skip();
       return;
     }
-    sb.title = `E2E-edited-${Date.now()}`;
+    sb.title = `E2E-edited-${Date.now()}`.slice(0, 120);
     const put = await request.put(
       `/api/events/${event.id}/reports/${agendaItemId}/storyboard`,
       { data: { storyboard: sb } }

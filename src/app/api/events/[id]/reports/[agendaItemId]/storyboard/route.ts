@@ -156,6 +156,13 @@ export async function POST(
     const m = mapRpcError(inputResult?.error);
     return NextResponse.json({ error: m.error }, { status: m.status });
   }
+  // Defense in depth: ensure the URL's event_id matches the agenda item's
+  // owning event. The RPC already enforces membership via agenda_item_id,
+  // but inconsistent URLs should not silently succeed.
+  if (inputResult.event?.id !== id) {
+    return NextResponse.json({ error: "Bericht nicht gefunden" }, { status: 404 });
+  }
+
   const input: StoryboardInput = {
     event: inputResult.event!,
     agenda_item: inputResult.agenda_item!,
