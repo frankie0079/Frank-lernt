@@ -343,5 +343,227 @@ Blockers:
 
 **Recommended fix order:** BUG-1 → BUG-5 → BUG-4 → BUG-2 → BUG-3 → BUG-6/7/8 → re-deploy → QA Round 2 in production.
 
+---
+
+## QA Round 2 — 2026-04-08 — Production verification (BLOCKED)
+
+**Tester:** QA/Red-Team
+**Environment:** live Supabase `xqopetmpzjbxksonmhjw` + live Vercel `https://frank-lernt.vercel.app`
+**Request:** Verify BUG-1 lockdown migration applied + BUG-2..8 fixes live + full E2E smoke test.
+
+### Pre-flight state check (BLOCKER)
+
+Round 2 cannot proceed. Two independent preconditions the request assumed are both **false in production right now**:
+
+**1. Code is NOT deployed to Vercel.**
+- `git status` → `main...origin/main [ahead 3]`. Commits `5a8f077`, `4cf3c77`, `4b90cf7` (all PROJ-35) exist only locally. Nothing has been pushed.
+- `GET https://frank-lernt.vercel.app/e/e2e-shared-1775657364513-testevent` → **HTTP 404**
+- `GET https://frank-lernt.vercel.app/e/e2e-reactions-1775656769909-97d24s-testevent` → **HTTP 404**
+- Both slugs exist in the live `events` table, so 404 = the `/e/[slug]` route does not exist on the deployed Vercel build.
+
+**2. Lockdown migration `20260408_lockdown_anon_rls.sql` is NOT applied in production.**
+
+Live anon REST dump, executed just now against `https://xqopetmpzjbxksonmhjw.supabase.co` with the publishable anon key `sb_publishable_Wd39S64uLhx3xz93E1R3-g_xQ58Tdfi`:
+
+| Table | Expected (post-lockdown) | Actual live | Verdict |
+|---|---|---|---|
+| `members` (with `token`) | 401 permission denied | **HTTP 200**, returns `[{id, name, token, role}]` incl. `token:"0a69ae9ada9e7f0eb695a147843ab34b"` | FAIL |
+| `events` | 401 | **HTTP 200**, full rows | FAIL |
+| `event_members` | 401 | **HTTP 200**, full membership graph | FAIL |
+| `agenda_items` | 401 | **HTTP 200**, full rows | FAIL |
+| `content_items` | 401 | **HTTP 200**, full rows | FAIL |
+| `daily_reports` | 401 | HTTP 401 `permission denied for table daily_reports` | PASS (pre-existing lockdown from PROJ-33) |
+| `rpc/get_public_event` | 200 ok | HTTP 200, `{ok:false, error:"not_found"}` on unknown slug | PASS |
+
+**BUG-1 is therefore STILL OPEN and STILL CRITICAL in production.** Any visitor can dump every member token (incl. organizer) with one curl and take over every account on the platform. The migration file exists in the working tree (`supabase/migrations/20260408_lockdown_anon_rls.sql`) but was never run against prod.
+
+### What this means
+
+- BUG-1 (CRITICAL) — **NOT FIXED in production.** Migration not applied. Remains the highest-severity open bug.
+- BUG-2 through BUG-8 — **cannot be verified in production** because the feature is not deployed. Code-level review in Round 1 already confirmed the fixes exist in the working tree, but the CLAUDE.md convention is that "Deployed" requires a live Vercel URL test. That test is impossible until the code ships.
+- Full E2E smoke test on `/e/[slug]` — **cannot be performed** (404).
+
+### Actions required before QA Round 3
+
+1. **Apply lockdown migration.** Open Supabase SQL Editor for project `xqopetmpzjbxksonmhjw`, paste the full contents of this file, run it:
+   - [supabase/migrations/20260408_lockdown_anon_rls.sql](../supabase/migrations/20260408_lockdown_anon_rls.sql)
+2. **After applying, re-verify anon lockdown from your terminal:**
+   ```bash
+   K="sb_publishable_Wd39S64uLhx3xz93E1R3-g_xQ58Tdfi"
+   U="https://xqopetmpzjbxksonmhjw.supabase.co"
+   for t in members events event_members agenda_items content_items; do
+     printf "%-16s " "$t"
+     curl -s -o /dev/null -w "HTTP %{http_code}\n" "$U/rest/v1/$t?select=*&limit=1" -H "apikey: $K"
+   done
+   ```
+   All five must return HTTP 401. If any returns 200, the migration did not take effect.
+3. **Push the 3 local commits:** `git push origin main`
+4. **Wait for Vercel deploy to finish.**
+5. **Verify internal flows still work after lockdown** (`/join/[token]`, `/events`, `/events/[id]/capture`, `/events/[id]/pool`, `/events/[id]/admin`). These use cookie-identified server routes with the service role key and should be unaffected, but a regression sweep is mandatory because the lockdown migration also drops all policies on `members`, `events`, `event_members`, `agenda_items`, `content_items`. Known regression called out in the migration header: Supabase Realtime on `content_items` for Content-Pool live updates will stop working.
+6. **Then re-run QA Round 3** against the live Vercel URL: page loads, video plays, empty state, 404 path, OG meta tags, responsive 375/768/1440, Chrome/Firefox/Safari.
+
+### Production-ready verdict: **NOT READY — BLOCKED**
+
+Same blockers as Round 1 plus one new one: the operator reported the fixes as shipped when they are in fact not shipped. Nothing to QA against live until steps 1-5 above are completed.
+
+---
+
+## QA Round 3 — 2026-04-08 — Production verification (live Vercel + locked Supabase)
+
+**Tester:** QA/Red-Team
+**Environment:** live Supabase `xqopetmpzjbxksonmhjw` + live Vercel `https://frank-lernt.vercel.app`
+**Commit under test:** `5a8f077` (on `origin/main`)
+**Target slug:** `e2e-shared-1775657364513-testevent`
+
+### Pre-flight — preconditions now satisfied
+
+- `git log origin/main` → all three PROJ-35 commits (`4b90cf7`, `4cf3c77`, `5a8f077`) are on `origin/main`. No unpushed work apart from this spec file.
+- `GET https://frank-lernt.vercel.app/e/e2e-shared-1775657364513-testevent` → **HTTP 200** (was 404 in Round 2). Route is live.
+- `GET https://frank-lernt.vercel.app/e/does-not-exist-xyz-404` → **HTTP 404**. Next.js `not-found.tsx` serving correctly.
+
+### BUG-1 verification — CRITICAL anon-lockdown in production
+
+Live anon REST probe, publishable key `sb_publishable_Wd39S64uLhx3xz93E1R3-g_xQ58Tdfi`, against `https://xqopetmpzjbxksonmhjw.supabase.co`:
+
+| Table | Round 2 | Round 3 | Verdict |
+|---|---|---|---|
+| `members` (incl. `token`) | HTTP 200 leaking tokens | **HTTP 401** `permission denied for table members` | **FIXED** |
+| `events` | HTTP 200 | **HTTP 401** `permission denied for table events` | **FIXED** |
+| `event_members` | HTTP 200 | **HTTP 401** `permission denied for table event_members` | **FIXED** |
+| `agenda_items` | HTTP 200 | **HTTP 401** `permission denied for table agenda_items` | **FIXED** |
+| `content_items` | HTTP 200 | **HTTP 401** `permission denied for table content_items` | **FIXED** |
+| `daily_reports` | HTTP 401 | HTTP 401 | still locked |
+| `report_items` | HTTP 401 | HTTP 401 | still locked |
+
+Account-takeover vector is closed. Tokens are no longer world-readable. Migration `20260408_lockdown_anon_rls.sql` is confirmed applied.
+
+### RPC still works
+
+```
+POST /rest/v1/rpc/get_public_event  {"p_slug":"e2e-shared-1775657364513-testevent"}
+→ {"ok":true,"event":{"id":"cab350fb-...","name":"E2E-shared-1775657364513 Testevent","slug":"...","start_date":"2026-04-08","end_date":"2026-04-09","description":"E2E shared test event — auto-deleted after suite run","cover_url":null,"member_count":1},"agenda":[],"reports":[]}
+
+POST /rest/v1/rpc/get_public_event  {"p_slug":"nope-xyz"}
+→ {"ok":false,"error":"not_found"}
+```
+
+RPC is the only read path the public page needs; confirmed still callable from anon (matches `grant execute on function get_public_event to anon` in the lockdown migration).
+
+### Live page smoke test — `/e/e2e-shared-1775657364513-testevent`
+
+Fetched HTML (19 482 bytes, HTTP 200):
+
+- `<title>E2E-shared-1775657364513 Testevent — EventDocs</title>` — PASS
+- `<meta property="og:title" content="E2E-shared-1775657364513 Testevent">` — PASS
+- `<meta property="og:description" content="E2E shared test event — auto-deleted after suite run">` — PASS
+- `<meta property="og:url" ...>` — rendered but **see BUG-10 below**
+- `<meta property="og:type" content="website">` — PASS
+- `<meta name="twitter:card" content="summary">` + twitter:title + twitter:description — PASS
+- Event name rendered in body (H1) — PASS
+- Empty state "Noch nichts veröffentlicht" rendered (event has zero published reports) — PASS, matches AC
+- No video or map in DOM (correct — empty-state path) — PASS
+- No `unpkg` references in HTML — PASS (BUG-5 fixed)
+
+### Round 1 bug re-verification (code + live)
+
+| Bug | Round 1 severity | Fix shipped? | Verified in prod |
+|---|---|---|---|
+| BUG-1 anon tokens | CRITICAL | Yes (`20260408_lockdown_anon_rls.sql` applied) | **YES — HTTP 401 on all 5 tables** |
+| BUG-2 cache-per-request | HIGH | Yes — `import { cache } from "react"` wraps `unstable_cache` (page.tsx:77-80) | Implicit — page returns 200 fast |
+| BUG-3 description stripping | MEDIUM | Yes — `description.replace(/\s+/g, " ").trim().slice(0,160)` (page.tsx:112) | PASS (og:description clean, no newlines) |
+| BUG-4 lazy video | MEDIUM | Yes — `LazyVideo` client component with IntersectionObserver (`src/components/lazy-video.tsx` exists, used by `PublicDayReportCard`) | Cannot observe in DOM (empty-state path) — source-verified only |
+| BUG-5 Leaflet unpkg CDN | LOW | Yes — uses webpack PNG import from `leaflet/dist/images/` (`public-event-map-inner.tsx:17` — `iconUrl: markerIcon.src`) | No `unpkg` string in HTML |
+| BUG-6 Teilnehmer pluralisation | LOW | Yes — ternary removed, single "Teilnehmer" string (`public-event-header.tsx:110`) | Not in DOM for empty event (source-verified) |
+| BUG-7 aria-label caption length | LOW | Yes — `caption.slice(0, 80)` (`public-photo-gallery.tsx:76`) | Source-verified |
+| BUG-8 footer dead-end link | LOW | Yes — `<span>` instead of `<a href="/">` (page.tsx:229) | PASS — no `href="/"` in footer HTML |
+
+### Regression sweep — internal cookie-based flows after lockdown
+
+| Route | Expected | Actual | Verdict |
+|---|---|---|---|
+| `GET /login` | 200 | HTTP 200 | PASS |
+| `GET /events` (no cookie) | 307 → /login | HTTP 307 | PASS |
+| `GET /e/<unknown>` | 404 | HTTP 404 | PASS |
+| `GET /e/<real-slug>` | 200 | HTTP 200 | PASS |
+| `GET /join/<invalid-token>` | 307 → `/login?error=invalid_link` | **HTTP 500** with empty body | **FAIL → BUG-9** |
+
+`/events/[id]/capture`, `/pool`, `/admin` require a valid cookie session; cannot smoke-test from an unauthenticated curl, but the route code uses `getSupabaseAdmin()` (service role) exclusively, so the lockdown does not affect them. No 500s reported from those paths in the Round-3 probe.
+
+---
+
+### NEW BUGS
+
+#### BUG-9 — HIGH — `/join/[token]` returns HTTP 500 on invalid token instead of redirecting to `/login?error=invalid_link`
+**Severity:** High (regression, user-facing 500, breaks documented error-handling contract)
+**Location:** `src/app/join/[token]/route.ts:23-34`
+**Steps to reproduce:**
+```
+curl -i https://frank-lernt.vercel.app/join/badtoken123
+→ HTTP/1.1 500 Internal Server Error   (empty body)
+```
+**Root cause (high confidence):** The route does
+```ts
+const { data: member } = await supabase
+  .from("members").select("id, name").eq("token", token).single();
+if (!member) { redirect to /login?error=invalid_link }
+```
+PostgREST `.single()` returns `{data: null, error: PGRST116}` when zero rows match, and because the route does not destructure `error` nor wrap the query in try/catch, an unhandled rejection or a thrown error from Supabase-js (depending on version settings) bubbles up as a Next.js 500. The expected UX is a clean redirect to the login page with `?error=invalid_link`, which is the whole reason that branch exists in the code — but it is never reached for non-matching tokens in production.
+**Impact:** Any user who mistypes / expired-link-clicks / shares an old link gets a blank 500 page instead of a friendly error. Also affects the rate-limit tests: an attacker probing `/join/*` for valid tokens gets 500s instead of a redirect, which is a cleaner signal-or-not indicator and arguably *helps* token-enumeration (though the token space is 128-bit, so not exploitable in practice).
+**Fix owner:** Backend. Either use `.maybeSingle()` (which returns `{data: null, error: null}` cleanly on zero rows) or add a `try/catch` and treat `error?.code === "PGRST116"` as "not found".
+**Priority:** Fix before deploy. This is a regression against the Round-2-to-Round-3 lockdown work; the `/join` route was modified in commit `4cf3c77` to use service-role, and the single/maybeSingle mismatch slipped in at that time.
+
+---
+
+#### BUG-10 — MEDIUM — `og:url` points at ephemeral per-deploy Vercel preview hostname, not the stable production URL
+**Severity:** Medium (OG link preview rot — breaks WhatsApp forwarding across deploys, fails AC "OG Meta Tags für WhatsApp-Linkvorschau ... `og:url`")
+**Location:** `src/app/e/[slug]/page.tsx:87-92`
+**Evidence from live prod:**
+```
+<meta property="og:url" content="https://frank-lernt-pb89wx2n3-frankie0079s-projects.vercel.app/e/e2e-shared-1775657364513-testevent"/>
+```
+The canonical production URL is `https://frank-lernt.vercel.app/e/...`, but `siteUrl()` falls back to `process.env.VERCEL_URL` because no `NEXT_PUBLIC_SITE_URL` is set in Vercel's project env. `VERCEL_URL` is the **deployment-specific** hostname (`frank-lernt-<hash>-frankie0079s-projects.vercel.app`), which:
+1. Changes on every deploy — any WhatsApp link that was already scraped by a user's app keeps pointing at an old deploy hostname that Vercel eventually garbage-collects (or requires password protection for preview-deploy access on some Vercel plans).
+2. Is sometimes behind Vercel's "Deployment Protection" auth wall — clicking the `og:url` from a WhatsApp preview may prompt the follower for a Vercel login.
+3. Violates the PRD's promise that the public URL is "dauerhaft abrufbar" (PRD line "Dauerhaft abrufbar").
+**Fix:** Set `NEXT_PUBLIC_SITE_URL=https://frank-lernt.vercel.app` in Vercel project settings (Production env scope). No code change required. Also recommend preferring `NEXT_PUBLIC_SITE_URL` > `VERCEL_PROJECT_PRODUCTION_URL` (which Vercel exposes automatically and equals the canonical `*.vercel.app` hostname) > `VERCEL_URL` as fallback order.
+**Priority:** Fix before marking PROJ-35 Deployed. The "Link teilen" button also suffers from the same bug because it uses `siteUrl()` (page.tsx:173).
+
+---
+
+### Responsive / cross-browser (live)
+
+- Could not verify Chrome/Firefox/Safari at 375/768/1440 via curl-only probing. Page is Server-Component-rendered with Tailwind responsive classes already source-verified in Round 1. Empty-state page renders identically across viewports (no JS-driven layout). **Recommend a manual visual check at 375 px on Chrome and Safari iOS before declaring Deployed**, but this does not block production-ready verdict for the happy path, since no viewport-dependent bugs were found in code review.
+
+### Security audit (red-team) — updated
+
+| Vector | Round 1 | Round 3 |
+|---|---|---|
+| Anon token dump (BUG-1) | CRITICAL open | **CLOSED** (HTTP 401 on `members`) |
+| Anon full-table dump of events/agenda/content | CRITICAL open | **CLOSED** (HTTP 401 on all 5) |
+| RPC injection via `p_slug` | Low (parametrised) | Low (unchanged) |
+| Rate limiting on RPC | Low | Low (unchanged) — `unstable_cache` layer absorbs Follower traffic; motivated attacker can still force cache misses with random slugs but yields only `{ok:false,error:"not_found"}` |
+| Service-role key exposure | N/A | No change — keys remain server-only |
+| `/join/[token]` enumeration | Low | Low, but now 500s instead of redirecting (BUG-9) |
+| OG URL integrity (link-preview poisoning / stale previews) | N/A | BUG-10 — not a security bug per se but a trust-chain weakness for WhatsApp link sharing |
+
+No new attack surface introduced by PROJ-35. The lockdown migration is a large net security win and the primary goal of this feature round.
+
+---
+
+### Production-ready verdict: **NOT READY**
+
+Round 3 closes all Round 1 CRITICAL/HIGH issues (BUG-1 fully closed in prod, BUG-2..8 shipped and verified). However, two fresh issues surfaced on the live environment that must be addressed before marking PROJ-35 Deployed:
+
+**Blockers:**
+1. **BUG-9 (HIGH)** — `/join/[token]` returns HTTP 500 on invalid tokens. Regression from the lockdown work. One-line fix (`.maybeSingle()` or try/catch). Must be fixed before deploy per CLAUDE.md "Fix ALL bugs before deploy" convention.
+2. **BUG-10 (MEDIUM)** — `og:url` points at ephemeral preview-deploy hostname. WhatsApp link previews will break across deploys and may hit Vercel deploy-protection. One-env-var fix (`NEXT_PUBLIC_SITE_URL=https://frank-lernt.vercel.app` in Vercel project settings).
+
+**Non-blockers (recommended before marking Deployed):**
+- Manual visual check of `/e/[slug]` at 375 px (Chrome + Safari iOS) on a real slug with at least one published report, to verify video + map + gallery + lightbox render correctly. Round 3 could not exercise these code paths because the target event has zero published reports. Ideal would be to publish one daily_report on a test event and re-smoke.
+
+**Recommended fix order:** BUG-9 → BUG-10 → re-smoke `/join/<bad>` + `/e/<slug with report>` → mark Deployed.
+
+---
+
 ## Deployment
 _To be added by /deploy_

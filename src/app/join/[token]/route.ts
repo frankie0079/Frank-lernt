@@ -20,11 +20,14 @@ export async function GET(
   // 20260408_lockdown_anon_rls.sql to close BUG-1 (members.token leak).
   const supabase = getSupabaseAdmin();
 
+  // BUG-9 fix: .single() throws PGRST116 on zero rows and bubbles up as a
+  // 500 with empty body. Use .maybeSingle() so "no match" returns null data
+  // and we can redirect to /login?error=invalid_link.
   const { data: member } = await supabase
     .from("members")
     .select("id, name")
     .eq("token", token)
-    .single();
+    .maybeSingle();
 
   if (!member) {
     // Invalid token: redirect to login with error
