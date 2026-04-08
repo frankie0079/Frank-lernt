@@ -193,7 +193,26 @@ export async function POST(
     }
     llmText = block.text.trim();
   } catch (err) {
-    return serverError("storyboard:llm", err);
+    // TEMP DEBUG: expose full error to client to diagnose Vercel-side issue
+    const e = err as { name?: string; message?: string; status?: number; cause?: unknown };
+    console.error("[api:storyboard:llm:full]", {
+      name: e?.name,
+      message: e?.message,
+      status: e?.status,
+      cause: e?.cause,
+    });
+    return NextResponse.json(
+      {
+        error: "LLM-Aufruf fehlgeschlagen",
+        debug: {
+          name: e?.name ?? null,
+          message: e?.message ?? null,
+          status: e?.status ?? null,
+          cause: String(e?.cause ?? ""),
+        },
+      },
+      { status: 500 }
+    );
   }
 
   // 3. Parse + validate via Zod
