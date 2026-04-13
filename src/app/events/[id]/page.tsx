@@ -236,21 +236,21 @@ export default function EventDashboardPage() {
       <div className="mx-auto max-w-2xl px-4 pb-8">
         <Tabs defaultValue="capture" className="w-full">
           <TabsList className="w-full grid grid-cols-4">
-            <TabsTrigger value="capture" className="text-xs sm:text-sm">
-              <Camera className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
-              <span className="hidden sm:inline">Beitraege</span>
+            <TabsTrigger value="capture" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+              <Camera className="h-4 w-4" aria-hidden="true" />
+              <span>Erfassen</span>
             </TabsTrigger>
-            <TabsTrigger value="pool" className="text-xs sm:text-sm">
-              <LayoutGrid className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
-              <span className="hidden sm:inline">Pool</span>
+            <TabsTrigger value="pool" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+              <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+              <span>Sammlung</span>
             </TabsTrigger>
-            <TabsTrigger value="admin" className="text-xs sm:text-sm">
-              <Shield className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
-              <span className="hidden sm:inline">Admin</span>
+            <TabsTrigger value="admin" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+              <Shield className="h-4 w-4" aria-hidden="true" />
+              <span>Kuratieren</span>
             </TabsTrigger>
-            <TabsTrigger value="book" className="text-xs sm:text-sm">
-              <BookOpen className="mr-1 h-4 w-4 sm:mr-2" aria-hidden="true" />
-              <span className="hidden sm:inline">Buch</span>
+            <TabsTrigger value="book" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              <span>Tagebuch</span>
             </TabsTrigger>
           </TabsList>
 
