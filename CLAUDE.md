@@ -115,20 +115,22 @@ npm run start      # Production server
 
 ### Deployed (Production)
 - **PROJ-24: Auth & User-Accounts** — QA Round 4 passed (14/14 AC, 0 bugs)
-- **PROJ-25: Event-Erstellung** — Deployed 2026-04-06 (BUG-R2-1 deferred to PROJ-33)
+- **PROJ-25: Event-Erstellung** — Deployed 2026-04-06 (BUG-R2-1 deferred to PROJ-33). 2026-04-13: Cover-URL-Validierung gefixt (akzeptiert jetzt alle Supabase-URLs), Abbrechen-Button im Edit-Sheet, Auto-Focus/Autofill auf Event-Name deaktiviert.
 - **PROJ-26: Teilnehmer-Einladung** — Deployed 2026-04-06, QA Round 6 in Production passed (Migration `20260406_event_members_id_column.sql` angewendet, Schema-Drift behoben, BUG-3 Error-Sanitization gefixt).
-- **PROJ-27: Wanderer-Screen** — Deployed, QA passed
-- **PROJ-28: Content-Pool** — Deployed, QA passed
-- **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 (6/6 bugs fixed)
+- **PROJ-27: Wanderer-Screen** — Deployed, QA passed. 2026-04-13: Camera-Permissions-Check entfernt (blockierte iOS Safari), `capture="environment"` für direkten Kamerazugriff wiederhergestellt.
+- **PROJ-28: Content-Pool** — Deployed, QA passed. 2026-04-13: Bulk-Upload (Multi-Select + Fortschrittsbalken), `caption: null` Validierung gefixt, Tab-Labels auf Mobile sichtbar gemacht, Scroll-Hint-Pfeil für Filter-Leiste.
+- **PROJ-29: Video-Aufnahme** — Deployed 2026-04-05, QA Round 2 (6/6 bugs fixed). 2026-04-13: Video-Button öffnet jetzt direkt native iOS-Kamera im Videomodus.
 - **PROJ-30: Sprachmemo + Transkription** — Deployed 2026-04-06, QA Round 2 (7/7 bugs fixed)
 - **PROJ-31: Likes & Emoji-Reactions** — Deployed 2026-04-06
 - **PROJ-32: Kommentar-Threads** — Deployed 2026-04-06, 9 QA bugs fixed (incl. BUG-8/9 RLS bypass)
 - **PROJ-33: Tages-Admin Kurations-Workflow** — Deployed 2026-04-07, QA Round 3 in Production passed via Playwright E2E (5 original bugs + 2 newly found BUG-6/7 fixed). Migrations `20260407_daily_reports.sql` + `20260407_fix_report_items.sql` angewendet.
 - **PROJ-34: Slideshow-Generierung (Claude Haiku Storyboard)** — Deployed 2026-04-08, 51/51 Playwright E2E green in Production (incl. live Claude Haiku 4.5 call). Migration `20260407_slideshow.sql` angewendet. 4 Bugs by E2E caught + fixed: (1) RPC referenced non-existent `c.transcript` column, (2) missing `maxDuration=60s` caused Anthropic SDK timeout on Vercel Hobby, (3) trailing newline in `ANTHROPIC_API_KEY` env var → `.trim()` added defensively, (4) URL `event_id` wasn't validated against `agenda_item.event_id` (URL-tampering loophole).
 - **PROJ-35: Öffentliche Event-Seite** — Deployed 2026-04-08, QA Round 5 green. Migrations `20260408_public_event_rls.sql` (SECURITY DEFINER RPC `get_public_event`) + `20260408_lockdown_anon_rls.sql` (BUG-1: anon-Lockdown auf 5 Tabellen, schließt kritische Token-Leak-Lücke) angewendet. 10 Bugs (1 Critical, 1 High, 2 Medium, 6 Low) gefunden + gefixt. Known regression: Realtime-Subscriptions auf `content_items` im Content-Pool → tracked als PROJ-38.
+- **iOS PWA Fixes** — 2026-04-13: Safe-Area-Insets für iPhone Status-Bar (Navigation war verdeckt), `SUPABASE_SERVICE_ROLE_KEY` in Vercel Production gesetzt (fehlte, blockierte allen Login).
 
 ### Nächster Schritt
 `/architecture` für **PROJ-36: Post-Event Tagebuch**
+- Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, Fotos hochgeladen) — kann als Testdaten für PROJ-36/37 dienen.
 
 ### Build-Reihenfolge
 1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅
