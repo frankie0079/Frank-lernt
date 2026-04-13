@@ -38,7 +38,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
-      <body className={`${caveat.variable} antialiased hyphens-auto`}>
+      <body className={`${caveat.variable} antialiased hyphens-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
         <AuthProvider>{children}</AuthProvider>
         <Toaster />
       </body>
