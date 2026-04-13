@@ -110,25 +110,10 @@ export function WandererScreen({
     }
   }, []);
 
-  // Camera button handler — check permissions first
-  const handleCamera = useCallback(async () => {
+  // Camera button handler — file inputs don't need navigator.permissions;
+  // iOS handles camera access itself via the system picker.
+  const handleCamera = useCallback(() => {
     setFileError(null);
-
-    // Check camera permission if API is available
-    if (navigator.permissions) {
-      try {
-        const result = await navigator.permissions.query({ name: "camera" as PermissionName });
-        if (result.state === "denied") {
-          setFileError(
-            "Kamera-Zugriff blockiert. Bitte erlaube den Zugriff in den Einstellungen: Einstellungen > Safari > Kamera."
-          );
-          return;
-        }
-      } catch {
-        // permissions.query not supported for camera — continue
-      }
-    }
-
     cameraInputRef.current?.click();
   }, []);
 
