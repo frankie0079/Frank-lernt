@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { AgendaItem } from "@/lib/event-utils";
 import { Camera, Video, Type, Mic, LayoutGrid, ChevronRight } from "lucide-react";
 
@@ -50,50 +49,46 @@ export function ContentFilterBar({
 
   const allFilters = [...baseFilters, ...agendaFilters];
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [showScrollHint, setShowScrollHint] = useState(false);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const check = () => setShowScrollHint(el.scrollWidth > el.clientWidth + 10 && el.scrollLeft < 20);
-    check();
-    el.addEventListener("scroll", check, { passive: true });
-    return () => el.removeEventListener("scroll", check);
-  }, [allFilters.length]);
+  const [scrolledRight, setScrolledRight] = useState(false);
+  const hasOverflow = agendaFilters.length > 0;
 
   return (
     <div className="relative">
-      <ScrollArea className="w-full whitespace-nowrap" ref={scrollRef}>
-        <div className="flex gap-2 pb-2" role="tablist" aria-label="Beitraege filtern">
-          {allFilters.map((filter) => {
-            const isActive = activeFilter === filter.value;
-            return (
-              <button
-                key={filter.value}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => onFilterChange(filter.value)}
-                className="shrink-0"
+      <div
+        className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
+        role="tablist"
+        aria-label="Beitraege filtern"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setScrolledRight(el.scrollLeft > 20);
+        }}
+      >
+        {allFilters.map((filter) => {
+          const isActive = activeFilter === filter.value;
+          return (
+            <button
+              key={filter.value}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onFilterChange(filter.value)}
+              className="shrink-0"
+            >
+              <Badge
+                variant={isActive ? "default" : "outline"}
+                className={`cursor-pointer gap-1 px-3 py-1.5 text-xs transition-colors ${
+                  isActive
+                    ? ""
+                    : "hover:bg-accent hover:text-accent-foreground"
+                }`}
               >
-                <Badge
-                  variant={isActive ? "default" : "outline"}
-                  className={`cursor-pointer gap-1 px-3 py-1.5 text-xs transition-colors ${
-                    isActive
-                      ? ""
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  }`}
-                >
-                  {filter.icon}
-                  {filter.label}
-                </Badge>
-              </button>
-            );
-          })}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-      {showScrollHint && (
+                {filter.icon}
+                {filter.label}
+              </Badge>
+            </button>
+          );
+        })}
+      </div>
+      {hasOverflow && !scrolledRight && (
         <div className="pointer-events-none absolute right-0 top-0 flex h-full items-center bg-gradient-to-l from-background via-background/80 to-transparent pl-6 pr-1">
           <ChevronRight className="h-4 w-4 animate-pulse text-muted-foreground" />
         </div>
