@@ -60,8 +60,8 @@ export const eventCreateSchema = eventSchema.and(
       .url()
       .refine(
         (url) => {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-          return supabaseUrl ? url.startsWith(supabaseUrl) : true;
+          // Accept any supabase.co storage URL (covers + media buckets)
+          return url.includes("supabase.co");
         },
         { message: "Cover-URL muss vom Supabase Storage stammen" }
       )

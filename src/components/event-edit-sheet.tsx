@@ -553,7 +553,15 @@ export function EventEditSheet({
                 </Alert>
               )}
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving || deleting}
+                  onClick={() => onOpenChange(false)}
+                >
+                  Abbrechen
+                </Button>
                 <Button type="submit" disabled={saving || deleting}>
                   {saving && (
                     <Loader2
