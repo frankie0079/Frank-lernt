@@ -276,8 +276,10 @@ export async function POST(
 
   const parsed = contentCreateSchema.safeParse(body);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const field = issue.path.length > 0 ? issue.path.join(".") : "body";
     return NextResponse.json(
-      { error: parsed.error.issues[0].message },
+      { error: `${field}: ${issue.message}` },
       { status: 400 }
     );
   }
