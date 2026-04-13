@@ -307,9 +307,10 @@ export function WandererScreen({
         ref={cameraInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileChange}
         className="hidden"
-        aria-label="Foto aufnehmen oder auswaehlen"
+        aria-label="Foto mit Kamera aufnehmen"
       />
       <input
         ref={uploadInputRef}
