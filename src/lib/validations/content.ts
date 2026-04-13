@@ -13,6 +13,7 @@ export const contentCreateSchema = z.object({
   caption: z
     .string()
     .max(2500, "Maximal 2500 Zeichen")
+    .nullable()
     .optional()
     .or(z.literal("")),
   latitude: z.number().min(-90).max(90).nullable().optional(),
