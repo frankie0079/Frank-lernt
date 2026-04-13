@@ -63,6 +63,7 @@ export function WandererScreen({
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoCameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // Bulk upload state
@@ -117,10 +118,10 @@ export function WandererScreen({
     cameraInputRef.current?.click();
   }, []);
 
-  // Video button handler
+  // Video button handler — open native camera in video mode
   const handleVideo = useCallback(() => {
     setFileError(null);
-    setVideoSheetOpen(true);
+    videoCameraInputRef.current?.click();
   }, []);
 
   // Audio button handler
@@ -311,6 +312,22 @@ export function WandererScreen({
         onChange={handleFileChange}
         className="hidden"
         aria-label="Foto mit Kamera aufnehmen"
+      />
+      <input
+        ref={videoCameraInputRef}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            setSelectedVideoFile(file);
+            setVideoSheetOpen(true);
+          }
+          e.target.value = "";
+        }}
+        className="hidden"
+        aria-label="Video mit Kamera aufnehmen"
       />
       <input
         ref={uploadInputRef}
