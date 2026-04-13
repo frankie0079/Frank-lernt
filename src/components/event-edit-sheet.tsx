@@ -261,7 +261,7 @@ export function EventEditSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg p-0">
+      <SheetContent className="w-full sm:max-w-lg p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <SheetHeader className="px-6 pt-6 pb-2">
           <SheetTitle>Event bearbeiten</SheetTitle>
           <SheetDescription>
@@ -282,7 +282,7 @@ export function EventEditSheet({
                   <FormItem>
                     <FormLabel>Event-Name *</FormLabel>
                     <FormControl>
-                      <Input maxLength={100} {...field} />
+                      <Input maxLength={100} autoComplete="off" autoFocus={false} {...field} />
                     </FormControl>
                     <FormDescription>
                       {field.value?.length || 0}/100 Zeichen
