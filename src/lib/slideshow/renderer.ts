@@ -418,7 +418,7 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   if (mixer) {
     try {
       await mixer.context.resume();
-      await mixer.audio.play();
+      mixer.start();
     } catch {
       /* ignore */
     }

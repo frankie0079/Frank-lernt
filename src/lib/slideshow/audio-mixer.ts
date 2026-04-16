@@ -3,44 +3,54 @@
 // MediaRecorder needs a single MediaStream containing both video (canvas) and
 // audio (music) tracks. AudioContext cannot run inside a Worker, so we mix on
 // the main thread and pass the combined stream to MediaRecorder.
+//
+// iOS fix: decodes the MP3 into an AudioBuffer and plays it via
+// AudioBufferSourceNode. HTMLAudioElement + createMediaElementSource was
+// unreliable on iOS Safari — the pipeline stalled after ~3 seconds,
+// producing slideshows with only a brief audio intro then silence.
 
 export interface AudioMixerHandle {
-  audio: HTMLAudioElement;
   audioStream: MediaStream;
   context: AudioContext;
+  start: () => void;
   destroy: () => void;
 }
 
 export async function createAudioMixer(trackUrl: string): Promise<AudioMixerHandle> {
-  const audio = new Audio();
-  audio.crossOrigin = "anonymous";
-  audio.src = trackUrl;
-  audio.preload = "auto";
-
-  await new Promise<void>((resolve, reject) => {
-    audio.addEventListener("canplaythrough", () => resolve(), { once: true });
-    audio.addEventListener("error", () => reject(new Error("Music load failed")), { once: true });
-    audio.load();
-  });
-
   const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const context = new AudioCtx();
-  const source = context.createMediaElementSource(audio);
+
+  // Fetch + decode the MP3 into an AudioBuffer (iOS-safe).
+  const res = await fetch(trackUrl);
+  if (!res.ok) throw new Error(`Music load failed: HTTP ${res.status}`);
+  const arrayBuffer = await res.arrayBuffer();
+  const audioBuffer = await context.decodeAudioData(arrayBuffer);
+
   const dest = context.createMediaStreamDestination();
-  source.connect(dest);
-  // Also connect to speakers so the user can preview if needed (but we mute
-  // by default during rendering — caller can unmute).
-  source.connect(context.destination);
-  audio.muted = true;
+
+  let source: AudioBufferSourceNode | null = null;
+  let started = false;
 
   return {
-    audio,
     audioStream: dest.stream,
     context,
+    start: () => {
+      if (started) return;
+      started = true;
+      source = context.createBufferSource();
+      source.buffer = audioBuffer;
+      source.loop = true; // cover slideshows longer than the track
+      source.connect(dest);
+      source.start(0);
+    },
     destroy: () => {
       try {
-        audio.pause();
-        audio.src = "";
+        source?.stop();
+      } catch {
+        /* ignore */
+      }
+      try {
+        source?.disconnect();
       } catch {
         /* ignore */
       }
