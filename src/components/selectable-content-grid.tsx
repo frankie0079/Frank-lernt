@@ -26,6 +26,8 @@ interface SelectableContentGridProps {
   agendaItems: AgendaItem[];
   selectedIds: Set<string>;
   onToggle: (item: ContentItem) => void;
+  /** If set, the grid defaults to showing only this agenda day's content (used in curation). */
+  defaultAgendaItemId?: string;
 }
 
 function filterToTypeParam(filter: FilterValue): string | null {
@@ -69,6 +71,7 @@ export function SelectableContentGrid({
   agendaItems,
   selectedIds,
   onToggle,
+  defaultAgendaItemId,
 }: SelectableContentGridProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -84,7 +87,8 @@ export function SelectableContentGrid({
   const activeFilterRef = useRef<FilterValue>("all");
   const itemIdsRef = useRef<Set<string>>(new Set());
 
-  const activeFilter = (searchParams.get("filter") as FilterValue) || "all";
+  const activeFilter = (searchParams.get("filter") as FilterValue) ||
+    (defaultAgendaItemId ? (`agenda:${defaultAgendaItemId}` as FilterValue) : "all");
   activeFilterRef.current = activeFilter;
 
   const setFilter = useCallback(

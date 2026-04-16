@@ -557,6 +557,7 @@ export function ReportEditor({
         agendaItems={agendaItems}
         selectedIds={selectedSet}
         onToggle={handleToggle}
+        defaultAgendaItemId={agendaItemId}
       />
 
       <ReportPreviewSheet
