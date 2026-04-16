@@ -59,8 +59,19 @@ async function loadImage(url: string): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Image load failed: ${url}`));
+    const timeout = setTimeout(() => {
+      console.error("[slideshow] image load timeout (15s):", url);
+      reject(new Error(`Image load timeout: ${url}`));
+    }, 15000);
+    img.onload = () => {
+      clearTimeout(timeout);
+      resolve(img);
+    };
+    img.onerror = (e) => {
+      clearTimeout(timeout);
+      console.error("[slideshow] image load failed:", url, e);
+      reject(new Error(`Image load failed: ${url}`));
+    };
     img.src = url;
   });
 }
@@ -310,9 +321,11 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
       if (url) {
         try {
           sceneImages.set(i, await loadImage(url));
-        } catch {
-          /* fallback to gradient at render time */
+        } catch (e) {
+          console.warn("[slideshow] scene", i, "photo load failed, falling back to gradient:", e);
         }
+      } else {
+        console.warn("[slideshow] scene", i, "has no url, scene meta:", meta);
       }
     } else if (scene.type === "video") {
       const meta = scene.content_item_id ? itemMeta.get(scene.content_item_id) : null;
@@ -324,8 +337,8 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
           } else if (meta?.url) {
             sceneImages.set(i, await loadVideoFrame(meta.url));
           }
-        } catch {
-          /* ignore */
+        } catch (e) {
+          console.warn("[slideshow] scene", i, "video frame load failed:", e);
         }
       }
     }
