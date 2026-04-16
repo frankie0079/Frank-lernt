@@ -292,12 +292,31 @@ function findSceneAt(sb: Storyboard, t_ms: number): { scene: Scene; index: numbe
   return null;
 }
 
-const INTRO_MS = 5000; // cover shown for 5s, title fades in from 2s to 3.5s
+const INTRO_MS = 6000; // cover shown alone 0-3s, title fades in 3-4.5s, holds 4.5-6s
 const END_MS = 3500;   // "Ende" screen, music fades out during this phase
 
+/** Deterministic PRNG so re-renders of the same storyboard produce the same pacing. */
+function scenePseudoDuration(sceneIndex: number): number {
+  // Simple LCG seeded by index → range 4000..6000 ms
+  const seed = (sceneIndex * 2654435761) >>> 0;
+  const r = (seed % 2001) / 2000; // 0..1
+  return 4000 + Math.round(r * 2000);
+}
+
 export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult> {
-  const { storyboard, format, itemMeta, onProgress, signal, eventName, agendaTitle, agendaDate, eventCoverUrl } = opts;
+  const { storyboard: originalStoryboard, format, itemMeta, onProgress, signal, eventName, agendaTitle, agendaDate, eventCoverUrl } = opts;
   const { width: W, height: H } = dimensionsFor(format);
+
+  // Override scene durations: user wants each scene to last 4-6s (random,
+  // deterministic by scene index). Clone the storyboard so we don't mutate
+  // the caller's state.
+  const storyboard: Storyboard = {
+    ...originalStoryboard,
+    scenes: originalStoryboard.scenes.map((sc, i) => ({
+      ...sc,
+      duration_ms: scenePseudoDuration(i),
+    })),
+  };
 
   const checkAbort = () => {
     if (signal?.aborted) throw new Error("Abgebrochen");
@@ -456,8 +475,8 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
         } else {
           drawGradient(ctx, W, H, storyboard.mood);
         }
-        // Title animation: fade in from 2.0s to 3.5s, hold until 5s
-        const titleAlpha = elapsed < 2000 ? 0 : elapsed < 3500 ? (elapsed - 2000) / 1500 : 1;
+        // Title animation: cover alone 0-3s, fade in 3.0-4.5s, hold 4.5-6s
+        const titleAlpha = elapsed < 3000 ? 0 : elapsed < 4500 ? (elapsed - 3000) / 1500 : 1;
         if (titleAlpha > 0) {
           ctx.globalAlpha = titleAlpha;
           drawCenteredText(ctx, storyboard.title, W, H * 0.42, format === "portrait" ? 92 : 80, "800");
@@ -512,23 +531,25 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
       const meta = scene.content_item_id ? itemMeta.get(scene.content_item_id) : null;
 
       if (scene.type === "cover") {
+        // LLM-generated "cover" scene inside the storyboard: render as a
+        // regular photo (the title is already handled by the dedicated
+        // intro phase — don't render it a second time here).
         if (img) {
           applyColorGrade(ctx, scene.color_grade);
           drawCoverImage(ctx, img, W, H, scene.effect, localT);
           ctx.filter = "none";
-          drawDarkOverlay(ctx, W, H, 0.55);
         } else {
           drawGradient(ctx, W, H, storyboard.mood);
         }
-        // Title block
-        drawCenteredText(ctx, storyboard.title, W, H * 0.42, format === "portrait" ? 92 : 80, "800");
-        drawCenteredText(ctx, agendaTitle, W, H * 0.55, format === "portrait" ? 52 : 44, "500");
-        drawCenteredText(ctx, new Date(agendaDate + "T00:00:00").toLocaleDateString("de-DE", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }), W, H * 0.62, format === "portrait" ? 36 : 30, "400");
+        // Optional per-scene overlay (no full-screen title)
+        if (scene.overlay_text) {
+          const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+          grad.addColorStop(0, "rgba(0,0,0,0)");
+          grad.addColorStop(1, "rgba(0,0,0,0.7)");
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, H * 0.55, W, H * 0.45);
+          drawCenteredText(ctx, scene.overlay_text, W, H * 0.78, format === "portrait" ? 44 : 36, "600");
+        }
       } else if (scene.type === "photo" || scene.type === "video") {
         if (img) {
           applyColorGrade(ctx, scene.color_grade);
