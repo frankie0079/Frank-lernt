@@ -54,6 +54,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
   const [progress, setProgress] = useState<RenderProgress | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
+  const [blobExtension, setBlobExtension] = useState<"mp4" | "webm">("webm");
   const [renderedDurationSec, setRenderedDurationSec] = useState<number>(0);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -190,6 +191,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
       const url = URL.createObjectURL(result.blob);
       setBlob(result.blob);
       setBlobUrl(url);
+      setBlobExtension(result.extension);
       setRenderedDurationSec(Math.round(result.durationMs / 1000));
       toast.success("Film fertig!");
     } catch (err) {
@@ -213,16 +215,16 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
     if (!blob) return;
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `film-${input?.agenda_item.title ?? "tag"}.webm`;
+    a.download = `film-${input?.agenda_item.title ?? "tag"}.${blobExtension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-  }, [blob, input]);
+  }, [blob, input, blobExtension]);
 
   const handleShare = useCallback(async () => {
     if (!blob) return;
-    const file = new File([blob], `film-${input?.agenda_item.title ?? "tag"}.webm`, {
+    const file = new File([blob], `film-${input?.agenda_item.title ?? "tag"}.${blobExtension}`, {
       type: blob.type,
     });
     if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
@@ -238,7 +240,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
     } else {
       toast.error("Teilen wird vom Browser nicht unterstützt — bitte herunterladen.");
     }
-  }, [blob, input, storyboard]);
+  }, [blob, input, storyboard, blobExtension]);
 
   const handlePublish = useCallback(async () => {
     if (!blob || !input) return;
@@ -249,11 +251,11 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-      const path = `${eventId}/${agendaItemId}.webm`;
+      const path = `${eventId}/${agendaItemId}.${blobExtension}`;
       const { error: uploadErr } = await supabase.storage
         .from("slideshows")
         .upload(path, blob, {
-          contentType: "video/webm",
+          contentType: blob.type || (blobExtension === "mp4" ? "video/mp4" : "video/webm"),
           upsert: true,
         });
       if (uploadErr) throw uploadErr;
@@ -284,7 +286,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
     } finally {
       setPublishing(false);
     }
-  }, [blob, eventId, agendaItemId, input, renderedDurationSec]);
+  }, [blob, eventId, agendaItemId, input, renderedDurationSec, blobExtension]);
 
   if (loading) {
     return (

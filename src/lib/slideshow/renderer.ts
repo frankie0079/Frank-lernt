@@ -23,6 +23,10 @@ export interface RenderResult {
   durationMs: number;
   width: number;
   height: number;
+  /** MIME type the encoder picked (e.g. "video/mp4" on iOS, "video/webm" on Chrome). */
+  mimeType: string;
+  /** Matching file extension ("mp4" or "webm"). */
+  extension: "mp4" | "webm";
 }
 
 export interface RenderOptions {
@@ -369,7 +373,11 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   const videoStream = canvas.captureStream(fps);
   const combined = combineStreams(videoStream, mixer?.audioStream ?? null);
 
+  // Prefer MP4 (WhatsApp/iOS-compatible); fall back to WebM (Chrome desktop).
   const supportedTypes = [
+    "video/mp4;codecs=h264,aac",
+    "video/mp4;codecs=avc1,mp4a",
+    "video/mp4",
     "video/webm;codecs=vp9,opus",
     "video/webm;codecs=vp8,opus",
     "video/webm;codecs=vp9",
@@ -379,7 +387,7 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   const mimeType = supportedTypes.find((t) => MediaRecorder.isTypeSupported(t));
   if (!mimeType) {
     mixer?.destroy();
-    throw new Error("Browser unterstützt MediaRecorder/WebM nicht");
+    throw new Error("Browser unterstützt MediaRecorder nicht");
   }
 
   const chunks: Blob[] = [];
@@ -536,7 +544,8 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   }
 
   const blob = new Blob(chunks, { type: mimeType });
-  return { blob, durationMs: totalMs, width: W, height: H };
+  const extension: "mp4" | "webm" = mimeType.startsWith("video/mp4") ? "mp4" : "webm";
+  return { blob, durationMs: totalMs, width: W, height: H, mimeType, extension };
 }
 
 // Snap-to-beat helper exposed for editor (so admin can preview snap targets)
