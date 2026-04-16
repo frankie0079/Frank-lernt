@@ -150,29 +150,15 @@ function drawCoverImage(
     dx = (W - dw) / 2;
     dy = 0;
   }
-  // Ken Burns: scale 1 -> 1.15 (or reverse), pan ±5% on selected axis
-  let scale = 1;
-  let tx = 0;
-  let ty = 0;
-  switch (effect) {
-    case "kenburns-zoom-in":
-      scale = 1 + 0.15 * t;
-      break;
-    case "kenburns-zoom-out":
-      scale = 1.15 - 0.15 * t;
-      break;
-    case "kenburns-pan-left":
-      scale = 1.1;
-      tx = -W * 0.05 * t;
-      break;
-    case "kenburns-pan-right":
-      scale = 1.1;
-      tx = W * 0.05 * t;
-      break;
-    case "static":
-    default:
-      scale = 1.02;
-  }
+  // No zoom/pan — keep full image visible. Scene transitions (crossfades)
+  // provide the motion. Frank's feedback: Ken-Burns cropped too much of
+  // landscape shots.
+  const scale = 1;
+  const tx = 0;
+  const ty = 0;
+  // Effect param intentionally ignored; kept in storyboard for future use.
+  void effect;
+  void t;
   // Blurred background fill (Instagram-story style) so letterbox bars don't
   // look like dead black space.
   ctx.save();
