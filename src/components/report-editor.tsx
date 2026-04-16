@@ -270,13 +270,13 @@ export function ReportEditor({
     loadReport();
   }, [loadReport]);
 
-  // Fetch total count for "X von Y ausgewählt" counter (BUG-2)
+  // Fetch total count for "X von Y ausgewählt" counter — scoped to this day
   useEffect(() => {
     let aborted = false;
     (async () => {
       try {
         const res = await fetch(
-          `/api/events/${eventId}/content?limit=1`
+          `/api/events/${eventId}/content?limit=1&agenda=${agendaItemId}`
         );
         if (!res.ok) return;
         const data = await res.json();
@@ -294,7 +294,7 @@ export function ReportEditor({
     return () => {
       aborted = true;
     };
-  }, [eventId]);
+  }, [eventId, agendaItemId]);
 
   // --- Auto-save ---
   const performSave = useCallback(

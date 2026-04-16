@@ -87,8 +87,13 @@ export function SelectableContentGrid({
   const activeFilterRef = useRef<FilterValue>("all");
   const itemIdsRef = useRef<Set<string>>(new Set());
 
-  const activeFilter = (searchParams.get("filter") as FilterValue) ||
-    (defaultAgendaItemId ? (`agenda:${defaultAgendaItemId}` as FilterValue) : "all");
+  const rawFilter = (searchParams.get("filter") as FilterValue) || "all";
+  // When scoped to a specific agenda day (curation mode), combine the type
+  // filter with the agenda filter so "Fotos" means "photos of THIS day", not
+  // "all photos of the whole event".
+  const activeFilter: FilterValue = defaultAgendaItemId && rawFilter === "all"
+    ? (`agenda:${defaultAgendaItemId}` as FilterValue)
+    : rawFilter;
   activeFilterRef.current = activeFilter;
 
   const setFilter = useCallback(
@@ -110,10 +115,13 @@ export function SelectableContentGrid({
       const typeParam = filterToTypeParam(activeFilter);
       if (typeParam) params.set("filter", typeParam);
       const agendaId = filterToAgendaId(activeFilter);
-      if (agendaId) params.set("agenda", agendaId);
+      // In curation mode, always scope by the default agenda day, even when a
+      // type filter is active (otherwise "Fotos" would show all event photos).
+      const effectiveAgendaId = agendaId || defaultAgendaItemId || null;
+      if (effectiveAgendaId) params.set("agenda", effectiveAgendaId);
       return `/api/events/${eventId}/content?${params.toString()}`;
     },
-    [eventId, activeFilter]
+    [eventId, activeFilter, defaultAgendaItemId]
   );
 
   const fetchItems = useCallback(
@@ -234,7 +242,7 @@ export function SelectableContentGrid({
         <ContentFilterBar
           activeFilter={activeFilter}
           onFilterChange={setFilter}
-          agendaItems={agendaItems}
+          agendaItems={defaultAgendaItemId ? [] : agendaItems}
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -251,7 +259,7 @@ export function SelectableContentGrid({
         <ContentFilterBar
           activeFilter={activeFilter}
           onFilterChange={setFilter}
-          agendaItems={agendaItems}
+          agendaItems={defaultAgendaItemId ? [] : agendaItems}
         />
         <div className="rounded-lg border border-destructive/50 p-6 text-center">
           <p className="text-sm text-destructive">{error}</p>
@@ -274,7 +282,7 @@ export function SelectableContentGrid({
         <ContentFilterBar
           activeFilter={activeFilter}
           onFilterChange={setFilter}
-          agendaItems={agendaItems}
+          agendaItems={defaultAgendaItemId ? [] : agendaItems}
         />
         <div className="rounded-lg border border-dashed border-border p-8 text-center">
           <LayoutGrid
