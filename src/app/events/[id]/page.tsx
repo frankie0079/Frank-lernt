@@ -30,6 +30,7 @@ import {
   Shield,
   BookOpen,
   Settings,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -274,18 +275,52 @@ export default function EventDashboardPage() {
           </TabsContent>
 
           <TabsContent value="admin" className="mt-6">
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <Shield
-                className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <p className="text-sm font-medium text-foreground">
-                Tages-Admin
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Kommt in PROJ-33: Kurations-Workflow und Slideshow
-              </p>
-            </div>
+            {agendaItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <Shield className="mx-auto mb-3 h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">Keine Tages-Abschnitte</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Lege zuerst Agenda-Punkte unter &quot;Bearbeiten&quot; an.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Wähle einen Tag zum Kuratieren und zur Slideshow-Erstellung:
+                </p>
+                {agendaItems
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((item) => {
+                    const itemDate = new Date(item.date + "T00:00:00");
+                    return (
+                      <Link
+                        key={item.id}
+                        href={`/events/${eventId}/admin/${item.id}`}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <div className="flex flex-col items-center justify-center rounded-md bg-muted px-3 py-1 text-center">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {itemDate.toLocaleDateString("de-DE", { weekday: "short" })}
+                          </span>
+                          <span className="text-lg font-bold text-foreground">{itemDate.getDate()}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {itemDate.toLocaleDateString("de-DE", { month: "short" })}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-foreground">{item.title}</h3>
+                          {item.description && (
+                            <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      </Link>
+                    );
+                  })}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="book" className="mt-6">
