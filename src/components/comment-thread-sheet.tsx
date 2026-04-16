@@ -13,10 +13,27 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Send, Trash2, Loader2 } from "lucide-react";
+import { Send, Trash2, Loader2, Mic, MicOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+// Minimal Web Speech API types (DOM lib types are unreliable across browsers).
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
+}
 
 export interface Comment {
   id: string;
@@ -162,6 +179,58 @@ export function CommentThreadSheet({
   const [hasMore, setHasMore] = useState(false);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const speechSupported = typeof window !== "undefined" && (
+    "SpeechRecognition" in window || "webkitSpeechRecognition" in window
+  );
+
+  const toggleDictation = useCallback(() => {
+    if (!speechSupported) return;
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = (window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    }).SpeechRecognition ?? (window as unknown as {
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    }).webkitSpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "de-DE";
+    rec.interimResults = false;
+    rec.continuous = true;
+    rec.onresult = (event: SpeechRecognitionEventLike) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) transcript += r[0].transcript;
+      }
+      if (transcript) {
+        setText((prev) => {
+          const sep = prev && !prev.endsWith(" ") ? " " : "";
+          return (prev + sep + transcript).slice(0, MAX_LENGTH);
+        });
+      }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  }, [listening, speechSupported]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   // Pending deletes (id → timeoutId) — used for 5s undo window
   const pendingDeletesRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
@@ -412,6 +481,66 @@ export function CommentThreadSheet({
           </SheetTitle>
         </SheetHeader>
 
+        {currentMemberId && (
+          <div className="border-b pb-3 pt-2">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Kommentar schreiben oder mit Mikrofon diktieren..."
+                  rows={3}
+                  maxLength={MAX_LENGTH}
+                  disabled={submitting}
+                  className="resize-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSubmit();
+                    }
+                  }}
+                />
+                <div className="mt-1 flex justify-end">
+                  <span
+                    className={cn(
+                      "text-[10px] tabular-nums",
+                      overLimit ? "text-destructive" : "text-muted-foreground"
+                    )}
+                  >
+                    {charCount}/{MAX_LENGTH}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant={listening ? "default" : "outline"}
+                  onClick={toggleDictation}
+                  disabled={!speechSupported || submitting}
+                  aria-label={listening ? "Diktat stoppen" : "Diktat starten"}
+                  title={speechSupported ? "Mikrofon" : "Spracheingabe nicht unterstützt"}
+                >
+                  {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={() => void handleSubmit()}
+                  disabled={!canSubmit}
+                  aria-label="Kommentar senden"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto py-2">
           {hasMore && (
             <div className="flex justify-center pb-2">
@@ -459,52 +588,6 @@ export function CommentThreadSheet({
           )}
         </div>
 
-        {currentMemberId && (
-          <div className="border-t pt-3">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Kommentar schreiben..."
-                  rows={2}
-                  maxLength={MAX_LENGTH}
-                  disabled={submitting}
-                  className="resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSubmit();
-                    }
-                  }}
-                />
-                <div className="mt-1 flex justify-end">
-                  <span
-                    className={cn(
-                      "text-[10px] tabular-nums",
-                      overLimit ? "text-destructive" : "text-muted-foreground"
-                    )}
-                  >
-                    {charCount}/{MAX_LENGTH}
-                  </span>
-                </div>
-              </div>
-              <Button
-                type="button"
-                size="icon"
-                onClick={() => void handleSubmit()}
-                disabled={!canSubmit}
-                aria-label="Kommentar senden"
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
       </SheetContent>
     </Sheet>
   );

@@ -52,7 +52,7 @@ export function CurationToolbar({
   };
 
   return (
-    <div className="sticky top-0 z-30 -mx-4 border-b border-border bg-background/95 px-4 py-2 backdrop-blur">
+    <div className="sticky top-[env(safe-area-inset-top)] z-30 -mx-4 border-b border-border bg-background/95 px-4 py-2 backdrop-blur">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-col">
           <span className="text-sm font-medium text-foreground">
