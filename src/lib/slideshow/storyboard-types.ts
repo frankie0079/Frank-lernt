@@ -96,7 +96,7 @@ export interface StoryboardInputItem {
 }
 
 export interface StoryboardInput {
-  event: { id: string; name: string; description: string | null };
+  event: { id: string; name: string; description: string | null; cover_url: string | null };
   agenda_item: { id: string; title: string; date: string };
   report_id: string;
   existing_storyboard: Storyboard | null;

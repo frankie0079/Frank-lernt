@@ -30,7 +30,7 @@ interface MusicTrackOption {
 }
 
 interface InputData {
-  event: { id: string; name: string; description: string | null };
+  event: { id: string; name: string; description: string | null; cover_url: string | null };
   agenda_item: { id: string; title: string; date: string };
   report_id: string;
   existing_storyboard: Storyboard | null;
@@ -182,6 +182,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
         format,
         itemMeta,
         eventName: input.event.name,
+        eventCoverUrl: input.event.cover_url,
         agendaTitle: input.agenda_item.title,
         agendaDate: input.agenda_item.date,
         signal: ctrl.signal,

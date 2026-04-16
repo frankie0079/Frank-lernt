@@ -13,6 +13,8 @@ export interface AudioMixerHandle {
   audioStream: MediaStream;
   context: AudioContext;
   start: () => void;
+  /** Schedule a linear fade-out from current gain to 0 over the given duration, starting `delaySec` from now. */
+  fadeOut: (delaySec: number, durationSec: number) => void;
   destroy: () => void;
 }
 
@@ -26,10 +28,14 @@ export async function createAudioMixer(trackUrl: string): Promise<AudioMixerHand
   const arrayBuffer = await res.arrayBuffer();
   const audioBuffer = await context.decodeAudioData(arrayBuffer);
 
+  const gain = context.createGain();
+  gain.gain.value = 1;
   const dest = context.createMediaStreamDestination();
+  gain.connect(dest);
 
   let source: AudioBufferSourceNode | null = null;
   let started = false;
+  let startTime = 0;
 
   return {
     audioStream: dest.stream,
@@ -37,11 +43,17 @@ export async function createAudioMixer(trackUrl: string): Promise<AudioMixerHand
     start: () => {
       if (started) return;
       started = true;
+      startTime = context.currentTime;
       source = context.createBufferSource();
       source.buffer = audioBuffer;
-      source.loop = true; // cover slideshows longer than the track
-      source.connect(dest);
+      source.loop = true;
+      source.connect(gain);
       source.start(0);
+    },
+    fadeOut: (delaySec: number, durationSec: number) => {
+      const t0 = (startTime || context.currentTime) + delaySec;
+      gain.gain.setValueAtTime(1, t0);
+      gain.gain.linearRampToValueAtTime(0, t0 + durationSec);
     },
     destroy: () => {
       try {

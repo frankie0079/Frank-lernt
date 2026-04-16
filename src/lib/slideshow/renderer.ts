@@ -47,6 +47,8 @@ export interface RenderOptions {
   eventName: string;
   agendaTitle: string;
   agendaDate: string;
+  /** Event cover photo URL — used for the dedicated intro cover scene. */
+  eventCoverUrl?: string | null;
   onProgress?: (p: RenderProgress) => void;
   signal?: AbortSignal;
 }
@@ -290,13 +292,26 @@ function findSceneAt(sb: Storyboard, t_ms: number): { scene: Scene; index: numbe
   return null;
 }
 
+const INTRO_MS = 5000; // cover shown for 5s, title fades in from 2s to 3.5s
+const END_MS = 3500;   // "Ende" screen, music fades out during this phase
+
 export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult> {
-  const { storyboard, format, itemMeta, onProgress, signal, eventName, agendaTitle, agendaDate } = opts;
+  const { storyboard, format, itemMeta, onProgress, signal, eventName, agendaTitle, agendaDate, eventCoverUrl } = opts;
   const { width: W, height: H } = dimensionsFor(format);
 
   const checkAbort = () => {
     if (signal?.aborted) throw new Error("Abgebrochen");
   };
+
+  // Preload dedicated cover image for intro (from event.cover_url)
+  let introCoverImg: LoadedImage | null = null;
+  if (eventCoverUrl) {
+    try {
+      introCoverImg = await loadImage(eventCoverUrl);
+    } catch (e) {
+      console.warn("[slideshow] event cover load failed, falling back to gradient:", e);
+    }
+  }
 
   // 1. Preload all images
   const sceneImages = new Map<number, LoadedImage>();
@@ -402,13 +417,17 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
     recorder.onstop = () => resolve();
   });
 
-  // 5. Render loop
-  const totalMs = totalDuration(storyboard);
+  // 5. Render loop — three phases: intro cover (5s), storyboard (variable), end (3.5s)
+  const storyboardMs = totalDuration(storyboard);
+  const totalMs = INTRO_MS + storyboardMs + END_MS;
   recorder.start(250);
   if (mixer) {
     try {
       await mixer.context.resume();
       mixer.start();
+      // Schedule music fade-out during end phase
+      const endPhaseStartSec = (INTRO_MS + storyboardMs) / 1000;
+      mixer.fadeOut(endPhaseStartSec, END_MS / 1000);
     } catch {
       /* ignore */
     }
@@ -423,21 +442,70 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
       const elapsed = performance.now() - startWall;
       if (elapsed >= totalMs) break;
 
-      const found = findSceneAt(storyboard, elapsed);
-      if (!found) break;
-      const { scene, index, sceneStart } = found;
-      const localT = (elapsed - sceneStart) / scene.duration_ms; // 0..1
-
-      // Crossfade alpha during last 300 ms of each scene (if next scene exists)
-      const remainInScene = scene.duration_ms - (elapsed - sceneStart);
-      const fadeMs = 350;
-      const isFading = remainInScene < fadeMs && index < storyboard.scenes.length - 1;
-      const fadeAlpha = isFading ? remainInScene / fadeMs : 1;
-
       // Background fill (always)
       ctx.filter = "none";
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, W, H);
+
+      // --- PHASE 1: Intro cover (0..INTRO_MS) ---
+      if (elapsed < INTRO_MS) {
+        if (introCoverImg) {
+          drawCoverImage(ctx, introCoverImg, W, H, "static", 0);
+          ctx.filter = "none";
+          drawDarkOverlay(ctx, W, H, 0.45);
+        } else {
+          drawGradient(ctx, W, H, storyboard.mood);
+        }
+        // Title animation: fade in from 2.0s to 3.5s, hold until 5s
+        const titleAlpha = elapsed < 2000 ? 0 : elapsed < 3500 ? (elapsed - 2000) / 1500 : 1;
+        if (titleAlpha > 0) {
+          ctx.globalAlpha = titleAlpha;
+          drawCenteredText(ctx, storyboard.title, W, H * 0.42, format === "portrait" ? 92 : 80, "800");
+          drawCenteredText(ctx, agendaTitle, W, H * 0.55, format === "portrait" ? 52 : 44, "500");
+          drawCenteredText(ctx, new Date(agendaDate + "T00:00:00").toLocaleDateString("de-DE", {
+            weekday: "long", day: "numeric", month: "long", year: "numeric",
+          }), W, H * 0.62, format === "portrait" ? 36 : 30, "400");
+          ctx.globalAlpha = 1;
+        }
+        // Crossfade out in the last 300ms of the intro
+        const introRemain = INTRO_MS - elapsed;
+        if (introRemain < 350) {
+          ctx.fillStyle = `rgba(0,0,0,${1 - introRemain / 350})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+        await new Promise((r) => setTimeout(r, 1000 / fps));
+        continue;
+      }
+
+      // --- PHASE 3: End screen (after storyboard) ---
+      if (elapsed >= INTRO_MS + storyboardMs) {
+        const endElapsed = elapsed - INTRO_MS - storyboardMs;
+        // Fade-in "Ende" for the first 800ms, then hold, then fade to black in last 800ms
+        const fadeInAlpha = Math.min(endElapsed / 800, 1);
+        const fadeOutAlpha = endElapsed > END_MS - 800 ? (END_MS - endElapsed) / 800 : 1;
+        const alpha = Math.max(0, Math.min(fadeInAlpha, fadeOutAlpha));
+        if (alpha > 0) {
+          ctx.globalAlpha = alpha;
+          drawCenteredText(ctx, "Ende", W, H / 2 - 20, format === "portrait" ? 120 : 100, "800");
+          drawCenteredText(ctx, eventName, W, H / 2 + 60, format === "portrait" ? 44 : 36, "400");
+          ctx.globalAlpha = 1;
+        }
+        await new Promise((r) => setTimeout(r, 1000 / fps));
+        continue;
+      }
+
+      // --- PHASE 2: Storyboard scenes ---
+      const storyElapsed = elapsed - INTRO_MS;
+      const found = findSceneAt(storyboard, storyElapsed);
+      if (!found) break;
+      const { scene, index, sceneStart } = found;
+      const localT = (storyElapsed - sceneStart) / scene.duration_ms; // 0..1
+
+      // Crossfade alpha during last 300 ms of each scene (if next scene exists)
+      const remainInScene = scene.duration_ms - (storyElapsed - sceneStart);
+      const fadeMs = 350;
+      const isFading = remainInScene < fadeMs && index < storyboard.scenes.length - 1;
+      const fadeAlpha = isFading ? remainInScene / fadeMs : 1;
 
       // Draw scene
       const img = sceneImages.get(index);
