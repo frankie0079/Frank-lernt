@@ -174,8 +174,8 @@ export async function processAndUploadImage(
 
 // --- Video Upload ---
 
-/** Max video file size: 100 MB */
-export const VIDEO_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+/** Max video file size: 50 MB (Supabase free tier plan limit on media bucket) */
+export const VIDEO_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 
 /**
  * Generate a thumbnail from the first frame of a video blob.
