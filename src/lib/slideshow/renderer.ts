@@ -159,27 +159,9 @@ function drawCoverImage(
   // Effect param intentionally ignored; kept in storyboard for future use.
   void effect;
   void t;
-  // Blurred background fill (Instagram-story style) so letterbox bars don't
-  // look like dead black space.
-  ctx.save();
-  ctx.filter = "blur(40px) brightness(0.6)";
-  // Draw the image cover-style (fill canvas, crop) as background
-  let bgW: number, bgH: number, bgX: number, bgY: number;
-  if (ir > cr) {
-    bgH = H;
-    bgW = H * ir;
-    bgX = (W - bgW) / 2;
-    bgY = 0;
-  } else {
-    bgW = W;
-    bgH = W / ir;
-    bgX = 0;
-    bgY = (H - bgH) / 2;
-  }
-  ctx.drawImage(img, bgX, bgY, bgW, bgH);
-  ctx.restore();
-
-  // Foreground: contain + Ken Burns
+  // Classic letterbox: solid black bars on the non-image axis. The caller
+  // already fills the canvas with black before calling us, so nothing more
+  // is needed for the background.
   ctx.save();
   ctx.translate(W / 2 + tx, H / 2 + ty);
   ctx.scale(scale, scale);
