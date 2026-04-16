@@ -474,6 +474,7 @@ export function CommentThreadSheet({
           isMobile ? "h-[80vh]" : "w-full sm:max-w-md"
         )}
         onClick={(e) => e.stopPropagation()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <SheetHeader>
           <SheetTitle>
