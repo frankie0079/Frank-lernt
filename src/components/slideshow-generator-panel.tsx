@@ -358,6 +358,16 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
               storyboard={storyboard}
               musicTracks={musicTracks}
               onChange={handleStoryboardChange}
+              sceneThumbnails={
+                input
+                  ? new Map(
+                      input.items.map((it) => [
+                        it.content_item_id,
+                        { thumbnail_url: it.thumbnail_url, media_url: it.media_url },
+                      ])
+                    )
+                  : undefined
+              }
             />
             <div className="flex flex-wrap gap-2">
               <Button

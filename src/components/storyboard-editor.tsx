@@ -28,13 +28,20 @@ interface MusicTrackOption {
   mood: string;
 }
 
+interface SceneThumb {
+  thumbnail_url: string | null;
+  media_url: string | null;
+}
+
 interface Props {
   storyboard: Storyboard;
   musicTracks: MusicTrackOption[];
   onChange: (next: Storyboard) => void;
+  /** Optional map of content_item_id → thumbnail/media URL for preview in the scene list */
+  sceneThumbnails?: Map<string, SceneThumb>;
 }
 
-export function StoryboardEditor({ storyboard, musicTracks, onChange }: Props) {
+export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumbnails }: Props) {
   const totalMs = useMemo(
     () => storyboard.scenes.reduce((s, sc) => s + sc.duration_ms, 0),
     [storyboard.scenes]
@@ -104,9 +111,24 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange }: Props) {
         <Label>Szenen</Label>
         {storyboard.scenes.map((sc, i) => {
           const chapter = storyboard.chapters.find((c) => c.id === sc.chapter_id);
+          const thumb = sc.content_item_id ? sceneThumbnails?.get(sc.content_item_id) : null;
+          const thumbUrl = thumb?.thumbnail_url || thumb?.media_url || null;
           return (
-            <div key={i} className="rounded-md border border-border p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2">
+            <div key={i} className="flex gap-3 rounded-md border border-border p-3">
+              {thumbUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={thumbUrl}
+                  alt={`Szene ${i + 1}`}
+                  className="h-20 w-20 shrink-0 rounded object-cover bg-muted"
+                />
+              ) : (
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                  {sc.type}
+                </div>
+              )}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-muted-foreground">
                   #{i + 1} · {sc.type} · {chapter?.title ?? sc.chapter_id} · {(sc.duration_ms / 1000).toFixed(1)}s
                 </div>
@@ -150,6 +172,7 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange }: Props) {
                 rows={2}
                 maxLength={280}
               />
+              </div>
             </div>
           );
         })}
