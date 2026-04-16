@@ -498,8 +498,13 @@ export function CommentThreadSheet({
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       void handleSubmit();
+                      return;
                     }
+                    // Prevent Radix Dialog focus-scope from swallowing the
+                    // keypress on iOS Safari (notably the space key).
+                    e.stopPropagation();
                   }}
+                  onKeyUp={(e) => e.stopPropagation()}
                 />
                 <div className="mt-1 flex justify-end">
                   <span
