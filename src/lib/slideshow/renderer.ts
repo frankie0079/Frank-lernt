@@ -133,18 +133,22 @@ function drawCoverImage(
 ) {
   const ir = img.width / img.height;
   const cr = W / H;
-  // Object-cover base
+  // Object-contain base: show entire image, letterbox the rest. Avoids
+  // aggressive center-crop that cuts heads/legs off when aspect ratios
+  // differ strongly (e.g. 4:3 photo into 9:16 video).
   let dw: number, dh: number, dx: number, dy: number;
   if (ir > cr) {
-    dh = H;
-    dw = H * ir;
-    dx = (W - dw) / 2;
-    dy = 0;
-  } else {
+    // Image is wider than canvas → fit by width, letterbox top/bottom
     dw = W;
     dh = W / ir;
     dx = 0;
     dy = (H - dh) / 2;
+  } else {
+    // Image is taller than canvas → fit by height, letterbox sides
+    dh = H;
+    dw = H * ir;
+    dx = (W - dw) / 2;
+    dy = 0;
   }
   // Ken Burns: scale 1 -> 1.15 (or reverse), pan ±5% on selected axis
   let scale = 1;
@@ -169,6 +173,27 @@ function drawCoverImage(
     default:
       scale = 1.02;
   }
+  // Blurred background fill (Instagram-story style) so letterbox bars don't
+  // look like dead black space.
+  ctx.save();
+  ctx.filter = "blur(40px) brightness(0.6)";
+  // Draw the image cover-style (fill canvas, crop) as background
+  let bgW: number, bgH: number, bgX: number, bgY: number;
+  if (ir > cr) {
+    bgH = H;
+    bgW = H * ir;
+    bgX = (W - bgW) / 2;
+    bgY = 0;
+  } else {
+    bgW = W;
+    bgH = W / ir;
+    bgX = 0;
+    bgY = (H - bgH) / 2;
+  }
+  ctx.drawImage(img, bgX, bgY, bgW, bgH);
+  ctx.restore();
+
+  // Foreground: contain + Ken Burns
   ctx.save();
   ctx.translate(W / 2 + tx, H / 2 + ty);
   ctx.scale(scale, scale);
