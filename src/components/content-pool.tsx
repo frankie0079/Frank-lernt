@@ -32,7 +32,8 @@ import {
 } from "@/components/content-filter-bar";
 import { ContentLightbox } from "@/components/content-lightbox";
 import type { AgendaItem } from "@/lib/event-utils";
-import { Camera, ArrowDown, LayoutGrid } from "lucide-react";
+import { Camera, ArrowDown, LayoutGrid, MapPin } from "lucide-react";
+import { PublicEventMap, type MapMarker } from "@/components/public-event-map";
 
 const PAGE_SIZE = 20;
 
@@ -95,6 +96,7 @@ export function ContentPool({
   // "New items" pill
   const [newItemsCount, setNewItemsCount] = useState(0);
   const [isAtTop, setIsAtTop] = useState(true);
+  const [showMap, setShowMap] = useState(false);
 
   // Refs
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -513,11 +515,44 @@ export function ContentPool({
 
   return (
     <div className="space-y-4" ref={listRef}>
-      <ContentFilterBar
-        activeFilter={activeFilter}
-        onFilterChange={setFilter}
-        agendaItems={agendaItems}
-      />
+      <div className="flex items-center gap-2">
+        <div className="flex-1 overflow-x-auto">
+          <ContentFilterBar
+            activeFilter={activeFilter}
+            onFilterChange={setFilter}
+            agendaItems={agendaItems}
+          />
+        </div>
+        {items.some((i) => i.latitude != null) && (
+          <Button
+            variant={showMap ? "default" : "outline"}
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => setShowMap((v) => !v)}
+            aria-label={showMap ? "Karte ausblenden" : "Karte anzeigen"}
+          >
+            <MapPin className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {showMap && (() => {
+        const markers: MapMarker[] = items
+          .filter((i): i is ContentItem & { latitude: number; longitude: number } =>
+            i.latitude != null && i.longitude != null
+          )
+          .map((i) => ({
+            id: i.id,
+            latitude: i.latitude,
+            longitude: i.longitude,
+            thumbnailUrl: i.thumbnail_url,
+            authorName: i.author_name || null,
+            agendaTitle: agendaItems.find((a) => a.id === i.agenda_item_id)?.title || "",
+          }));
+        return markers.length > 0 ? (
+          <PublicEventMap markers={markers} />
+        ) : null;
+      })()}
 
       {/* "New items" pill */}
       {newItemsCount > 0 && !isAtTop && (
