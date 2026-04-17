@@ -47,7 +47,10 @@ export function EventCard({ event }: EventCardProps) {
               src={event.cover_url}
               alt={`Cover von ${event.name}`}
               className="h-full w-full object-cover"
-              style={{ objectPosition: event.cover_position || "center" }}
+              style={{
+                objectPosition: event.cover_position || "center",
+                transform: event.cover_scale && event.cover_scale !== 1 ? `scale(${event.cover_scale})` : undefined,
+              }}
             />
           )}
           <Badge

@@ -18,21 +18,26 @@ interface CoverPhotoUploaderProps {
   eventName: string;
   currentCoverUrl: string | null;
   currentPosition: string;
+  currentScale: number;
   onCoverChange: (url: string | null) => void;
   onPositionChange: (position: string) => void;
+  onScaleChange: (scale: number) => void;
 }
 
 export function CoverPhotoUploader({
   eventName,
   currentCoverUrl,
   currentPosition,
+  currentScale,
   onCoverChange,
   onPositionChange,
+  onScaleChange,
 }: CoverPhotoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentCoverUrl);
   const [position, setPosition] = useState(currentPosition);
+  const [scale, setScale] = useState(currentScale);
   const positionRef = useRef(currentPosition);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,10 +135,12 @@ export function CoverPhotoUploader({
         // Create local preview
         const localPreview = URL.createObjectURL(compressed);
         setPreviewUrl(localPreview);
-        // Reset position for new image
+        // Reset position and scale for new image
         setPosition("center");
         positionRef.current = "center";
+        setScale(1);
         onPositionChange("center");
+        onScaleChange(1);
 
         // Upload to Supabase Storage
         const supabase = createSupabaseBrowserClient();
@@ -177,9 +184,11 @@ export function CoverPhotoUploader({
     setPreviewUrl(null);
     setPosition("center");
     positionRef.current = "center";
+    setScale(1);
     setError(null);
     onCoverChange(null);
     onPositionChange("center");
+    onScaleChange(1);
   }, [onCoverChange, onPositionChange]);
 
   return (
@@ -206,7 +215,10 @@ export function CoverPhotoUploader({
             src={previewUrl}
             alt="Cover-Vorschau"
             className="h-full w-full object-cover pointer-events-none"
-            style={{ objectPosition: position }}
+            style={{
+              objectPosition: position,
+              transform: scale !== 1 ? `scale(${scale})` : undefined,
+            }}
             draggable={false}
           />
         )}
@@ -249,6 +261,29 @@ export function CoverPhotoUploader({
           </>
         )}
       </div>
+
+      {previewUrl && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground shrink-0">Zoom</span>
+          <input
+            type="range"
+            min={1}
+            max={2}
+            step={0.05}
+            value={scale}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setScale(v);
+              onScaleChange(v);
+            }}
+            className="h-2 w-full accent-primary"
+            aria-label="Cover-Zoom"
+          />
+          <span className="text-xs tabular-nums text-muted-foreground shrink-0 w-8">
+            {scale.toFixed(1)}x
+          </span>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}

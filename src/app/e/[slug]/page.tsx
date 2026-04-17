@@ -24,6 +24,7 @@ interface PublicEventData {
     end_date: string;
     cover_url: string | null;
     cover_position: string | null;
+    cover_scale: number | null;
     slug: string;
     member_count: number;
   };
@@ -180,6 +181,7 @@ export default async function PublicEventPage({
         description={event.description}
         coverUrl={event.cover_url}
         coverPosition={event.cover_position || "center"}
+        coverScale={event.cover_scale || 1}
         startDate={event.start_date}
         endDate={event.end_date}
         memberCount={event.member_count}

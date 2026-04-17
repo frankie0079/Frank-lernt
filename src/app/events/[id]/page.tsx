@@ -145,7 +145,10 @@ export default function EventDashboardPage() {
             src={event.cover_url}
             alt={`Cover von ${event.name}`}
             className="h-full w-full object-cover"
-            style={{ objectPosition: event.cover_position || "center" }}
+            style={{
+              objectPosition: event.cover_position || "center",
+              transform: event.cover_scale && event.cover_scale !== 1 ? `scale(${event.cover_scale})` : undefined,
+            }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

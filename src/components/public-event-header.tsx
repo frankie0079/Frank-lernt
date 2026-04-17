@@ -9,6 +9,7 @@ interface Props {
   description: string | null;
   coverUrl: string | null;
   coverPosition?: string | null;
+  coverScale?: number | null;
   startDate: string;
   endDate: string;
   memberCount: number;
@@ -61,6 +62,7 @@ export function PublicEventHeader({
   description,
   coverUrl,
   coverPosition,
+  coverScale,
   startDate,
   endDate,
   memberCount,
@@ -79,7 +81,10 @@ export function PublicEventHeader({
             priority
             sizes="100vw"
             className="object-cover"
-            style={{ objectPosition: coverPosition || "center" }}
+            style={{
+              objectPosition: coverPosition || "center",
+              transform: coverScale && coverScale !== 1 ? `scale(${coverScale})` : undefined,
+            }}
           />
         ) : (
           <div

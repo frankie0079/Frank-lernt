@@ -82,6 +82,7 @@ export function EventCreateForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverPosition, setCoverPosition] = useState<string>("center");
+  const [coverScale, setCoverScale] = useState<number>(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -139,6 +140,7 @@ export function EventCreateForm() {
           end_date: format(values.end_date, "yyyy-MM-dd"),
           cover_url: coverUrl,
           cover_position: coverPosition,
+          cover_scale: coverScale,
           agenda_items: values.agenda_items?.map((item, index) => ({
             date: format(item.date, "yyyy-MM-dd"),
             title: item.title,
@@ -338,8 +340,10 @@ export function EventCreateForm() {
               eventName={watchName}
               currentCoverUrl={coverUrl}
               currentPosition={coverPosition}
+              currentScale={coverScale}
               onCoverChange={setCoverUrl}
               onPositionChange={setCoverPosition}
+              onScaleChange={setCoverScale}
             />
 
             <div className="flex justify-end pt-2">

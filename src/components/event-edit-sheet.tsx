@@ -114,6 +114,7 @@ export function EventEditSheet({
   const router = useRouter();
   const [coverUrl, setCoverUrl] = useState<string | null>(event.cover_url);
   const [coverPosition, setCoverPosition] = useState<string>(event.cover_position || "center");
+  const [coverScale, setCoverScale] = useState<number>(event.cover_scale || 1);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -157,6 +158,7 @@ export function EventEditSheet({
           end_date: format(values.end_date, "yyyy-MM-dd"),
           cover_url: coverUrl,
           cover_position: coverPosition,
+          cover_scale: coverScale,
           agenda_items: values.agenda_items?.map((item, index) => ({
             id: item.id || undefined,
             date: format(item.date, "yyyy-MM-dd"),
@@ -402,8 +404,10 @@ export function EventEditSheet({
                 eventName={watchName}
                 currentCoverUrl={coverUrl}
                 currentPosition={coverPosition}
+                currentScale={coverScale}
                 onCoverChange={setCoverUrl}
                 onPositionChange={setCoverPosition}
+                onScaleChange={setCoverScale}
               />
 
               <Separator />
