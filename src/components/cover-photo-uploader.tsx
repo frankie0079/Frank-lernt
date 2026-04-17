@@ -164,7 +164,7 @@ export function CoverPhotoUploader({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
         aria-label="Cover-Foto hochladen"
