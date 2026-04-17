@@ -45,6 +45,8 @@ export interface AgendaItem {
   description: string | null;
   admin_member_id: string | null;
   sort_order: number;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /**

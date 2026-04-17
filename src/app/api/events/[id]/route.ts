@@ -77,7 +77,7 @@ export async function GET(
   // Fetch agenda items
   const { data: agendaItems } = await supabase
     .from("agenda_items")
-    .select("id, event_id, date, title, description, admin_member_id, sort_order")
+    .select("id, event_id, date, title, description, admin_member_id, sort_order, latitude, longitude")
     .eq("event_id", id)
     .order("sort_order", { ascending: true })
     .limit(30);
@@ -234,12 +234,14 @@ export async function PATCH(
         title: item.title,
         description: item.description || null,
         sort_order: item.sort_order ?? index,
+        latitude: item.latitude ?? null,
+        longitude: item.longitude ?? null,
       }));
 
       const { data: insertedAgenda, error: agendaError } = await supabase
         .from("agenda_items")
         .insert(agendaRows)
-        .select("id, event_id, date, title, description, admin_member_id, sort_order");
+        .select("id, event_id, date, title, description, admin_member_id, sort_order, latitude, longitude");
 
       if (agendaError) {
         console.error("Failed to insert agenda items:", agendaError.message);
@@ -251,7 +253,7 @@ export async function PATCH(
     // agenda_items not in payload — fetch existing ones to return
     const { data: existingAgenda } = await supabase
       .from("agenda_items")
-      .select("id, event_id, date, title, description, admin_member_id, sort_order")
+      .select("id, event_id, date, title, description, admin_member_id, sort_order, latitude, longitude")
       .eq("event_id", id)
       .order("sort_order", { ascending: true });
     newAgendaItems = existingAgenda || [];

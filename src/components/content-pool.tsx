@@ -523,7 +523,7 @@ export function ContentPool({
             agendaItems={agendaItems}
           />
         </div>
-        {items.some((i) => i.latitude != null) && (
+        {(items.some((i) => i.latitude != null) || agendaItems.some((a) => a.latitude != null)) && (
           <Button
             variant={showMap ? "default" : "outline"}
             size="icon"
@@ -538,17 +538,28 @@ export function ContentPool({
 
       {showMap && (() => {
         const markers: MapMarker[] = items
-          .filter((i): i is ContentItem & { latitude: number; longitude: number } =>
-            i.latitude != null && i.longitude != null
-          )
-          .map((i) => ({
-            id: i.id,
-            latitude: i.latitude,
-            longitude: i.longitude,
-            thumbnailUrl: i.thumbnail_url,
-            authorName: i.author_name || null,
-            agendaTitle: agendaItems.find((a) => a.id === i.agenda_item_id)?.title || "",
-          }));
+          .map((i) => {
+            // Use content GPS, fallback to agenda item GPS
+            let lat = i.latitude;
+            let lng = i.longitude;
+            if (lat == null || lng == null) {
+              const agenda = agendaItems.find((a) => a.id === i.agenda_item_id);
+              if (agenda?.latitude != null && agenda?.longitude != null) {
+                lat = agenda.latitude;
+                lng = agenda.longitude;
+              }
+            }
+            if (lat == null || lng == null) return null;
+            return {
+              id: i.id,
+              latitude: lat,
+              longitude: lng,
+              thumbnailUrl: i.thumbnail_url,
+              authorName: i.author_name || null,
+              agendaTitle: agendaItems.find((a) => a.id === i.agenda_item_id)?.title || "",
+            };
+          })
+          .filter((m): m is MapMarker => m != null);
         return markers.length > 0 ? (
           <PublicEventMap markers={markers} />
         ) : null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,7 +57,14 @@ import {
   Loader2,
   AlertCircle,
   Archive,
+  MapPin,
 } from "lucide-react";
+
+const LocationPickerOverlay = lazy(() =>
+  import("@/components/location-picker-overlay").then((m) => ({
+    default: m.LocationPickerOverlay,
+  }))
+);
 
 const editFormSchema = z
   .object({
@@ -78,6 +85,8 @@ const editFormSchema = z
             .min(1, "Titel ist erforderlich")
             .max(80, "Maximal 80 Zeichen"),
           description: z.string().max(300, "Maximal 300 Zeichen").optional(),
+          latitude: z.number().nullable().optional(),
+          longitude: z.number().nullable().optional(),
         })
       )
       .max(30, "Maximal 30 Tages-Abschnitte")
@@ -114,6 +123,7 @@ export function EventEditSheet({
   const router = useRouter();
   const [coverUrl, setCoverUrl] = useState<string | null>(event.cover_url);
   const [coverPosition, setCoverPosition] = useState<string>(event.cover_position || "center");
+  const [locationPickerIndex, setLocationPickerIndex] = useState<number | null>(null);
   const [coverScale, setCoverScale] = useState<number>(event.cover_scale || 1);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -132,6 +142,8 @@ export function EventEditSheet({
         date: new Date(item.date + "T00:00:00"),
         title: item.title,
         description: item.description || "",
+        latitude: item.latitude ?? null,
+        longitude: item.longitude ?? null,
       })),
     },
   });
@@ -165,6 +177,8 @@ export function EventEditSheet({
             title: item.title,
             description: item.description || null,
             sort_order: index,
+            latitude: item.latitude ?? null,
+            longitude: item.longitude ?? null,
           })),
         };
 
@@ -430,17 +444,32 @@ export function EventEditSheet({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">
                           Abschnitt {index + 1}
+                          {form.getValues(`agenda_items.${index}.latitude`) != null && (
+                            <MapPin className="ml-1 inline h-3 w-3 text-primary" />
+                          )}
                         </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => remove(index)}
-                          aria-label={`Abschnitt ${index + 1} entfernen`}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <div className="flex gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => setLocationPickerIndex(index)}
+                            aria-label={`Ort fuer Abschnitt ${index + 1} setzen`}
+                          >
+                            <MapPin className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => remove(index)}
+                            aria-label={`Abschnitt ${index + 1} entfernen`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
@@ -669,6 +698,22 @@ export function EventEditSheet({
           </Form>
         </ScrollArea>
       </SheetContent>
+
+      {locationPickerIndex != null && (
+        <Suspense fallback={null}>
+          <LocationPickerOverlay
+            title={`Ort: ${form.getValues(`agenda_items.${locationPickerIndex}.title`) || `Abschnitt ${locationPickerIndex + 1}`}`}
+            initialLat={form.getValues(`agenda_items.${locationPickerIndex}.latitude`)}
+            initialLng={form.getValues(`agenda_items.${locationPickerIndex}.longitude`)}
+            onConfirm={(lat, lng) => {
+              form.setValue(`agenda_items.${locationPickerIndex}.latitude`, lat);
+              form.setValue(`agenda_items.${locationPickerIndex}.longitude`, lng);
+              setLocationPickerIndex(null);
+            }}
+            onCancel={() => setLocationPickerIndex(null)}
+          />
+        </Suspense>
+      )}
     </Sheet>
   );
 }

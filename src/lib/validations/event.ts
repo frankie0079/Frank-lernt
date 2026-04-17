@@ -43,6 +43,8 @@ export const agendaItemSchema = z.object({
     .optional()
     .or(z.literal("")),
   sort_order: z.number().int().min(0).optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 
 export type AgendaItemFormValues = z.infer<typeof agendaItemSchema>;
