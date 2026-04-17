@@ -137,7 +137,7 @@ export default function EventDashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Cover / Header */}
       <div
-        className="relative h-48 w-full md:h-64"
+        className="relative h-48 w-full overflow-hidden md:h-64"
         style={!event.cover_url ? { background: gradient } : undefined}
       >
         {event.cover_url && (
@@ -147,7 +147,7 @@ export default function EventDashboardPage() {
             className="h-full w-full object-cover"
             style={{
               objectPosition: event.cover_position || "center",
-              transform: event.cover_scale && event.cover_scale !== 1 ? `scale(${event.cover_scale})` : undefined,
+              transform: event.cover_scale != null && event.cover_scale !== 1 ? `scale(${event.cover_scale})` : undefined,
             }}
           />
         )}

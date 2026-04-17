@@ -83,7 +83,7 @@ export function PublicEventHeader({
             className="object-cover"
             style={{
               objectPosition: coverPosition || "center",
-              transform: coverScale && coverScale !== 1 ? `scale(${coverScale})` : undefined,
+              transform: coverScale != null && coverScale !== 1 ? `scale(${coverScale})` : undefined,
             }}
           />
         ) : (

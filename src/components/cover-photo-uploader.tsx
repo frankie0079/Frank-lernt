@@ -217,7 +217,7 @@ export function CoverPhotoUploader({
             className="h-full w-full object-cover pointer-events-none"
             style={{
               objectPosition: position,
-              transform: scale !== 1 ? `scale(${scale})` : undefined,
+              transform: scale != null && scale !== 1 ? `scale(${scale})` : undefined,
             }}
             draggable={false}
           />
@@ -267,7 +267,7 @@ export function CoverPhotoUploader({
           <span className="text-xs text-muted-foreground shrink-0">Zoom</span>
           <input
             type="range"
-            min={1}
+            min={0.5}
             max={2}
             step={0.05}
             value={scale}

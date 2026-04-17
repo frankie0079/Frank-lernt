@@ -74,7 +74,7 @@ export const eventCreateSchema = eventSchema.and(
       .nullable(),
     cover_scale: z
       .number()
-      .min(1)
+      .min(0.5)
       .max(3)
       .optional()
       .nullable(),

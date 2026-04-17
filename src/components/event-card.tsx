@@ -39,7 +39,7 @@ export function EventCard({ event }: EventCardProps) {
       <Card className="overflow-hidden transition-shadow hover:shadow-md">
         {/* Cover Image or Gradient */}
         <div
-          className="relative h-32 w-full"
+          className="relative h-32 w-full overflow-hidden"
           style={!event.cover_url ? { background: gradient } : undefined}
         >
           {event.cover_url && (
@@ -49,7 +49,7 @@ export function EventCard({ event }: EventCardProps) {
               className="h-full w-full object-cover"
               style={{
                 objectPosition: event.cover_position || "center",
-                transform: event.cover_scale && event.cover_scale !== 1 ? `scale(${event.cover_scale})` : undefined,
+                transform: event.cover_scale != null && event.cover_scale !== 1 ? `scale(${event.cover_scale})` : undefined,
               }}
             />
           )}
