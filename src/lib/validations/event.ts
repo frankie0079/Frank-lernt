@@ -67,6 +67,11 @@ export const eventCreateSchema = eventSchema.and(
       )
       .nullable()
       .optional(),
+    cover_position: z
+      .string()
+      .max(50)
+      .optional()
+      .nullable(),
     agenda_items: agendaListSchema.optional(),
   })
 );

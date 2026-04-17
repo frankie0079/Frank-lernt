@@ -113,6 +113,7 @@ export function EventEditSheet({
 }: EventEditSheetProps) {
   const router = useRouter();
   const [coverUrl, setCoverUrl] = useState<string | null>(event.cover_url);
+  const [coverPosition, setCoverPosition] = useState<string>(event.cover_position || "center");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -155,6 +156,7 @@ export function EventEditSheet({
           start_date: format(values.start_date, "yyyy-MM-dd"),
           end_date: format(values.end_date, "yyyy-MM-dd"),
           cover_url: coverUrl,
+          cover_position: coverPosition,
           agenda_items: values.agenda_items?.map((item, index) => ({
             id: item.id || undefined,
             date: format(item.date, "yyyy-MM-dd"),
@@ -399,7 +401,9 @@ export function EventEditSheet({
               <CoverPhotoUploader
                 eventName={watchName}
                 currentCoverUrl={coverUrl}
+                currentPosition={coverPosition}
                 onCoverChange={setCoverUrl}
+                onPositionChange={setCoverPosition}
               />
 
               <Separator />

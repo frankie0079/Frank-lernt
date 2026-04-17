@@ -66,7 +66,7 @@ export async function GET(
   // Fetch event
   const { data: event, error: eventError } = await supabase
     .from("events")
-    .select("id, name, description, start_date, end_date, cover_url, slug, organizer_id, created_at")
+    .select("id, name, description, start_date, end_date, cover_url, cover_position, slug, organizer_id, created_at")
     .eq("id", id)
     .single();
 
@@ -194,6 +194,7 @@ export async function PATCH(
     start_date: parsed.data.start_date,
     end_date: parsed.data.end_date,
     cover_url: parsed.data.cover_url ?? null,
+    cover_position: parsed.data.cover_position ?? "center",
   };
 
   if (slug) {
@@ -204,7 +205,7 @@ export async function PATCH(
     .from("events")
     .update(updateData)
     .eq("id", id)
-    .select("id, name, description, start_date, end_date, cover_url, slug, organizer_id, created_at")
+    .select("id, name, description, start_date, end_date, cover_url, cover_position, slug, organizer_id, created_at")
     .single();
 
   if (updateError) {

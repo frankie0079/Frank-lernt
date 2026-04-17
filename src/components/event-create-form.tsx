@@ -81,6 +81,7 @@ export function EventCreateForm() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverPosition, setCoverPosition] = useState<string>("center");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -137,6 +138,7 @@ export function EventCreateForm() {
           start_date: format(values.start_date, "yyyy-MM-dd"),
           end_date: format(values.end_date, "yyyy-MM-dd"),
           cover_url: coverUrl,
+          cover_position: coverPosition,
           agenda_items: values.agenda_items?.map((item, index) => ({
             date: format(item.date, "yyyy-MM-dd"),
             title: item.title,
@@ -335,7 +337,9 @@ export function EventCreateForm() {
             <CoverPhotoUploader
               eventName={watchName}
               currentCoverUrl={coverUrl}
+              currentPosition={coverPosition}
               onCoverChange={setCoverUrl}
+              onPositionChange={setCoverPosition}
             />
 
             <div className="flex justify-end pt-2">

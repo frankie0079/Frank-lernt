@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   // Fetch events with member count
   const { data: events, error: eventsError } = await supabase
     .from("events")
-    .select("id, name, description, start_date, end_date, cover_url, slug, organizer_id, created_at")
+    .select("id, name, description, start_date, end_date, cover_url, cover_position, slug, organizer_id, created_at")
     .in("id", eventIds)
     .order("start_date", { ascending: false })
     .limit(100);
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       slug,
       organizer_id: currentMember.id,
     })
-    .select("id, name, description, start_date, end_date, cover_url, slug, organizer_id, created_at")
+    .select("id, name, description, start_date, end_date, cover_url, cover_position, slug, organizer_id, created_at")
     .single();
 
   if (eventError) {

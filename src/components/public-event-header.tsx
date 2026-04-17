@@ -8,6 +8,7 @@ interface Props {
   name: string;
   description: string | null;
   coverUrl: string | null;
+  coverPosition?: string | null;
   startDate: string;
   endDate: string;
   memberCount: number;
@@ -59,6 +60,7 @@ export function PublicEventHeader({
   name,
   description,
   coverUrl,
+  coverPosition,
   startDate,
   endDate,
   memberCount,
@@ -77,6 +79,7 @@ export function PublicEventHeader({
             priority
             sizes="100vw"
             className="object-cover"
+            style={{ objectPosition: coverPosition || "center" }}
           />
         ) : (
           <div

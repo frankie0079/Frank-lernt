@@ -11,6 +11,7 @@ export interface EventData {
   start_date: string;
   end_date: string;
   cover_url: string | null;
+  cover_position: string | null;
   slug: string;
   organizer_id: string;
   created_at: string;

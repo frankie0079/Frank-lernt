@@ -12,25 +12,86 @@ import {
 } from "@/lib/validations/event";
 import { generateEventGradient } from "@/lib/event-utils";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { ImagePlus, Loader2, X, AlertCircle } from "lucide-react";
+import { ImagePlus, Loader2, X, AlertCircle, Move } from "lucide-react";
 
 interface CoverPhotoUploaderProps {
   eventName: string;
   currentCoverUrl: string | null;
+  currentPosition: string;
   onCoverChange: (url: string | null) => void;
+  onPositionChange: (position: string) => void;
 }
 
 export function CoverPhotoUploader({
   eventName,
   currentCoverUrl,
+  currentPosition,
   onCoverChange,
+  onPositionChange,
 }: CoverPhotoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentCoverUrl);
+  const [position, setPosition] = useState(currentPosition);
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ y: number; startPct: number } | null>(null);
 
   const gradient = generateEventGradient(eventName || "event");
+
+  // Parse "50% 30%" → 30 (vertical %)
+  const parseYPercent = (pos: string): number => {
+    const parts = pos.split(/\s+/);
+    if (parts.length >= 2) {
+      const val = parseFloat(parts[1]);
+      if (!isNaN(val)) return val;
+    }
+    if (pos === "center" || pos === "top" || pos === "bottom") {
+      if (pos === "top") return 0;
+      if (pos === "bottom") return 100;
+      return 50;
+    }
+    return 50;
+  };
+
+  const handleDragStart = useCallback(
+    (e: React.PointerEvent) => {
+      if (!previewUrl) return;
+      e.preventDefault();
+      setDragging(true);
+      dragStartRef.current = {
+        y: e.clientY,
+        startPct: parseYPercent(position),
+      };
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [previewUrl, position]
+  );
+
+  const handleDragMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragStartRef.current || !containerRef.current) return;
+      const containerH = containerRef.current.clientHeight;
+      const dy = e.clientY - dragStartRef.current.y;
+      // Moving pointer down → show higher part of image → decrease %
+      const pctDelta = (dy / containerH) * -100;
+      const newPct = Math.max(
+        0,
+        Math.min(100, dragStartRef.current.startPct + pctDelta)
+      );
+      const newPos = `50% ${Math.round(newPct)}%`;
+      setPosition(newPos);
+    },
+    []
+  );
+
+  const handleDragEnd = useCallback(() => {
+    if (!dragStartRef.current) return;
+    setDragging(false);
+    dragStartRef.current = null;
+    onPositionChange(position);
+  }, [position, onPositionChange]);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,6 +128,9 @@ export function CoverPhotoUploader({
         // Create local preview
         const localPreview = URL.createObjectURL(compressed);
         setPreviewUrl(localPreview);
+        // Reset position for new image
+        setPosition("center");
+        onPositionChange("center");
 
         // Upload to Supabase Storage
         const supabase = createSupabaseBrowserClient();
@@ -103,14 +167,16 @@ export function CoverPhotoUploader({
         }
       }
     },
-    [currentCoverUrl, onCoverChange]
+    [currentCoverUrl, onCoverChange, onPositionChange]
   );
 
   const handleRemove = useCallback(() => {
     setPreviewUrl(null);
+    setPosition("center");
     setError(null);
     onCoverChange(null);
-  }, [onCoverChange]);
+    onPositionChange("center");
+  }, [onCoverChange, onPositionChange]);
 
   return (
     <div className="space-y-2">
@@ -119,18 +185,25 @@ export function CoverPhotoUploader({
       </label>
 
       <div
-        className="relative h-40 w-full overflow-hidden rounded-lg border border-border"
+        ref={containerRef}
+        className="relative h-40 w-full overflow-hidden rounded-lg border border-border touch-none select-none"
         style={
           !previewUrl
             ? { background: gradient }
             : undefined
         }
+        onPointerDown={handleDragStart}
+        onPointerMove={handleDragMove}
+        onPointerUp={handleDragEnd}
+        onPointerCancel={handleDragEnd}
       >
         {previewUrl && (
           <img
             src={previewUrl}
             alt="Cover-Vorschau"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover pointer-events-none"
+            style={{ objectPosition: position }}
+            draggable={false}
           />
         )}
 
@@ -147,17 +220,29 @@ export function CoverPhotoUploader({
           </div>
         )}
 
-        {previewUrl && !uploading && (
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="absolute right-2 top-2 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white"
-            onClick={handleRemove}
-            aria-label="Cover-Foto entfernen"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        {previewUrl && !uploading && !dragging && (
+          <>
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-center pb-1.5 pointer-events-none">
+              <span className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white/80">
+                <Move className="h-3 w-3" aria-hidden="true" />
+                Ziehen zum Verschieben
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute right-2 top-2 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemove();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label="Cover-Foto entfernen"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </>
         )}
       </div>
 
