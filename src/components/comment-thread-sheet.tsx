@@ -13,7 +13,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Send, Trash2, Loader2, Mic, MicOff } from "lucide-react";
+import { Send, Trash2, Loader2, Mic, MicOff, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,6 +41,7 @@ export interface Comment {
   author_id: string;
   text: string;
   created_at: string;
+  updated_at?: string | null;
   author_name?: string | null;
   author_avatar_url?: string | null;
 }
@@ -65,22 +66,49 @@ const SWIPE_DELETE_THRESHOLD = 80; // px
 
 interface CommentRowProps {
   comment: Comment;
+  isOwn: boolean;
   canDelete: boolean;
   swipeEnabled: boolean;
   onDelete: () => void;
+  onEdit: (newText: string) => void;
 }
 
 function CommentRow({
   comment: c,
+  isOwn,
   canDelete,
   swipeEnabled,
   onDelete,
+  onEdit,
 }: CommentRowProps) {
   const initial = c.author_name ? c.author_name.charAt(0).toUpperCase() : "?";
   const [dragX, setDragX] = useState(0);
   const startXRef = useRef<number | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(c.text);
+  const [saving, setSaving] = useState(false);
 
-  const swipeable = canDelete && swipeEnabled;
+  const swipeable = canDelete && swipeEnabled && !editing;
+
+  const startEdit = () => {
+    setEditText(c.text);
+    setEditing(true);
+  };
+  const cancelEdit = () => {
+    setEditing(false);
+    setEditText(c.text);
+  };
+  const confirmEdit = async () => {
+    const trimmed = editText.trim();
+    if (!trimmed || trimmed.length > MAX_LENGTH || trimmed === c.text) {
+      cancelEdit();
+      return;
+    }
+    setSaving(true);
+    onEdit(trimmed);
+    setEditing(false);
+    setSaving(false);
+  };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!swipeable) return;
@@ -140,24 +168,100 @@ function CommentRow({
                 locale: de,
               })}
             </span>
+            {c.updated_at && (
+              <span className="shrink-0 text-[10px] text-muted-foreground italic">
+                (bearbeitet)
+              </span>
+            )}
           </div>
-          <p
-            className="text-sm text-foreground"
-            style={{ wordBreak: "break-all" }}
-          >
-            {c.text}
-          </p>
+          {editing ? (
+            <div className="mt-1">
+              <Textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={2}
+                maxLength={MAX_LENGTH}
+                className="resize-none text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void confirmEdit();
+                  }
+                  if (e.key === "Escape") {
+                    cancelEdit();
+                  }
+                  e.stopPropagation();
+                }}
+                onKeyUp={(e) => e.stopPropagation()}
+              />
+              <div className="mt-1 flex items-center justify-between">
+                <span
+                  className={cn(
+                    "text-[10px] tabular-nums",
+                    editText.length > MAX_LENGTH ? "text-destructive" : "text-muted-foreground"
+                  )}
+                >
+                  {editText.length}/{MAX_LENGTH}
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={cancelEdit}
+                    disabled={saving}
+                    aria-label="Abbrechen"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-primary"
+                    onClick={() => void confirmEdit()}
+                    disabled={saving || !editText.trim() || editText.trim() === c.text}
+                    aria-label="Speichern"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p
+              className="text-sm text-foreground"
+              style={{ wordBreak: "break-all" }}
+            >
+              {c.text}
+            </p>
+          )}
         </div>
-        {canDelete && !swipeEnabled && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
-            aria-label="Kommentar loeschen"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+        {!editing && (
+          <div className="flex shrink-0 flex-col gap-0.5">
+            {isOwn && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={startEdit}
+                aria-label="Kommentar bearbeiten"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={onDelete}
+                aria-label="Kommentar loeschen"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </li>
@@ -337,6 +441,25 @@ export function CommentThreadSheet({
       .on(
         "postgres_changes",
         {
+          event: "UPDATE",
+          schema: "public",
+          table: "comments",
+          filter: `content_item_id=eq.${contentItemId}`,
+        },
+        (payload) => {
+          const row = payload.new as Comment;
+          setComments((prev) =>
+            prev.map((c) =>
+              c.id === row.id
+                ? { ...c, text: row.text, updated_at: row.updated_at }
+                : c
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "DELETE",
           schema: "public",
           table: "comments",
@@ -413,6 +536,44 @@ export function CommentThreadSheet({
       setSubmitting(false);
     }
   }, [text, submitting, currentMemberId, eventId, contentItemId]);
+
+  const handleEdit = useCallback(
+    async (comment: Comment, newText: string) => {
+      // Optimistic update
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === comment.id
+            ? { ...c, text: newText, updated_at: new Date().toISOString() }
+            : c
+        )
+      );
+
+      try {
+        const res = await fetch(
+          `/api/events/${eventId}/content/${contentItemId}/comments/${comment.id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: newText }),
+          }
+        );
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null);
+          toast.error(errBody?.error || "Kommentar konnte nicht bearbeitet werden.");
+          // Rollback
+          setComments((prev) =>
+            prev.map((c) => (c.id === comment.id ? comment : c))
+          );
+        }
+      } catch {
+        toast.error("Verbindungsfehler.");
+        setComments((prev) =>
+          prev.map((c) => (c.id === comment.id ? comment : c))
+        );
+      }
+    },
+    [eventId, contentItemId]
+  );
 
   const handleDelete = useCallback(
     (comment: Comment) => {
@@ -584,9 +745,11 @@ export function CommentThreadSheet({
                   <CommentRow
                     key={c.id}
                     comment={c}
+                    isOwn={isOwn}
                     canDelete={canDelete}
                     swipeEnabled={isMobile}
                     onDelete={() => handleDelete(c)}
+                    onEdit={(newText) => void handleEdit(c, newText)}
                   />
                 );
               })}
