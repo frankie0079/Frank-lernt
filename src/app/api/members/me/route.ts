@@ -7,10 +7,7 @@ import { serverError } from "@/lib/api-error";
 const updateMemberSchema = z.object({
   name: z.string().max(50, "Max 50 Zeichen").nullable().optional(),
   avatar_url: z.string().url().refine(
-    (url) => {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      return !url || (supabaseUrl && url.startsWith(supabaseUrl));
-    },
+    (url) => !url || url.includes("supabase.co"),
     { message: "Avatar-URL muss vom Supabase Storage stammen" }
   ).nullable().optional(),
 });
