@@ -53,12 +53,6 @@ export function EventCard({ event }: EventCardProps) {
               }}
             />
           )}
-          <Badge
-            variant={config.variant}
-            className="absolute right-2 top-2"
-          >
-            {config.label}
-          </Badge>
         </div>
 
         <CardContent className="p-4">

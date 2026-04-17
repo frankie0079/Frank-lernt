@@ -196,9 +196,6 @@ export default function EventDashboardPage() {
         {/* Event title overlay */}
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
           <div className="mx-auto max-w-2xl">
-            <Badge variant={config.variant} className="mb-2">
-              {config.label}
-            </Badge>
             <h1 className="text-2xl font-bold text-white md:text-3xl">
               {event.name}
             </h1>
