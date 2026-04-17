@@ -62,13 +62,11 @@ interface CommentThreadSheetProps {
 const PAGE_SIZE = 20;
 const MAX_LENGTH = 500;
 const UNDO_DELAY_MS = 5000;
-const SWIPE_DELETE_THRESHOLD = 80; // px
 
 interface CommentRowProps {
   comment: Comment;
   isOwn: boolean;
   canDelete: boolean;
-  swipeEnabled: boolean;
   onDelete: () => void;
   onEdit: (newText: string) => void;
 }
@@ -77,18 +75,13 @@ function CommentRow({
   comment: c,
   isOwn,
   canDelete,
-  swipeEnabled,
   onDelete,
   onEdit,
 }: CommentRowProps) {
   const initial = c.author_name ? c.author_name.charAt(0).toUpperCase() : "?";
-  const [dragX, setDragX] = useState(0);
-  const startXRef = useRef<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(c.text);
   const [saving, setSaving] = useState(false);
-
-  const swipeable = canDelete && swipeEnabled && !editing;
 
   const startEdit = () => {
     setEditText(c.text);
@@ -110,44 +103,9 @@ function CommentRow({
     setSaving(false);
   };
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (!swipeable) return;
-    startXRef.current = e.clientX;
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!swipeable || startXRef.current == null) return;
-    const dx = e.clientX - startXRef.current;
-    if (dx < 0) setDragX(Math.max(dx, -SWIPE_DELETE_THRESHOLD * 1.5));
-  };
-  const onPointerUp = () => {
-    if (!swipeable) return;
-    if (dragX <= -SWIPE_DELETE_THRESHOLD) {
-      setDragX(0);
-      startXRef.current = null;
-      onDelete();
-      return;
-    }
-    setDragX(0);
-    startXRef.current = null;
-  };
-
   return (
-    <li
-      className="relative overflow-hidden"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-    >
-      {swipeable && dragX < 0 && (
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-destructive">
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </div>
-      )}
-      <div
-        className="flex gap-2 transition-transform"
-        style={{ transform: `translateX(${dragX}px)` }}
-      >
+    <li>
+      <div className="flex gap-2">
         <Avatar className="h-7 w-7 shrink-0">
           {c.author_avatar_url && (
             <AvatarImage
@@ -747,7 +705,6 @@ export function CommentThreadSheet({
                     comment={c}
                     isOwn={isOwn}
                     canDelete={canDelete}
-                    swipeEnabled={isMobile}
                     onDelete={() => handleDelete(c)}
                     onEdit={(newText) => void handleEdit(c, newText)}
                   />
