@@ -213,38 +213,48 @@ export async function PATCH(
     return serverError("events/[id]:update", updateError);
   }
 
-  // Replace agenda items: delete all existing, then insert new ones
-  const { error: deleteAgendaError } = await supabase
-    .from("agenda_items")
-    .delete()
-    .eq("event_id", id);
-
-  if (deleteAgendaError) {
-    console.error("Failed to delete agenda items:", deleteAgendaError.message);
-  }
-
+  // Only replace agenda items if explicitly provided in the payload
   const agendaItems = parsed.data.agenda_items;
   let newAgendaItems: unknown[] = [];
 
-  if (agendaItems && agendaItems.length > 0) {
-    const agendaRows = agendaItems.map((item, index) => ({
-      event_id: id,
-      date: item.date,
-      title: item.title,
-      description: item.description || null,
-      sort_order: item.sort_order ?? index,
-    }));
-
-    const { data: insertedAgenda, error: agendaError } = await supabase
+  if (agendaItems !== undefined) {
+    const { error: deleteAgendaError } = await supabase
       .from("agenda_items")
-      .insert(agendaRows)
-      .select("id, event_id, date, title, description, admin_member_id, sort_order");
+      .delete()
+      .eq("event_id", id);
 
-    if (agendaError) {
-      console.error("Failed to insert agenda items:", agendaError.message);
-    } else {
-      newAgendaItems = insertedAgenda || [];
+    if (deleteAgendaError) {
+      console.error("Failed to delete agenda items:", deleteAgendaError.message);
     }
+
+    if (agendaItems && agendaItems.length > 0) {
+      const agendaRows = agendaItems.map((item, index) => ({
+        event_id: id,
+        date: item.date,
+        title: item.title,
+        description: item.description || null,
+        sort_order: item.sort_order ?? index,
+      }));
+
+      const { data: insertedAgenda, error: agendaError } = await supabase
+        .from("agenda_items")
+        .insert(agendaRows)
+        .select("id, event_id, date, title, description, admin_member_id, sort_order");
+
+      if (agendaError) {
+        console.error("Failed to insert agenda items:", agendaError.message);
+      } else {
+        newAgendaItems = insertedAgenda || [];
+      }
+    }
+  } else {
+    // agenda_items not in payload — fetch existing ones to return
+    const { data: existingAgenda } = await supabase
+      .from("agenda_items")
+      .select("id, event_id, date, title, description, admin_member_id, sort_order")
+      .eq("event_id", id)
+      .order("sort_order", { ascending: true });
+    newAgendaItems = existingAgenda || [];
   }
 
   return NextResponse.json({
