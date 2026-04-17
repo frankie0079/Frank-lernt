@@ -33,6 +33,7 @@ export function CoverPhotoUploader({
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentCoverUrl);
   const [position, setPosition] = useState(currentPosition);
+  const positionRef = useRef(currentPosition);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +83,7 @@ export function CoverPhotoUploader({
       );
       const newPos = `50% ${Math.round(newPct)}%`;
       setPosition(newPos);
+      positionRef.current = newPos;
     },
     []
   );
@@ -90,8 +92,8 @@ export function CoverPhotoUploader({
     if (!dragStartRef.current) return;
     setDragging(false);
     dragStartRef.current = null;
-    onPositionChange(position);
-  }, [position, onPositionChange]);
+    onPositionChange(positionRef.current);
+  }, [onPositionChange]);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,6 +132,7 @@ export function CoverPhotoUploader({
         setPreviewUrl(localPreview);
         // Reset position for new image
         setPosition("center");
+        positionRef.current = "center";
         onPositionChange("center");
 
         // Upload to Supabase Storage
@@ -173,6 +176,7 @@ export function CoverPhotoUploader({
   const handleRemove = useCallback(() => {
     setPreviewUrl(null);
     setPosition("center");
+    positionRef.current = "center";
     setError(null);
     onCoverChange(null);
     onPositionChange("center");
