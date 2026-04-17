@@ -12,7 +12,7 @@ import {
 } from "@/lib/validations/event";
 import { generateEventGradient } from "@/lib/event-utils";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { ImagePlus, Loader2, X, AlertCircle, Move } from "lucide-react";
+import { ImagePlus, Loader2, X, AlertCircle } from "lucide-react";
 
 interface CoverPhotoUploaderProps {
   eventName: string;
@@ -22,6 +22,28 @@ interface CoverPhotoUploaderProps {
   onCoverChange: (url: string | null) => void;
   onPositionChange: (position: string) => void;
   onScaleChange: (scale: number) => void;
+}
+
+// Parse "50% 30%" → { x: 50, y: 30 }
+function parsePosition(pos: string): { x: number; y: number } {
+  const parts = pos.split(/\s+/);
+  if (parts.length >= 2) {
+    const x = parseFloat(parts[0]);
+    const y = parseFloat(parts[1]);
+    if (!isNaN(x) && !isNaN(y)) return { x, y };
+  }
+  return { x: 50, y: 50 };
+}
+
+function clamp(val: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, val));
+}
+
+function distBetween(
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 export function CoverPhotoUploader({
@@ -38,67 +60,124 @@ export function CoverPhotoUploader({
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentCoverUrl);
   const [position, setPosition] = useState(currentPosition);
   const [scale, setScale] = useState(currentScale);
-  const positionRef = useRef(currentPosition);
-  const [dragging, setDragging] = useState(false);
+
+  // Refs for gesture tracking (avoids stale closures)
+  const posRef = useRef(parsePosition(currentPosition));
+  const scaleRef = useRef(currentScale);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragStartRef = useRef<{ y: number; startPct: number } | null>(null);
+
+  // Multi-pointer tracking for pinch + pan
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const gestureStartRef = useRef<{
+    pos: { x: number; y: number };
+    scale: number;
+    dist: number;
+    center: { x: number; y: number };
+  } | null>(null);
 
   const gradient = generateEventGradient(eventName || "event");
 
-  // Parse "50% 30%" → 30 (vertical %)
-  const parseYPercent = (pos: string): number => {
-    const parts = pos.split(/\s+/);
-    if (parts.length >= 2) {
-      const val = parseFloat(parts[1]);
-      if (!isNaN(val)) return val;
-    }
-    if (pos === "center" || pos === "top" || pos === "bottom") {
-      if (pos === "top") return 0;
-      if (pos === "bottom") return 100;
-      return 50;
-    }
-    return 50;
-  };
+  const commitValues = useCallback(() => {
+    const pos = `${Math.round(posRef.current.x)}% ${Math.round(posRef.current.y)}%`;
+    setPosition(pos);
+    setScale(scaleRef.current);
+    onPositionChange(pos);
+    onScaleChange(scaleRef.current);
+  }, [onPositionChange, onScaleChange]);
 
-  const handleDragStart = useCallback(
+  const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (!previewUrl) return;
       e.preventDefault();
-      setDragging(true);
-      dragStartRef.current = {
-        y: e.clientY,
-        startPct: parseYPercent(position),
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      const pts = Array.from(pointersRef.current.values());
+      if (pts.length === 1) {
+        // Single finger — start pan
+        gestureStartRef.current = {
+          pos: { ...posRef.current },
+          scale: scaleRef.current,
+          dist: 0,
+          center: pts[0],
+        };
+      } else if (pts.length === 2) {
+        // Two fingers — start pinch+pan
+        const dist = distBetween(pts[0], pts[1]);
+        const center = {
+          x: (pts[0].x + pts[1].x) / 2,
+          y: (pts[0].y + pts[1].y) / 2,
+        };
+        gestureStartRef.current = {
+          pos: { ...posRef.current },
+          scale: scaleRef.current,
+          dist,
+          center,
+        };
+      }
+    },
+    [previewUrl]
+  );
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!gestureStartRef.current || !containerRef.current) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const pts = Array.from(pointersRef.current.values());
+    const containerH = containerRef.current.clientHeight;
+    const containerW = containerRef.current.clientWidth;
+    const start = gestureStartRef.current;
+
+    if (pts.length === 1) {
+      // Single finger pan
+      const dx = pts[0].x - start.center.x;
+      const dy = pts[0].y - start.center.y;
+      // Moving pointer right → show more of left side → decrease x%
+      const pctX = clamp(start.pos.x + (dx / containerW) * -100, 0, 100);
+      const pctY = clamp(start.pos.y + (dy / containerH) * -100, 0, 100);
+      posRef.current = { x: pctX, y: pctY };
+      setPosition(`${Math.round(pctX)}% ${Math.round(pctY)}%`);
+    } else if (pts.length === 2) {
+      // Pinch zoom + two-finger pan
+      const dist = distBetween(pts[0], pts[1]);
+      const center = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2,
       };
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    },
-    [previewUrl, position]
-  );
+      // Scale
+      const ratio = start.dist > 0 ? dist / start.dist : 1;
+      scaleRef.current = clamp(start.scale * ratio, 0.5, 3);
+      setScale(scaleRef.current);
+      // Pan from center movement
+      const dx = center.x - start.center.x;
+      const dy = center.y - start.center.y;
+      const pctX = clamp(start.pos.x + (dx / containerW) * -100, 0, 100);
+      const pctY = clamp(start.pos.y + (dy / containerH) * -100, 0, 100);
+      posRef.current = { x: pctX, y: pctY };
+      setPosition(`${Math.round(pctX)}% ${Math.round(pctY)}%`);
+    }
+  }, []);
 
-  const handleDragMove = useCallback(
+  const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
-      if (!dragStartRef.current || !containerRef.current) return;
-      const containerH = containerRef.current.clientHeight;
-      const dy = e.clientY - dragStartRef.current.y;
-      // Moving pointer down → show higher part of image → decrease %
-      const pctDelta = (dy / containerH) * -100;
-      const newPct = Math.max(
-        0,
-        Math.min(100, dragStartRef.current.startPct + pctDelta)
-      );
-      const newPos = `50% ${Math.round(newPct)}%`;
-      setPosition(newPos);
-      positionRef.current = newPos;
+      pointersRef.current.delete(e.pointerId);
+      if (pointersRef.current.size === 0) {
+        gestureStartRef.current = null;
+        commitValues();
+      } else {
+        // One finger lifted — restart gesture with remaining pointer
+        const pts = Array.from(pointersRef.current.values());
+        gestureStartRef.current = {
+          pos: { ...posRef.current },
+          scale: scaleRef.current,
+          dist: 0,
+          center: pts[0],
+        };
+      }
     },
-    []
+    [commitValues]
   );
-
-  const handleDragEnd = useCallback(() => {
-    if (!dragStartRef.current) return;
-    setDragging(false);
-    dragStartRef.current = null;
-    onPositionChange(positionRef.current);
-  }, [onPositionChange]);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +203,6 @@ export function CoverPhotoUploader({
       setUploading(true);
 
       try {
-        // Compress image client-side
         const compressed = await imageCompression(file, {
           maxWidthOrHeight: COVER_MAX_DIMENSION,
           maxSizeMB: COVER_MAX_COMPRESSED_SIZE_KB / 1024,
@@ -132,17 +210,15 @@ export function CoverPhotoUploader({
           fileType: "image/jpeg",
         });
 
-        // Create local preview
         const localPreview = URL.createObjectURL(compressed);
         setPreviewUrl(localPreview);
-        // Reset position and scale for new image
         setPosition("center");
-        positionRef.current = "center";
         setScale(1);
+        posRef.current = { x: 50, y: 50 };
+        scaleRef.current = 1;
         onPositionChange("center");
         onScaleChange(1);
 
-        // Upload to Supabase Storage
         const supabase = createSupabaseBrowserClient();
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 10);
@@ -177,19 +253,20 @@ export function CoverPhotoUploader({
         }
       }
     },
-    [currentCoverUrl, onCoverChange, onPositionChange]
+    [currentCoverUrl, onCoverChange, onPositionChange, onScaleChange]
   );
 
   const handleRemove = useCallback(() => {
     setPreviewUrl(null);
     setPosition("center");
-    positionRef.current = "center";
     setScale(1);
+    posRef.current = { x: 50, y: 50 };
+    scaleRef.current = 1;
     setError(null);
     onCoverChange(null);
     onPositionChange("center");
     onScaleChange(1);
-  }, [onCoverChange, onPositionChange]);
+  }, [onCoverChange, onPositionChange, onScaleChange]);
 
   return (
     <div className="space-y-2">
@@ -199,16 +276,16 @@ export function CoverPhotoUploader({
 
       <div
         ref={containerRef}
-        className="relative h-40 w-full overflow-hidden rounded-lg border border-border touch-none select-none"
+        className="relative h-56 w-full overflow-hidden rounded-lg border border-border touch-none select-none"
         style={
           !previewUrl
             ? { background: gradient }
             : undefined
         }
-        onPointerDown={handleDragStart}
-        onPointerMove={handleDragMove}
-        onPointerUp={handleDragEnd}
-        onPointerCancel={handleDragEnd}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         {previewUrl && (
           <img
@@ -217,7 +294,7 @@ export function CoverPhotoUploader({
             className="h-full w-full object-cover pointer-events-none"
             style={{
               objectPosition: position,
-              transform: scale != null && scale !== 1 ? `scale(${scale})` : undefined,
+              transform: scale !== 1 ? `scale(${scale})` : undefined,
             }}
             draggable={false}
           />
@@ -236,12 +313,11 @@ export function CoverPhotoUploader({
           </div>
         )}
 
-        {previewUrl && !uploading && !dragging && (
+        {previewUrl && !uploading && pointersRef.current.size === 0 && (
           <>
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-center pb-1.5 pointer-events-none">
               <span className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white/80">
-                <Move className="h-3 w-3" aria-hidden="true" />
-                Ziehen zum Verschieben
+                1 Finger verschieben · 2 Finger zoomen
               </span>
             </div>
             <Button
@@ -261,29 +337,6 @@ export function CoverPhotoUploader({
           </>
         )}
       </div>
-
-      {previewUrl && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground shrink-0">Zoom</span>
-          <input
-            type="range"
-            min={0.5}
-            max={2}
-            step={0.05}
-            value={scale}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setScale(v);
-              onScaleChange(v);
-            }}
-            className="h-2 w-full accent-primary"
-            aria-label="Cover-Zoom"
-          />
-          <span className="text-xs tabular-nums text-muted-foreground shrink-0 w-8">
-            {scale.toFixed(1)}x
-          </span>
-        </div>
-      )}
 
       <input
         ref={fileInputRef}

@@ -137,7 +137,7 @@ export default function EventDashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Cover / Header */}
       <div
-        className="relative h-48 w-full overflow-hidden md:h-64"
+        className="relative h-64 w-full overflow-hidden md:h-80"
         style={!event.cover_url ? { background: gradient } : undefined}
       >
         {event.cover_url && (
