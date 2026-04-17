@@ -15,7 +15,7 @@ import {
   Play,
   ImageOff,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ReactionBar, type ReactionState } from "@/components/reaction-bar";
 import { CommentBadge } from "@/components/comment-badge";
 import { CommentThreadSheet } from "@/components/comment-thread-sheet";
@@ -72,6 +72,10 @@ export function ContentCard({
   const [imgError, setImgError] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(item.comment_count ?? 0);
+  // Sync comment_count from props when item changes (e.g. tab switch re-fetch)
+  useEffect(() => {
+    setCommentCount(item.comment_count ?? 0);
+  }, [item.comment_count]);
   const config = typeConfig[item.type];
   const TypeIcon = config.icon;
   const canDelete = item.author_id === currentUserId || isOrganizer;
