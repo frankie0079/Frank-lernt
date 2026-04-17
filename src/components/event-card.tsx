@@ -39,7 +39,7 @@ export function EventCard({ event }: EventCardProps) {
       <Card className="overflow-hidden transition-shadow hover:shadow-md">
         {/* Cover Image or Gradient */}
         <div
-          className="relative h-32 w-full overflow-hidden"
+          className="relative aspect-video w-full overflow-hidden"
           style={!event.cover_url ? { background: gradient } : undefined}
         >
           {event.cover_url && (
