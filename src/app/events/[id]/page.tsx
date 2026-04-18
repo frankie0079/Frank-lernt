@@ -203,9 +203,8 @@ export default function EventDashboardPage() {
             {event.name}
           </h1>
           <Button
-            variant={agendaOpen ? "default" : "outline"}
             size="sm"
-            className="shrink-0 gap-1"
+            className="shrink-0 gap-1 bg-accent text-accent-foreground hover:bg-accent/90"
             onClick={() => setAgendaOpen((v) => !v)}
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
