@@ -30,7 +30,7 @@ export function AgendaSelector({
     return (
       <div className="w-full">
         <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-          Tagesabschnitt
+          Wähle Tagesabschnitt und fülle ihn mit Inhalten
         </label>
         <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           Bitte Tagesabschnitte definieren
