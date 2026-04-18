@@ -53,6 +53,7 @@ export default function EventDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState(false);
 
   const eventId = params.id as string;
 
@@ -197,9 +198,20 @@ export default function EventDashboardPage() {
 
       {/* Event Title + Meta */}
       <div className="mx-auto max-w-2xl px-4 py-4">
-        <h1 className="mb-2 font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground leading-tight">
-          {event.name}
-        </h1>
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <h1 className="min-w-0 flex-1 font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground leading-tight">
+            {event.name}
+          </h1>
+          <Button
+            variant={agendaOpen ? "default" : "outline"}
+            size="sm"
+            className="shrink-0 gap-1"
+            onClick={() => setAgendaOpen((v) => !v)}
+          >
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            Agenda
+          </Button>
+        </div>
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
@@ -226,6 +238,53 @@ export default function EventDashboardPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             {event.description}
           </p>
+        )}
+
+        {/* Agenda Panel — collapsible */}
+        {agendaOpen && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+            {agendaItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Agenda ist noch zu erstellen
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {agendaItems
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((item) => {
+                    const itemDate = new Date(item.date + "T00:00:00");
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex gap-3 rounded-lg border border-border bg-background p-3"
+                      >
+                        <div className="flex flex-col items-center justify-center rounded-md bg-muted px-3 py-1 text-center">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {itemDate.toLocaleDateString("de-DE", { weekday: "short" })}
+                          </span>
+                          <span className="text-lg font-bold text-foreground">
+                            {itemDate.getDate()}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {itemDate.toLocaleDateString("de-DE", { month: "short" })}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground leading-tight">
+                            {item.title}
+                          </h3>
+                          {item.description && (
+                            <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -323,54 +382,6 @@ export default function EventDashboardPage() {
             <SlideshowFeed eventId={eventId} />
           </TabsContent>
         </Tabs>
-
-        {/* Agenda Section */}
-        {agendaItems.length > 0 && (
-          <div className="mt-8">
-            <h2 className="mb-4 font-[family-name:var(--font-caveat)] text-4xl font-bold text-foreground leading-none">
-              Agenda
-            </h2>
-            <div className="space-y-3">
-              {agendaItems
-                .sort((a, b) => a.sort_order - b.sort_order)
-                .map((item) => {
-                  const itemDate = new Date(item.date + "T00:00:00");
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex gap-3 rounded-lg border border-border p-3"
-                    >
-                      <div className="flex flex-col items-center justify-center rounded-md bg-muted px-3 py-1 text-center">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {itemDate.toLocaleDateString("de-DE", {
-                            weekday: "short",
-                          })}
-                        </span>
-                        <span className="text-lg font-bold text-foreground">
-                          {itemDate.getDate()}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {itemDate.toLocaleDateString("de-DE", {
-                            month: "short",
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground leading-tight">
-                          {item.title}
-                        </h3>
-                        {item.description && (
-                          <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Edit Sheet */}
