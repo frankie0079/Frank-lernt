@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Check, X, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -147,8 +148,15 @@ export function LocationPickerOverlay({
     }
   }, [searchQuery]);
 
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-background">
+  if (typeof document === "undefined") return null;
+
+  const content = (
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-background"
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Button
           type="button"
@@ -165,7 +173,11 @@ export function LocationPickerOverlay({
           type="button"
           size="sm"
           disabled={lat == null || lng == null}
-          onClick={() => lat != null && lng != null && onConfirm(lat, lng)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (lat != null && lng != null) onConfirm(lat, lng);
+          }}
           className="gap-1"
         >
           <Check className="h-4 w-4" />
@@ -209,4 +221,6 @@ export function LocationPickerOverlay({
       )}
     </div>
   );
+
+  return createPortal(content, document.body);
 }
