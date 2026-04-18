@@ -1,14 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Camera, Video, ImagePlus, MessageSquare, Mic } from "lucide-react";
+import { Camera, Video, ImagePlus, NotebookPen } from "lucide-react";
 
 interface ActionButtonGridProps {
   onCamera: () => void;
   onVideo: () => void;
-  onAudio: () => void;
+  onNote: () => void;
   onUpload: () => void;
-  onComment: () => void;
   disabled?: boolean;
 }
 
@@ -21,9 +20,8 @@ const buttonClass =
 export function ActionButtonGrid({
   onCamera,
   onVideo,
-  onAudio,
+  onNote,
   onUpload,
-  onComment,
   disabled = false,
 }: ActionButtonGridProps) {
   return (
@@ -53,17 +51,6 @@ export function ActionButtonGrid({
       <Button
         variant="outline"
         className={buttonClass}
-        onClick={onAudio}
-        disabled={disabled}
-        aria-label="Sprachmemo aufnehmen"
-      >
-        <Mic className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
-        <span className="text-xl font-semibold">Sprachmemo</span>
-      </Button>
-
-      <Button
-        variant="outline"
-        className={buttonClass}
         onClick={onUpload}
         disabled={disabled}
         aria-label="Bild aus Galerie hochladen"
@@ -74,13 +61,13 @@ export function ActionButtonGrid({
 
       <Button
         variant="outline"
-        className={`${buttonClass} col-span-2`}
-        onClick={onComment}
+        className={buttonClass}
+        onClick={onNote}
         disabled={disabled}
-        aria-label="Text-Kommentar schreiben"
+        aria-label="Notiz schreiben oder aufnehmen"
       >
-        <MessageSquare className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
-        <span className="text-xl font-semibold">Kommentar</span>
+        <NotebookPen className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
+        <span className="text-xl font-semibold">Notiz</span>
       </Button>
     </div>
   );

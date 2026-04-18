@@ -179,6 +179,66 @@ export function AudioSheet({
     setError(null);
   }, [recorder]);
 
+  // Text-only submit (no audio recording)
+  const handleTextSubmit = useCallback(async () => {
+    const trimmed = comment.trim();
+    if (!trimmed) return;
+    if (trimmed.length > COMMENT_MAX) {
+      setError(`Text zu lang (max. ${COMMENT_MAX} Zeichen)`);
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/events/${eventId}/content`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "text",
+          agenda_item_id: agendaItemId,
+          caption: trimmed,
+          latitude: gpsPosition?.latitude ?? null,
+          longitude: gpsPosition?.longitude ?? null,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Notiz konnte nicht gespeichert werden.");
+      }
+
+      if (navigator.vibrate) navigator.vibrate([50]);
+
+      onSubmitSuccess();
+      handleOpenChange(false);
+    } catch (err) {
+      if (isNetworkError(err)) {
+        try {
+          await enqueue(eventId, userId, {
+            type: "text",
+            agenda_item_id: agendaItemId,
+            caption: trimmed,
+            latitude: gpsPosition?.latitude ?? null,
+            longitude: gpsPosition?.longitude ?? null,
+          });
+          setError("Kein Netz — Notiz wird automatisch gesendet, sobald du wieder online bist.");
+        } catch (queueErr) {
+          if (queueErr instanceof OfflineQuotaError) {
+            setError(queueErr.message);
+          } else {
+            setError("Notiz konnte nicht gespeichert werden.");
+          }
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten.");
+      }
+    } finally {
+      setUploading(false);
+    }
+  }, [comment, eventId, userId, agendaItemId, gpsPosition, onSubmitSuccess, handleOpenChange]);
+
   const handleSubmit = useCallback(async () => {
     if (!recorder.blob || !recorder.mimeType) return;
 
@@ -328,7 +388,7 @@ export function AudioSheet({
       >
         <SheetHeader className="text-left">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg">Sprachmemo</SheetTitle>
+            <SheetTitle className="text-lg">Notiz</SheetTitle>
             {!uploading && !isRecordingPhase && (
               <Button
                 variant="ghost"
@@ -344,29 +404,46 @@ export function AudioSheet({
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
-          {/* === IDLE === */}
+          {/* === IDLE — text-first note input === */}
           {isIdle && !recorder.error && (
-            <div className="flex flex-col items-center gap-4 py-6">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-purple-100">
-                <Mic className="h-10 w-10 text-purple-600" aria-hidden="true" />
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                  Notiz schreiben oder mit Mikrofon aufnehmen
+                </label>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Was möchtest du teilen?"
+                  className="min-h-[120px]"
+                  maxLength={COMMENT_MAX}
+                />
+                <div className="mt-1 flex justify-end">
+                  <span
+                    className={`text-xs ${commentOver ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {comment.length}/{COMMENT_MAX}
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground text-center">
-                Nimm eine Sprachnotiz auf (max. 3 Minuten)
-              </p>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={handleStart}
+                >
+                  <Mic className="h-5 w-5 text-purple-600" aria-hidden="true" />
+                  Aufnahme starten
+                </Button>
+              </div>
+
               {!recorder.speechSupported && (
                 <p className="text-xs text-muted-foreground text-center">
-                  Hinweis: Automatische Transkription ist in diesem Browser nicht
-                  verfügbar — du kannst den Text manuell eingeben.
+                  Hinweis: Automatische Transkription ist in diesem Browser nicht verfügbar.
                 </p>
               )}
-              <Button
-                size="lg"
-                className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={handleStart}
-              >
-                <Mic className="h-5 w-5" aria-hidden="true" />
-                Aufnahme starten
-              </Button>
             </div>
           )}
 
@@ -538,6 +615,33 @@ export function AudioSheet({
             </Alert>
           )}
         </div>
+
+        {isIdle && (
+          <SheetFooter className="mt-4 flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleOpenChange(false)}
+              disabled={uploading}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleTextSubmit}
+              disabled={uploading || commentOver || comment.trim().length === 0}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  Speichern...
+                </>
+              ) : (
+                "Absenden"
+              )}
+            </Button>
+          </SheetFooter>
+        )}
 
         {isPreviewPhase && (
           <SheetFooter className="mt-4 flex-row gap-2">

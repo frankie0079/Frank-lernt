@@ -10,7 +10,6 @@ import {
 import { ActionButtonGrid } from "@/components/action-button-grid";
 import { PhotoSheet } from "@/components/photo-sheet";
 import { VideoSheet } from "@/components/video-sheet";
-import { TextCommentSheet } from "@/components/text-comment-sheet";
 import { AudioSheet } from "@/components/audio-sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -75,7 +74,6 @@ export function WandererScreen({
   // Sheet states
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [videoSheetOpen, setVideoSheetOpen] = useState(false);
-  const [textSheetOpen, setTextSheetOpen] = useState(false);
   const [audioSheetOpen, setAudioSheetOpen] = useState(false);
 
   // Validate selected file — images open PhotoSheet, videos open VideoSheet
@@ -124,8 +122,8 @@ export function WandererScreen({
     videoCameraInputRef.current?.click();
   }, []);
 
-  // Audio button handler
-  const handleAudio = useCallback(() => {
+  // Note button handler — unified text/audio input
+  const handleNote = useCallback(() => {
     setFileError(null);
     setAudioSheetOpen(true);
   }, []);
@@ -134,12 +132,6 @@ export function WandererScreen({
   const handleUpload = useCallback(() => {
     setFileError(null);
     uploadInputRef.current?.click();
-  }, []);
-
-  // Comment button handler
-  const handleComment = useCallback(() => {
-    setFileError(null);
-    setTextSheetOpen(true);
   }, []);
 
   // Bulk upload: process multiple images without preview/caption
@@ -297,10 +289,9 @@ export function WandererScreen({
       <ActionButtonGrid
         onCamera={handleCamera}
         onVideo={handleVideo}
-        onAudio={handleAudio}
+        onNote={handleNote}
         onUpload={handleUpload}
-        onComment={handleComment}
-        disabled={bulkUploading || photoSheetOpen || videoSheetOpen || textSheetOpen || audioSheetOpen}
+        disabled={bulkUploading || photoSheetOpen || videoSheetOpen || audioSheetOpen}
       />
 
       {/* Hidden file inputs */}
@@ -363,21 +354,10 @@ export function WandererScreen({
         file={selectedVideoFile}
       />
 
-      {/* Audio Sheet */}
+      {/* Audio Sheet — unified text/audio note input */}
       <AudioSheet
         open={audioSheetOpen}
         onOpenChange={setAudioSheetOpen}
-        eventId={eventId}
-        userId={userId}
-        agendaItemId={selectedAgendaId}
-        gpsPosition={position}
-        onSubmitSuccess={handleSubmitSuccess}
-      />
-
-      {/* Text Comment Sheet */}
-      <TextCommentSheet
-        open={textSheetOpen}
-        onOpenChange={setTextSheetOpen}
         eventId={eventId}
         userId={userId}
         agendaItemId={selectedAgendaId}
