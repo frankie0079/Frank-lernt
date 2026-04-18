@@ -49,7 +49,7 @@ export function AgendaSelector({
         htmlFor="agenda-selector"
         className="mb-1.5 block text-xs font-medium text-muted-foreground"
       >
-        Tagesabschnitt
+        Wähle Tagesabschnitt und fülle ihn mit Inhalten
       </label>
       <Select
         value={value ?? NO_AGENDA_VALUE}
