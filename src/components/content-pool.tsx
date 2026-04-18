@@ -51,10 +51,8 @@ function filterToTypeParam(filter: FilterValue): string | null {
       return "photo";
     case "videos":
       return "video";
-    case "texts":
-      return "text";
-    case "voice":
-      return "audio";
+    case "notes":
+      return "notes";
     default:
       return null;
   }
@@ -693,8 +691,7 @@ function matchesFilter(item: ContentItem, filter: FilterValue): boolean {
   if (filter === "all") return true;
   if (filter === "photos") return item.type === "photo";
   if (filter === "videos") return item.type === "video";
-  if (filter === "texts") return item.type === "text";
-  if (filter === "voice") return item.type === "audio";
+  if (filter === "notes") return item.type === "text" || item.type === "audio";
   if (filter.startsWith("agenda:")) {
     return item.agenda_item_id === filter.slice(7);
   }

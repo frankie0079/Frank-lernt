@@ -3,14 +3,13 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { AgendaItem } from "@/lib/event-utils";
-import { Camera, Video, Type, Mic, LayoutGrid, ChevronRight } from "lucide-react";
+import { Camera, Video, NotebookPen, LayoutGrid, ChevronRight } from "lucide-react";
 
 export type FilterValue =
   | "all"
   | "photos"
   | "videos"
-  | "texts"
-  | "voice"
+  | "notes"
   | `agenda:${string}`;
 
 interface FilterOption {
@@ -34,12 +33,7 @@ export function ContentFilterBar({
     { value: "all", label: "Alle", icon: <LayoutGrid className="h-3 w-3" /> },
     { value: "photos", label: "Fotos", icon: <Camera className="h-3 w-3" /> },
     { value: "videos", label: "Videos", icon: <Video className="h-3 w-3" /> },
-    { value: "texts", label: "Texte", icon: <Type className="h-3 w-3" /> },
-    {
-      value: "voice",
-      label: "Sprachmemos",
-      icon: <Mic className="h-3 w-3" />,
-    },
+    { value: "notes", label: "Notizen", icon: <NotebookPen className="h-3 w-3" /> },
   ];
 
   const agendaFilters: FilterOption[] = agendaItems.map((item) => ({

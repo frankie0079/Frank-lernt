@@ -108,9 +108,13 @@ export async function GET(
     query = query.lt("created_at", cursor);
   }
 
-  // Type filter
-  if (filterType && ["photo", "video", "text", "audio"].includes(filterType) && !singleId) {
-    query = query.eq("type", filterType);
+  // Type filter ("notes" = text + audio combined)
+  if (filterType && !singleId) {
+    if (filterType === "notes") {
+      query = query.in("type", ["text", "audio"]);
+    } else if (["photo", "video", "text", "audio"].includes(filterType)) {
+      query = query.eq("type", filterType);
+    }
   }
 
   // Agenda filter
