@@ -151,6 +151,7 @@ export function LocationPickerOverlay({
     <div className="fixed inset-0 z-[60] flex flex-col bg-background">
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           className="h-8 w-8 shrink-0"
@@ -161,6 +162,7 @@ export function LocationPickerOverlay({
         </Button>
         <span className="flex-1 truncate text-sm font-medium">{title}</span>
         <Button
+          type="button"
           size="sm"
           disabled={lat == null || lng == null}
           onClick={() => lat != null && lng != null && onConfirm(lat, lng)}
@@ -185,6 +187,7 @@ export function LocationPickerOverlay({
           className="h-8 text-sm"
         />
         <Button
+          type="button"
           variant="outline"
           size="icon"
           className="h-8 w-8 shrink-0"
