@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   const parsed = eventCreateSchema.safeParse(body);

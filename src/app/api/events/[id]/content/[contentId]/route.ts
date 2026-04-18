@@ -34,7 +34,7 @@ export async function DELETE(
   const { id, contentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId)) {
-    return NextResponse.json({ error: "Ungueltiges Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -74,7 +74,7 @@ export async function DELETE(
 
     if (!event || event.organizer_id !== currentMember.id) {
       return NextResponse.json(
-        { error: "Nur der Autor oder Organisator kann diesen Beitrag loeschen" },
+        { error: "Nur der Autor oder Organisator kann diesen Beitrag löschen" },
         { status: 403 }
       );
     }

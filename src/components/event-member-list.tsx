@@ -146,7 +146,7 @@ export function EventMemberList({
         <CardDescription>
           {members.length >= 50
             ? "Maximale Teilnehmerzahl (50) erreicht"
-            : `${50 - members.length} Plaetze verfuegbar`}
+            : `${50 - members.length} Plaetze verfügbar`}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -228,7 +228,7 @@ export function EventMemberList({
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             <strong>{m.member_name ?? "Anonym"}</strong> wird
-                            aus dem Event entfernt. Bisherige Beitraege bleiben
+                            aus dem Event entfernt. Bisherige Beiträge bleiben
                             erhalten.
                           </AlertDialogDescription>
                         </AlertDialogHeader>

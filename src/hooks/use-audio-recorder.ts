@@ -226,7 +226,7 @@ export function useAudioRecorder(
 
     if (typeof MediaRecorder === "undefined") {
       setError(
-        "Audio-Aufnahme nicht verfuegbar in diesem Browser."
+        "Audio-Aufnahme nicht verfügbar in diesem Browser."
       );
       return;
     }
@@ -234,7 +234,7 @@ export function useAudioRecorder(
     const detectedMime = detectAudioMimeType();
     if (!detectedMime) {
       setError(
-        "Audio-Aufnahme nicht verfuegbar in diesem Browser."
+        "Audio-Aufnahme nicht verfügbar in diesem Browser."
       );
       return;
     }
@@ -396,7 +396,7 @@ export function useAudioRecorder(
       if (err instanceof DOMException) {
         if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
           setError(
-            "Mikrofon-Zugriff benoetigt. Bitte erlaube den Zugriff in den Browser-Einstellungen."
+            "Mikrofon-Zugriff benötigt. Bitte erlaube den Zugriff in den Browser-Einstellungen."
           );
         } else if (err.name === "NotFoundError") {
           setError("Kein Mikrofon gefunden.");

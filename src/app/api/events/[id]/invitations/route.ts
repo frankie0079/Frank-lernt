@@ -36,7 +36,7 @@ export async function GET(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   // BUG-5 fix: read rate limit
@@ -99,7 +99,7 @@ export async function POST(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);

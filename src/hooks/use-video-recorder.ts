@@ -153,7 +153,7 @@ export function useVideoRecorder(
     // Check for MediaRecorder support
     if (typeof MediaRecorder === "undefined") {
       setError(
-        "Video-Aufnahme nicht verfuegbar in diesem Browser. Bitte lade ein Video aus der Galerie hoch."
+        "Video-Aufnahme nicht verfügbar in diesem Browser. Bitte lade ein Video aus der Galerie hoch."
       );
       return;
     }
@@ -161,7 +161,7 @@ export function useVideoRecorder(
     const detectedMime = detectMimeType();
     if (!detectedMime) {
       setError(
-        "Video-Aufnahme nicht verfuegbar in diesem Browser. Bitte lade ein Video aus der Galerie hoch."
+        "Video-Aufnahme nicht verfügbar in diesem Browser. Bitte lade ein Video aus der Galerie hoch."
       );
       return;
     }
@@ -216,7 +216,7 @@ export function useVideoRecorder(
       recorder.onerror = () => {
         clearTimer();
         setIsRecording(false);
-        setError("Aufnahme-Fehler. Moeglicherweise ist der Geratespeicher voll.");
+        setError("Aufnahme-Fehler. Möglicherweise ist der Geratespeicher voll.");
         stopStreamTracks();
       };
 
@@ -249,7 +249,7 @@ export function useVideoRecorder(
           err.name === "PermissionDeniedError"
         ) {
           setError(
-            "Kamera-Zugriff benoetigt. Bitte erlaube den Zugriff in den Browser-Einstellungen."
+            "Kamera-Zugriff benötigt. Bitte erlaube den Zugriff in den Browser-Einstellungen."
           );
         } else if (err.name === "NotFoundError") {
           setError(

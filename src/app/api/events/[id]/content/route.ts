@@ -35,7 +35,7 @@ export async function GET(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -76,14 +76,14 @@ export async function GET(
 
   // Validate UUID params
   if (singleId && !isValidUUID(singleId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
   if (agendaId && !isValidUUID(agendaId)) {
-    return NextResponse.json({ error: "Ungueltiges Agenda-ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Agenda-ID-Format" }, { status: 400 });
   }
   // Validate cursor is a plausible ISO timestamp
   if (cursor && isNaN(Date.parse(cursor))) {
-    return NextResponse.json({ error: "Ungueltiges Cursor-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Cursor-Format" }, { status: 400 });
   }
 
   let query = supabase
@@ -239,7 +239,7 @@ export async function POST(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -271,7 +271,7 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   const parsed = contentCreateSchema.safeParse(body);
@@ -289,7 +289,7 @@ export async function POST(
   // Photo/video/audio require media_url
   if (type !== "text" && !media_url) {
     return NextResponse.json(
-      { error: "Medien-URL ist erforderlich fuer diesen Beitragstyp" },
+      { error: "Medien-URL ist erforderlich für diesen Beitragstyp" },
       { status: 400 }
     );
   }
@@ -310,7 +310,7 @@ export async function POST(
       parsed = new URL(url);
     } catch {
       return NextResponse.json(
-        { error: "Medien-URL ist ungueltig" },
+        { error: "Medien-URL ist ungültig" },
         { status: 400 }
       );
     }
@@ -325,7 +325,7 @@ export async function POST(
   // Text requires caption
   if (type === "text" && (!caption || caption.trim().length === 0)) {
     return NextResponse.json(
-      { error: "Text-Beitrag benoetigt einen Kommentar" },
+      { error: "Text-Beitrag benötigt einen Kommentar" },
       { status: 400 }
     );
   }
@@ -341,7 +341,7 @@ export async function POST(
 
     if (!agendaItem) {
       return NextResponse.json(
-        { error: "Agenda-Punkt gehoert nicht zu diesem Event" },
+        { error: "Agenda-Punkt gehört nicht zu diesem Event" },
         { status: 400 }
       );
     }

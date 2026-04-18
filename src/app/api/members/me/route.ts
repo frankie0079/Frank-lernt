@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   const parsed = updateMemberSchema.safeParse(body);
@@ -84,7 +84,7 @@ export async function PATCH(request: NextRequest) {
   if (parsed.data.avatar_url !== undefined) updates.avatar_url = parsed.data.avatar_url;
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "Keine Aenderungen" }, { status: 400 });
+    return NextResponse.json({ error: "Keine Änderungen" }, { status: 400 });
   }
 
   const { data: updated, error } = await supabase

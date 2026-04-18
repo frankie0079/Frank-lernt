@@ -356,7 +356,7 @@ export function AudioSheet({
               {!recorder.speechSupported && (
                 <p className="text-xs text-muted-foreground text-center">
                   Hinweis: Automatische Transkription ist in diesem Browser nicht
-                  verfuegbar — du kannst den Text manuell eingeben.
+                  verfügbar — du kannst den Text manuell eingeben.
                 </p>
               )}
               <Button
@@ -397,7 +397,7 @@ export function AudioSheet({
                 <label className="text-xs font-medium text-muted-foreground">
                   {recorder.speechSupported
                     ? "Live-Transkription"
-                    : "Transkription nicht verfuegbar"}
+                    : "Transkription nicht verfügbar"}
                 </label>
                 <Textarea
                   value={recorder.transcript}

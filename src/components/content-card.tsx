@@ -244,7 +244,7 @@ export function ContentCard({
                 e.stopPropagation();
                 onDelete(item);
               }}
-              aria-label="Beitrag loeschen"
+              aria-label="Beitrag löschen"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

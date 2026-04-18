@@ -196,7 +196,7 @@ export function CoverPhotoUploader({
       }
 
       if (file.size > COVER_MAX_SIZE_BYTES) {
-        setError("Bild zu gross (max. 5 MB). Bitte ein kleineres Bild waehlen.");
+        setError("Bild zu gross (max. 5 MB). Bitte ein kleineres Bild wählen.");
         return;
       }
 
@@ -356,7 +356,7 @@ export function CoverPhotoUploader({
         className="w-full"
       >
         <ImagePlus className="mr-2 h-4 w-4" aria-hidden="true" />
-        {previewUrl ? "Cover aendern" : "Cover hochladen"}
+        {previewUrl ? "Cover ändern" : "Cover hochladen"}
       </Button>
 
       {error && (

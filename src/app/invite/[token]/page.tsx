@@ -242,9 +242,9 @@ export default function InvitePage() {
           )}
           {status === "invalid" && (
             <>
-              <CardTitle className="text-xl">Ungueltiger Link</CardTitle>
+              <CardTitle className="text-xl">Ungültiger Link</CardTitle>
               <CardDescription>
-                Dieser Einladungslink ist ungueltig. Pruefe den Link oder frag
+                Dieser Einladungslink ist ungültig. Pruefe den Link oder frag
                 den Organisator nach einem neuen.
               </CardDescription>
             </>

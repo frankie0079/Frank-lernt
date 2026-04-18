@@ -237,7 +237,7 @@ function AvatarCropOverlay({
           size="icon"
           className="h-12 w-12 rounded-full"
           onClick={handleConfirm}
-          aria-label="Zuschnitt bestaetigen"
+          aria-label="Zuschnitt bestätigen"
         >
           <Check className="h-6 w-6" />
         </Button>
@@ -407,7 +407,7 @@ export function AvatarUpload({
         disabled={uploading}
       >
         <Camera className="mr-2 h-4 w-4" aria-hidden="true" />
-        {currentAvatarUrl ? "Foto aendern" : "Foto hochladen"}
+        {currentAvatarUrl ? "Foto ändern" : "Foto hochladen"}
       </Button>
 
       {error && (

@@ -49,9 +49,9 @@ export function AgendaSelector({
         <SelectTrigger
           id="agenda-selector"
           className="w-full"
-          aria-label="Agenda-Punkt auswaehlen"
+          aria-label="Agenda-Punkt auswählen"
         >
-          <SelectValue placeholder="Tagesabschnitt waehlen" />
+          <SelectValue placeholder="Tagesabschnitt wählen" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={NO_AGENDA_VALUE}>

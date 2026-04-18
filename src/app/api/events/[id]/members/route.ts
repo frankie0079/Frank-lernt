@@ -35,7 +35,7 @@ export async function GET(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   // BUG-4 fix: read rate limit on member enumeration

@@ -57,7 +57,7 @@ export function ContentFilterBar({
       <div
         className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
         role="tablist"
-        aria-label="Beitraege filtern"
+        aria-label="Beiträge filtern"
         onScroll={(e) => {
           const el = e.currentTarget;
           setScrolledRight(el.scrollLeft > 20);

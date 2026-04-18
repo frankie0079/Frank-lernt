@@ -274,7 +274,7 @@ export function EventCreateForm() {
                             <CalendarDays className="mr-2 h-4 w-4" aria-hidden="true" />
                             {field.value
                               ? format(field.value, "dd.MM.yyyy", { locale: de })
-                              : "Datum waehlen"}
+                              : "Datum wählen"}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -313,7 +313,7 @@ export function EventCreateForm() {
                             <CalendarDays className="mr-2 h-4 w-4" aria-hidden="true" />
                             {field.value
                               ? format(field.value, "dd.MM.yyyy", { locale: de })
-                              : "Datum waehlen"}
+                              : "Datum wählen"}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -516,7 +516,7 @@ export function EventCreateForm() {
                 onClick={() => setStep(1)}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-                Zurueck
+                Zurück
               </Button>
 
               <div className="flex gap-2">

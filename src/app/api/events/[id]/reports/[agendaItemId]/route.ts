@@ -13,12 +13,12 @@ function createSupabase() {
 }
 
 const reportItemSchema = z.object({
-  content_item_id: z.string().uuid("Ungueltige Content-ID"),
+  content_item_id: z.string().uuid("Ungültige Content-ID"),
   sort_order: z.number().int().min(0).max(100000),
 });
 
 const putBodySchema = z.object({
-  items: z.array(reportItemSchema).max(500, "Zu viele Beitraege"),
+  items: z.array(reportItemSchema).max(500, "Zu viele Beiträge"),
 });
 
 function mapRpcError(code: string | undefined): { status: number; error: string } {
@@ -31,11 +31,11 @@ function mapRpcError(code: string | undefined): { status: number; error: string 
       return { status: 404, error: "Bericht nicht gefunden" };
     case "invalid_payload":
     case "invalid_item":
-      return { status: 400, error: "Ungueltige Daten" };
+      return { status: 400, error: "Ungültige Daten" };
     case "content_not_in_event":
-      return { status: 400, error: "Beitrag gehoert nicht zu diesem Event" };
+      return { status: 400, error: "Beitrag gehört nicht zu diesem Event" };
     case "no_items":
-      return { status: 400, error: "Mindestens 1 Beitrag auswaehlen" };
+      return { status: 400, error: "Mindestens 1 Beitrag auswählen" };
     default:
       return { status: 400, error: "Fehler beim Speichern" };
   }
@@ -49,7 +49,7 @@ export async function GET(
   const { id, agendaItemId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(agendaItemId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -89,7 +89,7 @@ export async function PUT(
   const { id, agendaItemId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(agendaItemId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -104,7 +104,7 @@ export async function PUT(
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   const parsed = putBodySchema.safeParse(body);
@@ -119,7 +119,7 @@ export async function PUT(
   const ids = parsed.data.items.map((i) => i.content_item_id);
   if (new Set(ids).size !== ids.length) {
     return NextResponse.json(
-      { error: "Doppelte Beitraege im Bericht" },
+      { error: "Doppelte Beiträge im Bericht" },
       { status: 400 }
     );
   }

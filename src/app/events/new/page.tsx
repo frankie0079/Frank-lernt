@@ -33,7 +33,7 @@ export default function EventNewPage() {
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/events" aria-label="Zurueck zu Meine Events">
+            <Link href="/events" aria-label="Zurück zu Meine Events">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>

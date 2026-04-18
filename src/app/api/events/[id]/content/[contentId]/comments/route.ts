@@ -72,7 +72,7 @@ export async function GET(
   const { id, contentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -99,12 +99,12 @@ export async function GET(
 
   if (singleId && !isValidUUID(singleId)) {
     return NextResponse.json(
-      { error: "Ungueltiges Comment-ID-Format" },
+      { error: "Ungültiges Comment-ID-Format" },
       { status: 400 }
     );
   }
   if (cursor && isNaN(Date.parse(cursor))) {
-    return NextResponse.json({ error: "Ungueltiges Cursor-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Cursor-Format" }, { status: 400 });
   }
 
   const supabase = createSupabase();
@@ -136,7 +136,7 @@ export async function POST(
   const { id, contentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   // First-line IP-based defense
@@ -163,7 +163,7 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   const parsed = commentCreateSchema.safeParse(body);

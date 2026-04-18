@@ -169,7 +169,7 @@ export function InvitationLinkCard({
           Einladungslink
         </CardTitle>
         <CardDescription>
-          Teile diesen Link, damit Teilnehmer dem Event beitreten koennen.
+          Teile diesen Link, damit Teilnehmer dem Event beitreten können.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -211,7 +211,7 @@ export function InvitationLinkCard({
             {copyFailed && (
               <p className="text-xs text-destructive flex items-center gap-1.5">
                 <AlertCircle className="h-3 w-3" aria-hidden="true" />
-                Kopieren nicht moeglich. Bitte den Link oben manuell auswaehlen.
+                Kopieren nicht möglich. Bitte den Link oben manuell auswählen.
               </p>
             )}
 
@@ -243,7 +243,7 @@ export function InvitationLinkCard({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Neuen Link generieren?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Der bisherige Einladungslink wird sofort ungueltig. Bereits
+                      Der bisherige Einladungslink wird sofort ungültig. Bereits
                       beigetretene Teilnehmer sind nicht betroffen.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -261,7 +261,7 @@ export function InvitationLinkCard({
           /* No invitation yet */
           <div className="text-center py-4">
             <p className="mb-4 text-sm text-muted-foreground">
-              Es gibt noch keinen Einladungslink fuer dieses Event.
+              Es gibt noch keinen Einladungslink für dieses Event.
             </p>
             <Button onClick={handleGenerate} disabled={generating}>
               {generating ? (

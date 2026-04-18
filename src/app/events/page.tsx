@@ -92,25 +92,24 @@ export default function EventsPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
-          <h1 className="min-w-0 truncate text-2xl font-bold text-foreground">
+          <h1 className="min-w-0 truncate font-[family-name:var(--font-caveat)] text-5xl font-bold text-foreground leading-none">
             Meine Events
           </h1>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" asChild>
+          <div className="flex shrink-0 items-center gap-3">
+            <Button size="icon" className="h-12 w-12 rounded-full shadow-md" asChild>
               <Link href="/events/new" aria-label="Neues Event erstellen">
-                <Plus className="h-4 w-4 sm:mr-2" aria-hidden="true" />
-                <span className="hidden sm:inline">Neues Event</span>
+                <Plus className="h-6 w-6" aria-hidden="true" />
               </Link>
             </Button>
             <Link href="/profile" aria-label="Profil bearbeiten">
-              <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-border hover:ring-primary transition-all">
+              <Avatar className="h-12 w-12 cursor-pointer ring-2 ring-border hover:ring-primary transition-all">
                 <AvatarImage
                   src={member.avatar_url ?? undefined}
                   alt={displayName}
                 />
-                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                <AvatarFallback className="bg-primary/10 text-primary text-base">
                   {initials ?? (
-                    <User className="h-4 w-4" aria-hidden="true" />
+                    <User className="h-5 w-5" aria-hidden="true" />
                   )}
                 </AvatarFallback>
               </Avatar>
@@ -136,11 +135,19 @@ export default function EventsPage() {
 
         {/* Event list */}
         {!loadingEvents && events.length > 0 && (
-          <div className="space-y-4">
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          <>
+            <div className="space-y-4">
+              {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+            <Button size="lg" className="w-full h-16 text-2xl justify-start px-6 shadow-md [&_svg]:size-6" asChild>
+              <Link href="/events/new">
+                <Plus className="mr-3" aria-hidden="true" />
+                Neues Event erstellen
+              </Link>
+            </Button>
+          </>
         )}
 
         {/* Empty state */}

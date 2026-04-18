@@ -99,7 +99,7 @@ export function DisplayNameForm({
               </FormControl>
               <div className="flex items-center justify-between">
                 <FormDescription>
-                  Wird anderen Teilnehmern angezeigt. Leer lassen fuer
+                  Wird anderen Teilnehmern angezeigt. Leer lassen für
                   &quot;Anonym&quot;.
                 </FormDescription>
                 <span

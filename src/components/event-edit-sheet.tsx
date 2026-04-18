@@ -252,13 +252,13 @@ export function EventEditSheet({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Event konnte nicht geloescht werden.");
+        throw new Error(data.error || "Event konnte nicht gelöscht werden.");
       }
 
       router.push("/events");
     } catch (err) {
       setSaveError(
-        err instanceof Error ? err.message : "Loeschen fehlgeschlagen."
+        err instanceof Error ? err.message : "Löschen fehlgeschlagen."
       );
       setDeleting(false);
     }
@@ -281,9 +281,11 @@ export function EventEditSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <SheetHeader className="px-6 pt-6 pb-2">
-          <SheetTitle>Event bearbeiten</SheetTitle>
+          <SheetTitle className="font-[family-name:var(--font-caveat)] text-4xl leading-none">
+            Event bearbeiten
+          </SheetTitle>
           <SheetDescription>
-            Aendere die Details deines Events.
+            Ändere die Details deines Events.
           </SheetDescription>
         </SheetHeader>
 
@@ -427,7 +429,9 @@ export function EventEditSheet({
               <Separator />
 
               <div>
-                <h3 className="mb-3 text-sm font-medium">Agenda</h3>
+                <h3 className="mb-3 font-[family-name:var(--font-caveat)] text-3xl font-bold leading-none">
+                  Agenda
+                </h3>
 
                 <div className="space-y-3">
                   {fields.length === 0 && (
@@ -455,7 +459,7 @@ export function EventEditSheet({
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-primary"
                             onClick={() => setLocationPickerIndex(index)}
-                            aria-label={`Ort fuer Abschnitt ${index + 1} setzen`}
+                            aria-label={`Ort für Abschnitt ${index + 1} setzen`}
                           >
                             <MapPin className="h-3 w-3" />
                           </Button>
@@ -484,14 +488,13 @@ export function EventEditSheet({
                                     <Button
                                       type="button"
                                       variant="outline"
-                                      size="sm"
                                       className={cn(
-                                        "w-full justify-start text-left font-normal text-xs",
+                                        "h-10 w-full justify-start text-left font-normal",
                                         !dateField.value &&
                                           "text-muted-foreground"
                                       )}
                                     >
-                                      <CalendarDays className="mr-1 h-3 w-3" aria-hidden="true" />
+                                      <CalendarDays className="mr-2 h-4 w-4" aria-hidden="true" />
                                       {dateField.value
                                         ? format(dateField.value, "dd.MM.yy", {
                                             locale: de,
@@ -537,7 +540,6 @@ export function EventEditSheet({
                                 <Input
                                   placeholder="Titel"
                                   maxLength={80}
-                                  className="text-sm"
                                   {...titleField}
                                 />
                               </FormControl>
@@ -557,7 +559,6 @@ export function EventEditSheet({
                                 placeholder="Beschreibung (optional)"
                                 maxLength={300}
                                 rows={2}
-                                className="text-xs"
                                 {...descField}
                               />
                             </FormControl>
@@ -614,7 +615,7 @@ export function EventEditSheet({
 
               {/* Danger Zone */}
               <div className="space-y-3 pb-6">
-                <h3 className="text-sm font-medium text-destructive">
+                <h3 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-destructive leading-none">
                   Gefahrenzone
                 </h3>
 
@@ -641,7 +642,7 @@ export function EventEditSheet({
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         Das Event wird als abgeschlossen markiert. Du kannst es
-                        spaeter wieder aktivieren, indem du das Enddatum aenderst.
+                        später wieder aktivieren, indem du das Enddatum änderst.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -662,18 +663,18 @@ export function EventEditSheet({
                       disabled={saving || deleting || archiving}
                     >
                       <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                      Event loeschen
+                      Event löschen
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
-                        Event unwiderruflich loeschen?
+                        Event unwiderruflich löschen?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        Alle Beitraege, Fotos und Kommentare werden
-                        unwiderruflich geloescht. Diese Aktion kann nicht
-                        rueckgaengig gemacht werden.
+                        Alle Beiträge, Fotos und Kommentare werden
+                        unwiderruflich gelöscht. Diese Aktion kann nicht
+                        rückgängig gemacht werden.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -688,7 +689,7 @@ export function EventEditSheet({
                             aria-hidden="true"
                           />
                         )}
-                        Endgueltig loeschen
+                        Endgueltig löschen
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

@@ -56,7 +56,7 @@ export function EventCard({ event }: EventCardProps) {
         </div>
 
         <CardContent className="p-4">
-          <h3 className="mb-1 text-lg font-semibold text-foreground line-clamp-1">
+          <h3 className="mb-1 font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground line-clamp-1 leading-tight">
             {event.name}
           </h3>
           {event.description && (

@@ -154,7 +154,7 @@ export function ContentPool({
 
         const res = await fetch(buildUrl(cursor));
         if (!res.ok) {
-          throw new Error("Beitraege konnten nicht geladen werden.");
+          throw new Error("Beiträge konnten nicht geladen werden.");
         }
         const data = await res.json();
         const newItems: ContentItem[] = data.content_items || [];
@@ -405,13 +405,13 @@ export function ContentPool({
       );
 
       if (!res.ok) {
-        throw new Error("Loeschen fehlgeschlagen");
+        throw new Error("Löschen fehlgeschlagen");
       }
 
-      toast.success("Beitrag geloescht");
+      toast.success("Beitrag gelöscht");
     } catch {
       // Restore item on failure
-      toast.error("Beitrag konnte nicht geloescht werden");
+      toast.error("Beitrag konnte nicht gelöscht werden");
       // Refetch to restore
       fetchItems();
     } finally {
@@ -490,12 +490,12 @@ export function ContentPool({
           />
           <p className="text-sm font-medium text-foreground">
             {activeFilter === "all"
-              ? "Noch keine Beitraege"
-              : "Keine Beitraege fuer diesen Filter"}
+              ? "Noch keine Beiträge"
+              : "Keine Beiträge für diesen Filter"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {activeFilter === "all"
-              ? "Sei der Erste! Wechsle zum Beitraege-Tab und teile ein Foto oder einen Kommentar."
+              ? "Sei der Erste! Wechsle zum Beiträge-Tab und teile ein Foto oder einen Kommentar."
               : "Versuche einen anderen Filter oder erstelle einen passenden Beitrag."}
           </p>
           {activeFilter !== "all" && (
@@ -505,7 +505,7 @@ export function ContentPool({
               className="mt-3"
               onClick={() => setFilter("all")}
             >
-              Alle Beitraege anzeigen
+              Alle Beiträge anzeigen
             </Button>
           )}
         </div>
@@ -574,7 +574,7 @@ export function ContentPool({
             onClick={scrollToTop}
           >
             <ArrowDown className="h-3.5 w-3.5 rotate-180" aria-hidden="true" />
-            {newItemsCount} {newItemsCount === 1 ? "neuer Beitrag" : "neue Beitraege"}
+            {newItemsCount} {newItemsCount === 1 ? "neuer Beitrag" : "neue Beiträge"}
           </Button>
         </div>
       )}
@@ -607,7 +607,7 @@ export function ContentPool({
       {/* End of list */}
       {!hasMore && items.length > 0 && (
         <p className="py-4 text-center text-xs text-muted-foreground">
-          Alle Beitraege geladen
+          Alle Beiträge geladen
         </p>
       )}
 
@@ -629,10 +629,10 @@ export function ContentPool({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Beitrag loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Beitrag löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Beitrag unwiderruflich loeschen? Diese Aktion kann nicht
-              rueckgaengig gemacht werden.
+              Beitrag unwiderruflich löschen? Diese Aktion kann nicht
+              rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -641,7 +641,7 @@ export function ContentPool({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

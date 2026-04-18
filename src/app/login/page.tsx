@@ -43,7 +43,7 @@ function LoginContent() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" aria-hidden="true" />
               <AlertDescription>
-                Dieser Link ist ungueltig. Bitte frag den Organisator nach einem
+                Dieser Link ist ungültig. Bitte frag den Organisator nach einem
                 neuen Link.
               </AlertDescription>
             </Alert>

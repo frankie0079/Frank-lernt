@@ -113,7 +113,7 @@ export default function EventDashboardPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/events">
               <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-              Zurueck
+              Zurück
             </Link>
           </Button>
           <Alert variant="destructive">
@@ -160,7 +160,7 @@ export default function EventDashboardPage() {
           className="absolute left-3 top-3 h-9 w-9 rounded-full bg-black/30 text-white hover:bg-black/50"
           asChild
         >
-          <Link href="/events" aria-label="Zurueck zu Meine Events">
+          <Link href="/events" aria-label="Zurück zu Meine Events">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -193,18 +193,13 @@ export default function EventDashboardPage() {
           </div>
         )}
 
-        {/* Event title overlay */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
-          <div className="mx-auto max-w-2xl">
-            <h1 className="text-2xl font-bold text-white md:text-3xl">
-              {event.name}
-            </h1>
-          </div>
-        </div>
       </div>
 
-      {/* Event Meta */}
+      {/* Event Title + Meta */}
       <div className="mx-auto max-w-2xl px-4 py-4">
+        <h1 className="mb-2 font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground leading-tight">
+          {event.name}
+        </h1>
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
@@ -332,7 +327,7 @@ export default function EventDashboardPage() {
         {/* Agenda Section */}
         {agendaItems.length > 0 && (
           <div className="mt-8">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
+            <h2 className="mb-4 font-[family-name:var(--font-caveat)] text-4xl font-bold text-foreground leading-none">
               Agenda
             </h2>
             <div className="space-y-3">
@@ -361,7 +356,7 @@ export default function EventDashboardPage() {
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground">
+                        <h3 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground leading-tight">
                           {item.title}
                         </h3>
                         {item.description && (

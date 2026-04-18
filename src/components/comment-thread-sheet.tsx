@@ -214,7 +214,7 @@ function CommentRow({
                 size="icon"
                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
                 onClick={onDelete}
-                aria-label="Kommentar loeschen"
+                aria-label="Kommentar löschen"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -362,7 +362,7 @@ export function CommentThreadSheet({
           filter: `id=eq.${contentItemId}`,
         },
         () => {
-          toast.info("Beitrag wurde geloescht.");
+          toast.info("Beitrag wurde gelöscht.");
           onOpenChange(false);
         }
       )
@@ -547,7 +547,7 @@ export function CommentThreadSheet({
             { method: "DELETE" }
           );
         } catch {
-          toast.error("Kommentar konnte nicht geloescht werden.");
+          toast.error("Kommentar konnte nicht gelöscht werden.");
           setComments((prev) =>
             prev.some((c) => c.id === comment.id) ? prev : [...prev, comment]
           );
@@ -556,9 +556,9 @@ export function CommentThreadSheet({
       pendingDeletesRef.current.set(comment.id, timeout);
 
       // Show toast with undo
-      toast("Kommentar geloescht", {
+      toast("Kommentar gelöscht", {
         action: {
-          label: "Rueckgaengig",
+          label: "Rückgängig",
           onClick: () => {
             const t = pendingDeletesRef.current.get(comment.id);
             if (t) {
@@ -681,7 +681,7 @@ export function CommentThreadSheet({
                 {loading ? (
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                 ) : null}
-                Aeltere Kommentare laden
+                Ältere Kommentare laden
               </Button>
             </div>
           )}

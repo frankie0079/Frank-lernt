@@ -187,7 +187,7 @@ export default function EventSettingsPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/events">
               <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-              Zurueck
+              Zurück
             </Link>
           </Button>
           <Alert variant="destructive">
@@ -209,7 +209,7 @@ export default function EventSettingsPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/events/${eventId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-              Zurueck zum Event
+              Zurück zum Event
             </Link>
           </Button>
           <Alert variant="destructive">
@@ -231,7 +231,7 @@ export default function EventSettingsPage() {
           <Button variant="ghost" size="icon" asChild>
             <Link
               href={`/events/${eventId}`}
-              aria-label="Zurueck zum Event"
+              aria-label="Zurück zum Event"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>

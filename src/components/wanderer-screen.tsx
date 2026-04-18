@@ -336,7 +336,7 @@ export function WandererScreen({
         multiple
         onChange={handleFileChange}
         className="hidden"
-        aria-label="Dateien aus Galerie auswaehlen"
+        aria-label="Dateien aus Galerie auswählen"
       />
 
       {/* Photo Sheet */}

@@ -22,7 +22,7 @@ export async function PATCH(
   const { id, contentId, commentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId) || !isValidUUID(commentId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -42,7 +42,7 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Ungueltiger Body" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiger Body" }, { status: 400 });
   }
 
   if (typeof body.text !== "string" || body.text.trim().length === 0 || body.text.trim().length > 500) {
@@ -99,7 +99,7 @@ export async function DELETE(
   const { id, contentId, commentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId) || !isValidUUID(commentId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -132,7 +132,7 @@ export async function DELETE(
         return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
       case "forbidden":
         return NextResponse.json(
-          { error: "Du darfst diesen Kommentar nicht loeschen" },
+          { error: "Du darfst diesen Kommentar nicht löschen" },
           { status: 403 }
         );
       case "not_found":

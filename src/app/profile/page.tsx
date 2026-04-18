@@ -54,7 +54,7 @@ export default function ProfilePage() {
         <Link
           href="/events"
           className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Zurueck zu Meine Events"
+          aria-label="Zurück zu Meine Events"
         >
           <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
           Meine Events

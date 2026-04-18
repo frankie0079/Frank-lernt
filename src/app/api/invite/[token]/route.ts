@@ -68,7 +68,7 @@ export async function POST(
 
   if (!invitation) {
     return NextResponse.json(
-      { error: "Einladungslink ungueltig" },
+      { error: "Einladungslink ungültig" },
       { status: 404 }
     );
   }

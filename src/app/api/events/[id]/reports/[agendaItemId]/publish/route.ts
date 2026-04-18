@@ -24,7 +24,7 @@ export async function PATCH(
   const { id, agendaItemId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(agendaItemId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -68,7 +68,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Bericht nicht gefunden" }, { status: 404 });
     if (code === "no_items")
       return NextResponse.json(
-        { error: "Mindestens 1 Beitrag auswaehlen, um zu veroeffentlichen" },
+        { error: "Mindestens 1 Beitrag auswählen, um zu veröffentlichen" },
         { status: 400 }
       );
     return NextResponse.json({ error: "Fehler beim Aktualisieren" }, { status: 400 });

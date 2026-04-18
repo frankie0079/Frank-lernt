@@ -126,7 +126,7 @@ export function ContentLightbox({
               e.stopPropagation();
               goNext();
             }}
-            aria-label="Naechster Beitrag"
+            aria-label="Nächster Beitrag"
           >
             <ChevronRight className="h-6 w-6" />
           </Button>

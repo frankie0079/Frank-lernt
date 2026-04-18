@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Caveat } from "next/font/google";
+import { Caveat, Dancing_Script } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -7,6 +7,11 @@ import "./globals.css";
 const caveat = Caveat({
   subsets: ["latin"],
   variable: "--font-caveat",
+});
+
+const dancingScript = Dancing_Script({
+  subsets: ["latin"],
+  variable: "--font-dancing",
 });
 
 export const metadata: Metadata = {
@@ -38,7 +43,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
-      <body className={`${caveat.variable} antialiased hyphens-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
+      <body className={`${caveat.variable} ${dancingScript.variable} antialiased hyphens-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
         <AuthProvider>{children}</AuthProvider>
         <Toaster />
       </body>

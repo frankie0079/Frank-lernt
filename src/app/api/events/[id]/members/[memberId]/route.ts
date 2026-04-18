@@ -35,7 +35,7 @@ export async function DELETE(
   const { id, memberId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(memberId)) {
-    return NextResponse.json({ error: "Ungueltiges Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);

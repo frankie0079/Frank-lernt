@@ -38,7 +38,7 @@ export async function GET(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const currentMember = await getCurrentMember(request);
@@ -105,7 +105,7 @@ export async function PATCH(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -143,7 +143,7 @@ export async function PATCH(
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   // Use the same schema for validation
@@ -273,7 +273,7 @@ export async function DELETE(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -304,7 +304,7 @@ export async function DELETE(
 
   if (event.organizer_id !== currentMember.id) {
     return NextResponse.json(
-      { error: "Nur der Organisator kann das Event loeschen" },
+      { error: "Nur der Organisator kann das Event löschen" },
       { status: 403 }
     );
   }

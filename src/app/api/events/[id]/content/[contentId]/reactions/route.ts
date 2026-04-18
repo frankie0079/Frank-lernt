@@ -37,7 +37,7 @@ function rpcErrorResponse(code: string): NextResponse {
         { status: 404 }
       );
     case "invalid_emoji":
-      return NextResponse.json({ error: "Ungueltiges Emoji" }, { status: 400 });
+      return NextResponse.json({ error: "Ungültiges Emoji" }, { status: 400 });
     default:
       return NextResponse.json({ error: "Fehler" }, { status: 500 });
   }
@@ -51,7 +51,7 @@ export async function POST(
   const { id, contentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -69,12 +69,12 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Ungueltige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   }
 
   const parsed = reactionSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Ungueltiges Emoji" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Emoji" }, { status: 400 });
   }
 
   const supabase = createSupabase();
@@ -104,7 +104,7 @@ export async function DELETE(
   const { id, contentId } = await params;
 
   if (!isValidUUID(id) || !isValidUUID(contentId)) {
-    return NextResponse.json({ error: "Ungueltiges ID-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges ID-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
@@ -124,7 +124,7 @@ export async function DELETE(
   const emojiParam = url.searchParams.get("emoji");
   const parsed = reactionSchema.safeParse({ emoji: emojiParam });
   if (!parsed.success) {
-    return NextResponse.json({ error: "Ungueltiges Emoji" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Emoji" }, { status: 400 });
   }
 
   const supabase = createSupabase();

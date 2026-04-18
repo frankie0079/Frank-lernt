@@ -19,7 +19,7 @@ export async function GET(
   const { id } = await params;
 
   if (!isValidUUID(id)) {
-    return NextResponse.json({ error: "Ungueltiges Event-Format" }, { status: 400 });
+    return NextResponse.json({ error: "Ungültiges Event-Format" }, { status: 400 });
   }
 
   const ip = getRateLimitIp(request);
