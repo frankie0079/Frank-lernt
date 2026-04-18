@@ -19,6 +19,8 @@ export interface MapMarker {
 
 interface Props {
   markers: MapMarker[];
+  totalCount?: number;
+  loading?: boolean;
 }
 
 const MapInner = dynamic(
@@ -33,8 +35,10 @@ const MapInner = dynamic(
   },
 );
 
-export function PublicEventMap({ markers }: Props) {
+export function PublicEventMap({ markers, totalCount, loading }: Props) {
   if (markers.length === 0) return null;
+
+  const displayCount = totalCount ?? markers.length;
 
   return (
     <Card className="overflow-hidden p-4">
@@ -42,7 +46,7 @@ export function PublicEventMap({ markers }: Props) {
         <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
         <h2 className="text-lg font-semibold">Auf der Karte</h2>
         <span className="text-xs text-muted-foreground">
-          ({markers.length} {markers.length === 1 ? "Foto" : "Fotos"})
+          {loading ? "(wird geladen …)" : `(${displayCount} ${displayCount === 1 ? "Beitrag" : "Beiträge"})`}
         </span>
       </div>
       <div className="h-[360px] w-full overflow-hidden rounded-md sm:h-[480px]">

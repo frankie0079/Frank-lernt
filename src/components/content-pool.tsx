@@ -97,6 +97,8 @@ export function ContentPool({
   const [newItemsCount, setNewItemsCount] = useState(0);
   const [isAtTop, setIsAtTop] = useState(true);
   const [showMap, setShowMap] = useState(false);
+  const [allItems, setAllItems] = useState<ContentItem[] | null>(null);
+  const [allItemsLoading, setAllItemsLoading] = useState(false);
 
   // Refs
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -207,6 +209,27 @@ export function ContentPool({
     observer.observe(target);
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loading, items, fetchItems]);
+
+  // Fetch all items when map is opened (not just first page)
+  useEffect(() => {
+    if (!showMap) return;
+    let cancelled = false;
+    async function fetchAll() {
+      setAllItemsLoading(true);
+      try {
+        const res = await fetch(`/api/events/${eventId}/content?limit=500`);
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json();
+        if (!cancelled) setAllItems(data.content_items || []);
+      } catch {
+        if (!cancelled) setAllItems(null);
+      } finally {
+        if (!cancelled) setAllItemsLoading(false);
+      }
+    }
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [showMap, eventId]);
 
   // Track scroll position for "new items" pill
   useEffect(() => {
@@ -537,34 +560,46 @@ export function ContentPool({
       </div>
 
       {showMap && (() => {
-        const markers: MapMarker[] = items
-          .map((i) => {
-            // If agenda item has a location, use it (overrides photo GPS).
-            // Agenda location is the curated "day location" — photo GPS
-            // is often the upload location (iOS strips EXIF GPS).
-            const agenda = agendaItems.find((a) => a.id === i.agenda_item_id);
-            let lat: number | null;
-            let lng: number | null;
-            if (agenda?.latitude != null && agenda?.longitude != null) {
-              lat = agenda.latitude;
-              lng = agenda.longitude;
-            } else {
-              lat = i.latitude;
-              lng = i.longitude;
-            }
-            if (lat == null || lng == null) return null;
+        const source = allItems ?? items;
+
+        // One marker per agenda item with a location (count = photos in that agenda)
+        const agendaMarkers: MapMarker[] = agendaItems
+          .filter((a) => a.latitude != null && a.longitude != null)
+          .map((a) => {
+            const photosInAgenda = source.filter((i) => i.agenda_item_id === a.id);
+            const firstThumb = photosInAgenda.find((i) => i.thumbnail_url)?.thumbnail_url ?? null;
+            const countLabel = photosInAgenda.length > 0
+              ? `${photosInAgenda.length} Beiträge`
+              : "Noch keine Beiträge";
             return {
-              id: i.id,
-              latitude: lat,
-              longitude: lng,
-              thumbnailUrl: i.thumbnail_url,
-              authorName: i.author_name || null,
-              agendaTitle: agendaItems.find((a) => a.id === i.agenda_item_id)?.title || "",
+              id: `agenda-${a.id}`,
+              latitude: a.latitude!,
+              longitude: a.longitude!,
+              thumbnailUrl: firstThumb,
+              authorName: countLabel,
+              agendaTitle: a.title,
             };
+          });
+
+        // Plus markers for photos with own GPS whose agenda has NO location set
+        const orphanPhotoMarkers: MapMarker[] = source
+          .filter((i) => {
+            const agenda = agendaItems.find((a) => a.id === i.agenda_item_id);
+            if (agenda?.latitude != null && agenda?.longitude != null) return false;
+            return i.latitude != null && i.longitude != null;
           })
-          .filter((m): m is MapMarker => m != null);
+          .map((i) => ({
+            id: i.id,
+            latitude: i.latitude!,
+            longitude: i.longitude!,
+            thumbnailUrl: i.thumbnail_url,
+            authorName: i.author_name || null,
+            agendaTitle: agendaItems.find((a) => a.id === i.agenda_item_id)?.title || "",
+          }));
+
+        const markers = [...agendaMarkers, ...orphanPhotoMarkers];
         return markers.length > 0 ? (
-          <PublicEventMap markers={markers} />
+          <PublicEventMap markers={markers} totalCount={source.length} loading={allItemsLoading} />
         ) : null;
       })()}
 
