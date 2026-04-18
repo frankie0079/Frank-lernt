@@ -527,11 +527,11 @@ export function ContentPool({
           <Button
             variant={showMap ? "default" : "outline"}
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className="h-10 w-10 shrink-0 rounded-full shadow-sm"
             onClick={() => setShowMap((v) => !v)}
             aria-label={showMap ? "Karte ausblenden" : "Karte anzeigen"}
           >
-            <MapPin className="h-4 w-4" />
+            <MapPin className="h-5 w-5" />
           </Button>
         )}
       </div>
