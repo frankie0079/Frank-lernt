@@ -128,10 +128,22 @@ npm run start      # Production server
 - **PROJ-35: Öffentliche Event-Seite** — Deployed 2026-04-08, QA Round 5 green. Migrations `20260408_public_event_rls.sql` (SECURITY DEFINER RPC `get_public_event`) + `20260408_lockdown_anon_rls.sql` (BUG-1: anon-Lockdown auf 5 Tabellen, schließt kritische Token-Leak-Lücke) angewendet. 10 Bugs (1 Critical, 1 High, 2 Medium, 6 Low) gefunden + gefixt. Known regression: Realtime-Subscriptions auf `content_items` im Content-Pool → tracked als PROJ-38.
 - **iOS PWA Fixes** — 2026-04-13: Safe-Area-Insets für iPhone Status-Bar (Navigation war verdeckt), `SUPABASE_SERVICE_ROLE_KEY` in Vercel Production gesetzt (fehlte, blockierte allen Login). 2026-04-16: Kurations-Toolbar sticky-Position mit safe-area-inset-top.
 - **Hong-Kong-Test (2026-04-16)** — Erster echter E2E-Durchlauf: 101 Fotos über 3 Tage hochgeladen + per EXIF-Datum automatisch Agenda-Tagen zugeordnet, Slideshows generiert + via WhatsApp geteilt. Viele UX-Bugs entdeckt und gefixt (siehe obige PROJ-Einträge).
+- **Design-Pass 2026-04-17/18** — Großer UI-Refresh über alle Seiten:
+  - **Caveat**-Schreibschrift global auf Buttons, Form-Labels, Überschriften (Event-Titel, Agenda, "Event bearbeiten", Gefahrenzone)
+  - **Meine Events**: größerer "+" / Avatar (48px), großer CTA "Neues Event erstellen" linksbündig
+  - **Event-Detail**: Titel unter Cover (statt im Bild), Erfassen-Tab mit Primärfarbe, Agenda als Toggle-Button (Amber) oben neben Titel statt permanenter Sektion unten
+  - **Erfassen**: 4 Buttons (Kamera/Video/Upload/Notiz) statt 5, größere Icons (40px), primary/10 Hintergrund passend zum Erfassen-Tab. "Sprachmemo" + "Kommentar" zu **"Notiz"** zusammengeführt — AudioSheet akzeptiert nun Text-only OR Audio-Aufnahme
+  - **Sammlung**: "Texte" + "Sprachmemos" Filter zu **"Notizen"** zusammengeführt (API: `filter=notes` → WHERE type IN (text, audio))
+  - **Cover**: Pinch-to-Zoom + Drag (statt Slider), größere Anzeige (h-64/h-80 Event-Detail, 16:9 auf Event-Cards)
+  - **Avatar**: Crop-Overlay mit Pinch-to-Zoom vor dem Upload (Canvas-Crop client-side)
+  - **Karte**: GPS-Pin-Button in Sammlung, Agenda-Orte als Marker mit Foto-Count, respektiert aktiven Filter. Manueller Ort pro Agenda-Tag setzbar (Leaflet + Nominatim-Suche + OSM.de Tiles für deutsche Labels)
+  - **Umlaut-Fix**: 127 Transliterationen (ae/oe/ue) in 39 Dateien zu ä/ö/ü korrigiert — Script in `scripts/fix-umlauts.js` hinterlegt
+  - **Bug-Fixes**: PATCH /events/[id] löscht Agenda nicht mehr wenn `agenda_items` fehlt; Kommentar-Edit mit Realtime-Sync; Cover-Position/Scale gespeichert via ref (stale closure bug); Location-Picker via createPortal (Radix outside-click-Fix); Map-Picker `type="button"` (kein Form-Submit mehr)
+  - **Migrationen angewendet**: `20260417_update_comment.sql` (comment edit RPC), `20260417_cover_position.sql` + `20260417_cover_scale.sql` (cover_position, cover_scale + get_public_event RPC), `20260417_agenda_item_location.sql` (lat/lng pro Agenda-Item)
 
 ### Nächster Schritt
-`/architecture` für **PROJ-36: Post-Event Tagebuch**
-- Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, Fotos hochgeladen) — kann als Testdaten für PROJ-36/37 dienen.
+Weiter mit **Kuratieren-Tab** (Design-Review + UX-Verbesserungen). Danach `/architecture` für **PROJ-36: Post-Event Tagebuch**.
+- Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37.
 
 ### Build-Reihenfolge
 1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅
