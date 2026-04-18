@@ -232,20 +232,20 @@ export default function EventDashboardPage() {
       {/* Navigation Tabs */}
       <div className="mx-auto max-w-2xl px-4 pb-8">
         <Tabs defaultValue="capture" className="w-full">
-          <TabsList className="w-full grid grid-cols-4">
-            <TabsTrigger value="capture" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+          <TabsList className="w-full grid grid-cols-4 h-auto p-1">
+            <TabsTrigger value="capture" className="flex flex-col items-center gap-0.5 py-2 text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md sm:flex-row sm:gap-1 sm:text-sm">
               <Camera className="h-4 w-4" aria-hidden="true" />
               <span>Erfassen</span>
             </TabsTrigger>
-            <TabsTrigger value="pool" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+            <TabsTrigger value="pool" className="flex flex-col items-center gap-0.5 py-2 text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md sm:flex-row sm:gap-1 sm:text-sm">
               <LayoutGrid className="h-4 w-4" aria-hidden="true" />
               <span>Sammlung</span>
             </TabsTrigger>
-            <TabsTrigger value="admin" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+            <TabsTrigger value="admin" className="flex flex-col items-center gap-0.5 py-2 text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md sm:flex-row sm:gap-1 sm:text-sm">
               <Shield className="h-4 w-4" aria-hidden="true" />
               <span>Kuratieren</span>
             </TabsTrigger>
-            <TabsTrigger value="book" className="flex flex-col items-center gap-0.5 text-[10px] sm:flex-row sm:gap-1 sm:text-sm">
+            <TabsTrigger value="book" className="flex flex-col items-center gap-0.5 py-2 text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md sm:flex-row sm:gap-1 sm:text-sm">
               <BookOpen className="h-4 w-4" aria-hidden="true" />
               <span>Tagebuch</span>
             </TabsTrigger>

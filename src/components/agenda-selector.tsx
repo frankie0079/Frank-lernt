@@ -27,7 +27,16 @@ export function AgendaSelector({
   onChange,
 }: AgendaSelectorProps) {
   if (agendaItems.length === 0) {
-    return null;
+    return (
+      <div className="w-full">
+        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+          Tagesabschnitt
+        </label>
+        <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          Bitte Tagesabschnitte definieren
+        </div>
+      </div>
+    );
   }
 
   const handleChange = (val: string) => {
@@ -80,14 +89,21 @@ export function AgendaSelector({
 
 /**
  * Find today's agenda item from the list.
- * Returns the ID of the matching item, or null.
+ * Falls back to the first item (by sort_order) if today doesn't match.
+ * Returns null only if the list is empty.
  */
 export function findTodayAgendaItem(
   agendaItems: AgendaItem[]
 ): string | null {
+  if (agendaItems.length === 0) return null;
+
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const match = agendaItems.find((item) => item.date === todayStr);
-  return match?.id ?? null;
+  const todayMatch = agendaItems.find((item) => item.date === todayStr);
+  if (todayMatch) return todayMatch.id;
+
+  // Fallback: first item by sort_order
+  const sorted = [...agendaItems].sort((a, b) => a.sort_order - b.sort_order);
+  return sorted[0].id;
 }

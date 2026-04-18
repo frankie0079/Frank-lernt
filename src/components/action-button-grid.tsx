@@ -13,7 +13,7 @@ interface ActionButtonGridProps {
 }
 
 const buttonClass =
-  "flex h-24 flex-col items-center justify-center gap-2 rounded-xl border-2 text-foreground hover:bg-primary/5 hover:border-primary/50 active:scale-[0.97] transition-all sm:h-28";
+  "flex h-32 flex-col items-center justify-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/10 text-foreground hover:bg-primary/20 hover:border-primary/60 active:scale-[0.97] transition-all sm:h-36";
 
 /**
  * 2x3 grid of large, touch-optimized action buttons for the Wanderer Screen.
@@ -35,8 +35,8 @@ export function ActionButtonGrid({
         disabled={disabled}
         aria-label="Foto aufnehmen"
       >
-        <Camera className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
-        <span className="text-sm font-medium">Kamera</span>
+        <Camera className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
+        <span className="text-xl font-semibold">Kamera</span>
       </Button>
 
       <Button
@@ -46,8 +46,8 @@ export function ActionButtonGrid({
         disabled={disabled}
         aria-label="Video aufnehmen"
       >
-        <Video className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
-        <span className="text-sm font-medium">Video</span>
+        <Video className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
+        <span className="text-xl font-semibold">Video</span>
       </Button>
 
       <Button
@@ -57,8 +57,8 @@ export function ActionButtonGrid({
         disabled={disabled}
         aria-label="Sprachmemo aufnehmen"
       >
-        <Mic className="h-7 w-7 sm:h-9 sm:w-9 text-purple-600" aria-hidden="true" />
-        <span className="text-sm font-medium">Sprachmemo</span>
+        <Mic className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
+        <span className="text-xl font-semibold">Sprachmemo</span>
       </Button>
 
       <Button
@@ -68,8 +68,8 @@ export function ActionButtonGrid({
         disabled={disabled}
         aria-label="Bild aus Galerie hochladen"
       >
-        <ImagePlus className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
-        <span className="text-sm font-medium">Upload</span>
+        <ImagePlus className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
+        <span className="text-xl font-semibold">Upload</span>
       </Button>
 
       <Button
@@ -79,8 +79,8 @@ export function ActionButtonGrid({
         disabled={disabled}
         aria-label="Text-Kommentar schreiben"
       >
-        <MessageSquare className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
-        <span className="text-sm font-medium">Kommentar</span>
+        <MessageSquare className="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true" />
+        <span className="text-xl font-semibold">Kommentar</span>
       </Button>
     </div>
   );
