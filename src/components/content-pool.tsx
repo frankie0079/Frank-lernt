@@ -539,15 +539,18 @@ export function ContentPool({
       {showMap && (() => {
         const markers: MapMarker[] = items
           .map((i) => {
-            // Use content GPS, fallback to agenda item GPS
-            let lat = i.latitude;
-            let lng = i.longitude;
-            if (lat == null || lng == null) {
-              const agenda = agendaItems.find((a) => a.id === i.agenda_item_id);
-              if (agenda?.latitude != null && agenda?.longitude != null) {
-                lat = agenda.latitude;
-                lng = agenda.longitude;
-              }
+            // If agenda item has a location, use it (overrides photo GPS).
+            // Agenda location is the curated "day location" — photo GPS
+            // is often the upload location (iOS strips EXIF GPS).
+            const agenda = agendaItems.find((a) => a.id === i.agenda_item_id);
+            let lat: number | null;
+            let lng: number | null;
+            if (agenda?.latitude != null && agenda?.longitude != null) {
+              lat = agenda.latitude;
+              lng = agenda.longitude;
+            } else {
+              lat = i.latitude;
+              lng = i.longitude;
             }
             if (lat == null || lng == null) return null;
             return {
