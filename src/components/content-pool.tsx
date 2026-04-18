@@ -208,14 +208,20 @@ export function ContentPool({
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loading, items, fetchItems]);
 
-  // Fetch all items when map is opened (not just first page)
+  // Fetch all items for the map — respects current filter (type + agenda)
   useEffect(() => {
     if (!showMap) return;
     let cancelled = false;
     async function fetchAll() {
       setAllItemsLoading(true);
       try {
-        const res = await fetch(`/api/events/${eventId}/content?limit=500`);
+        const params = new URLSearchParams();
+        params.set("limit", "500");
+        const typeParam = filterToTypeParam(activeFilter);
+        if (typeParam) params.set("filter", typeParam);
+        const agendaId = filterToAgendaId(activeFilter);
+        if (agendaId) params.set("agenda", agendaId);
+        const res = await fetch(`/api/events/${eventId}/content?${params.toString()}`);
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
         if (!cancelled) setAllItems(data.content_items || []);
@@ -227,7 +233,7 @@ export function ContentPool({
     }
     fetchAll();
     return () => { cancelled = true; };
-  }, [showMap, eventId]);
+  }, [showMap, eventId, activeFilter]);
 
   // Track scroll position for "new items" pill
   useEffect(() => {
@@ -559,10 +565,16 @@ export function ContentPool({
 
       {showMap && (() => {
         const source = allItems ?? items;
+        const filterAgendaId = filterToAgendaId(activeFilter);
 
-        // One marker per agenda item with a location (count = photos in that agenda)
+        // One marker per agenda item with a location (count = photos in that agenda).
+        // If filtering by a specific agenda, only show that one.
         const agendaMarkers: MapMarker[] = agendaItems
-          .filter((a) => a.latitude != null && a.longitude != null)
+          .filter((a) => {
+            if (a.latitude == null || a.longitude == null) return false;
+            if (filterAgendaId && a.id !== filterAgendaId) return false;
+            return true;
+          })
           .map((a) => {
             const photosInAgenda = source.filter((i) => i.agenda_item_id === a.id);
             const firstThumb = photosInAgenda.find((i) => i.thumbnail_url)?.thumbnail_url ?? null;
