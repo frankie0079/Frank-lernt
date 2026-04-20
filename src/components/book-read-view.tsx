@@ -134,23 +134,23 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
     );
   }
 
-  // Hide invisible pages in the live read view; show them in preview mode
-  // (organizer-only). Non-organizers must never see hidden pages even if they
-  // manually append `?preview=true` to the URL — the server also filters them,
-  // this is defence-in-depth.
+  // Preview mode is organizer-only, even if `?preview=true` is in the URL.
+  // Hidden pages are still listed in the read view so the day-by-day
+  // chronology remains visible, but are rendered as a minimal placeholder
+  // (date + title only, no photos or comment). In preview mode they are
+  // shown fully with a "versteckt" badge so the organizer can see what is
+  // being hidden.
   const previewActive = preview && isOrganizer;
-  const visiblePages = previewActive
-    ? pages
-    : pages.filter((p) => p.is_visible);
+  const visiblePages = pages;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/events/${eventId}`}>
+          <Link href={previewActive ? `/events/${eventId}/book/edit` : `/events/${eventId}`}>
             <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-            Zurück zum Event
+            {previewActive ? "Zurück zum Editor" : "Zurück zum Event"}
           </Link>
         </Button>
         <div className="flex items-center gap-2">
@@ -210,11 +210,15 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
       {/* Day sections */}
       {visiblePages.map((page) => {
         const dayLabel = formatDayHeader(page.agenda_date);
+        // Minimal placeholder when the page is hidden and we are not in
+        // organizer preview: readers still see that the day existed (date +
+        // title) to preserve chronology, but no photos or comment.
+        const minimal = !page.is_visible && !previewActive;
         return (
           <section
             key={page.id}
             id={`day-${page.agenda_item_id}`}
-            className="space-y-3 border-t border-border pt-6 first:border-t-0 first:pt-0"
+            className={`space-y-3 border-t border-border pt-6 first:border-t-0 first:pt-0 ${minimal ? "opacity-60" : ""}`}
             aria-labelledby={`day-title-${page.agenda_item_id}`}
           >
             <header className="space-y-1">
@@ -234,18 +238,26 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
               )}
             </header>
 
-            <BookPageLayout
-              layout={page.layout}
-              items={page.items}
-              sideText={page.comment}
-            />
-
-            {/* Only the text-left layout renders the comment inside the layout
-                itself; for other layouts we render it as a caption below. */}
-            {page.layout !== "text-left" && page.comment && (
-              <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-                {page.comment}
+            {minimal ? (
+              <p className="text-sm italic text-muted-foreground">
+                Für diesen Tag gibt es (noch) keine Tagebuch-Seite.
               </p>
+            ) : (
+              <>
+                <BookPageLayout
+                  layout={page.layout}
+                  items={page.items}
+                  sideText={page.comment}
+                />
+
+                {/* Only the text-left layout renders the comment inside the layout
+                    itself; for other layouts we render it as a caption below. */}
+                {page.layout !== "text-left" && page.comment && (
+                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                    {page.comment}
+                  </p>
+                )}
+              </>
             )}
           </section>
         );

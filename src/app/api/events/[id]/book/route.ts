@@ -79,13 +79,23 @@ export async function GET(
     return NextResponse.json({ error: m.error }, { status: m.status });
   }
 
-  // Defence-in-depth: only the organizer sees hidden (is_visible=false) pages.
-  // The RPC returns every page so the editor can toggle visibility, but a
-  // regular member's API response must NOT leak invisible pages — a raw curl
-  // with only a member_token cookie must look identical to what the UI shows.
-  const allPages = Array.isArray(result.pages) ? (result.pages as Array<{ is_visible?: boolean }>) : [];
+  // Defence-in-depth: hidden pages must not leak their items or comment to
+  // non-organizers. We keep the page entry in the response (so the read view
+  // can render a minimal "day existed but is hidden" placeholder and the
+  // chronology stays visible) but strip sensitive fields. A raw curl with
+  // only a member_token cookie therefore sees date + title but no photos or
+  // organizer comment for hidden pages.
+  const allPages = Array.isArray(result.pages)
+    ? (result.pages as Array<Record<string, unknown>>)
+    : [];
   const isOrganizer = !!result.is_organizer;
-  const pages = isOrganizer ? allPages : allPages.filter((p) => p?.is_visible !== false);
+  const pages = isOrganizer
+    ? allPages
+    : allPages.map((p) =>
+        p?.is_visible === false
+          ? { ...p, items: [], comment: "" }
+          : p
+      );
 
   return NextResponse.json({
     event_id: result.event_id ?? id,
