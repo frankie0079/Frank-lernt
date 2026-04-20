@@ -243,27 +243,38 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
                 Für diesen Tag gibt es (noch) keine Tagebuch-Seite.
               </p>
             ) : (
-              <div className="space-y-6">
-                {(page.sections ?? [])
+              (() => {
+                const orderedSections = (page.sections ?? [])
                   .slice()
-                  .sort((a, b) => a.sort_order - b.sort_order)
-                  .map((sec) => (
-                    <div key={sec.id} className="space-y-3">
-                      <BookPageLayout
-                        layout={sec.layout}
-                        items={sec.items}
-                        sideText={sec.comment}
-                      />
-                      {/* text-left renders the comment inside the layout
-                          itself; other layouts render it as a caption below. */}
-                      {sec.layout !== "text-left" && sec.comment && (
-                        <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-                          {sec.comment}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-              </div>
+                  .sort((a, b) => a.sort_order - b.sort_order);
+                return (
+                  <div className="space-y-6">
+                    {orderedSections.map((sec, idx) => (
+                      <article
+                        key={sec.id}
+                        className="relative mx-auto w-full max-w-[560px] space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6"
+                        aria-label={`Seite ${idx + 1} von ${orderedSections.length}`}
+                      >
+                        <span className="absolute right-3 top-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Seite {idx + 1} / {orderedSections.length}
+                        </span>
+                        <BookPageLayout
+                          layout={sec.layout}
+                          items={sec.items}
+                          sideText={sec.comment}
+                        />
+                        {/* text-left renders the comment inside the layout
+                            itself; other layouts render it as a caption below. */}
+                        {sec.layout !== "text-left" && sec.comment && (
+                          <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                            {sec.comment}
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                );
+              })()
             )}
           </section>
         );

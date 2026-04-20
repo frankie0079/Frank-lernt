@@ -234,8 +234,10 @@ export function BookEditor({ eventId }: BookEditorProps) {
           Tagebuch bearbeiten
         </h1>
         <p className="text-sm text-muted-foreground">
-          Pro Agenda-Tag eine Seite. Wähle Fotos aus, setze ein Layout und
-          schreibe einen Tageskommentar. Alles wird automatisch gespeichert.
+          Jeder Tag kann aus mehreren Seiten bestehen — wie in einem
+          Fotobuch. Pro Seite wählst du ein Layout (1-5 Fotos oder ein
+          Raster) und schreibst einen kurzen Kommentar. Alles wird
+          automatisch gespeichert.
         </p>
       </div>
 

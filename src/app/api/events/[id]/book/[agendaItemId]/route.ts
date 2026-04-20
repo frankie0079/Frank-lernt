@@ -31,12 +31,12 @@ const bookSectionSchema = z.object({
     .string()
     .max(MAX_COMMENT_LENGTH, `Kommentar zu lang (max. ${MAX_COMMENT_LENGTH} Zeichen)`),
   sort_order: z.number().int().min(0).max(100000),
-  items: z.array(bookItemSchema).max(60, "Zu viele Beiträge in einem Abschnitt"),
+  items: z.array(bookItemSchema).max(60, "Zu viele Beiträge auf einer Seite"),
 });
 
 const putBodySchema = z.object({
   is_visible: z.boolean(),
-  sections: z.array(bookSectionSchema).max(20, "Zu viele Abschnitte pro Tag"),
+  sections: z.array(bookSectionSchema).max(20, "Zu viele Seiten pro Tag"),
 });
 
 function mapRpcError(code: string | undefined): { status: number; error: string } {
@@ -105,7 +105,7 @@ export async function PUT(
     const ids = sec.items.map((i) => i.content_item_id);
     if (new Set(ids).size !== ids.length) {
       return NextResponse.json(
-        { error: "Doppelte Beiträge in einem Abschnitt" },
+        { error: "Doppelte Beiträge auf einer Seite" },
         { status: 400 }
       );
     }

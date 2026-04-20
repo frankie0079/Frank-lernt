@@ -182,7 +182,7 @@ export function BookSectionEditor({
       {/* Header with section number + actions */}
       <div className="flex items-center justify-between gap-2">
         <Label className="font-[family-name:var(--font-caveat)] text-xl font-bold text-foreground">
-          Abschnitt {index + 1}
+          Seite {index + 1}
         </Label>
         <div className="flex gap-1">
           <Button
@@ -192,7 +192,7 @@ export function BookSectionEditor({
             className="h-8 w-8"
             onClick={onMoveUp}
             disabled={!canMoveUp || !isOrganizer}
-            aria-label="Abschnitt nach oben"
+            aria-label="Seite nach oben"
           >
             <ArrowUp className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -203,7 +203,7 @@ export function BookSectionEditor({
             className="h-8 w-8"
             onClick={onMoveDown}
             disabled={!canMoveDown || !isOrganizer}
-            aria-label="Abschnitt nach unten"
+            aria-label="Seite nach unten"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -214,7 +214,7 @@ export function BookSectionEditor({
             className="h-8 w-8 text-destructive hover:text-destructive"
             onClick={onDelete}
             disabled={!isOrganizer}
-            aria-label="Abschnitt löschen"
+            aria-label="Seite löschen"
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -271,7 +271,7 @@ export function BookSectionEditor({
           />
         ) : (
           <p className="text-xs text-muted-foreground">
-            Noch keine Fotos in diesem Abschnitt. Tippe „Fotos wählen" um
+            Noch keine Fotos auf dieser Seite. Tippe „Fotos wählen" um
             welche aus dem Tag hinzuzufügen.
           </p>
         )}
@@ -289,10 +289,10 @@ export function BookSectionEditor({
         <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
           <SheetHeader className="space-y-1">
             <SheetTitle className="font-[family-name:var(--font-caveat)] text-2xl font-bold">
-              Fotos wählen · Abschnitt {index + 1}
+              Fotos wählen · Seite {index + 1}
             </SheetTitle>
             <SheetDescription>
-              Tippe auf einen Beitrag, um ihn zum Abschnitt hinzuzufügen oder
+              Tippe auf einen Beitrag, um ihn zum Seite hinzuzufügen oder
               wieder zu entfernen. Auswahl wird automatisch gespeichert.
             </SheetDescription>
           </SheetHeader>

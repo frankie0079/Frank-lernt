@@ -237,11 +237,12 @@ export function BookPageEditor({
             htmlFor="book-page-visible"
             className="cursor-pointer text-sm font-medium text-foreground"
           >
-            Seite sichtbar
+            Diesen Tag zeigen
           </Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Ausgeblendete Seiten erscheinen in der Leseansicht nur als
-            Platzhalter mit Datum und Titel.
+            Ausgeblendete Tage erscheinen in der Leseansicht nur als
+            Platzhalter mit Datum und Titel — alle Seiten dieses Tages sind
+            dann versteckt.
           </p>
         </div>
         <Switch
@@ -249,7 +250,7 @@ export function BookPageEditor({
           checked={isVisible}
           onCheckedChange={setIsVisible}
           disabled={!isOrganizer}
-          aria-label="Seite in Leseansicht anzeigen"
+          aria-label="Diesen Tag in der Leseansicht anzeigen"
         />
       </div>
 
@@ -257,7 +258,7 @@ export function BookPageEditor({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <Label className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
-            Abschnitte dieses Tages
+            Seitee dieses Tages
           </Label>
           <span className="text-xs text-muted-foreground">
             {sections.length} / {MAX_SECTIONS_PER_PAGE}
@@ -268,7 +269,7 @@ export function BookPageEditor({
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>
-              Maximal {MAX_SECTIONS_PER_PAGE} Abschnitte pro Tag. Bitte
+              Maximal {MAX_SECTIONS_PER_PAGE} Seitee pro Tag. Bitte
               entferne einen, bevor du einen weiteren hinzufügst.
             </AlertDescription>
           </Alert>
@@ -302,7 +303,7 @@ export function BookPageEditor({
           className="w-full"
         >
           <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
-          Abschnitt hinzufügen
+          Seite hinzufügen
         </Button>
       </div>
     </div>
