@@ -89,12 +89,15 @@ function MediaTile({
 
 /**
  * Renders the selected items using the configured layout. Behaviour:
- * - `single` uses item[0], fills full width with aspect-[4/3].
- * - `two`    uses item[0..1]  as a 2-column grid.
- * - `three`  uses item[0..2]  as a 3-column grid.
- * - `text-left` shows sideText on the left and the first media item right.
- * - Any further items beyond the layout's "hero" slots are rendered below as
- *   a 3-column gallery so nothing is lost when a tag was especially eventful.
+ * - `single`     item[0], full width with aspect-[4/3].
+ * - `two`        item[0..1] as 2-column grid.
+ * - `three`      item[0..2] as 3-column grid.
+ * - `four`       item[0..3] as 2×2 grid.
+ * - `five-hero`  item[0] big hero + item[1..4] in a 2×2 grid below (Instagram-Style).
+ * - `grid-3`     all items in a flowing 3-column square grid (up to MAX_PHOTOS_PER_PAGE).
+ * - `text-left`  sideText on the left, item[0] on the right.
+ * - For fixed-count layouts, any further items beyond the layout's "hero"
+ *   slots are rendered below as a 3-column gallery so nothing is lost.
  * - Maximum MAX_PHOTOS_PER_PAGE items are rendered; the rest are dropped
  *   (the editor already warns when a page has too many items).
  */
@@ -147,6 +150,63 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
               key={item.id}
               item={item}
               className="aspect-square rounded-lg"
+            />
+          ))}
+        </div>
+      );
+      break;
+    }
+    case "four": {
+      hero = shown.slice(0, 4);
+      heroGrid = (
+        <div className="grid grid-cols-2 gap-3">
+          {hero.map((item) => (
+            <MediaTile
+              key={item.id}
+              item={item}
+              className="aspect-square rounded-lg"
+            />
+          ))}
+        </div>
+      );
+      break;
+    }
+    case "five-hero": {
+      hero = shown.slice(0, 5);
+      const [heroItem, ...quad] = hero;
+      heroGrid = (
+        <div className="space-y-3">
+          {heroItem && (
+            <MediaTile
+              item={heroItem}
+              className="aspect-[4/3] rounded-lg sm:aspect-[16/9]"
+            />
+          )}
+          {quad.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {quad.map((item) => (
+                <MediaTile
+                  key={item.id}
+                  item={item}
+                  className="aspect-square rounded-lg"
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+      break;
+    }
+    case "grid-3": {
+      // Flowing layout: every shown item goes into the grid, no "extras" row.
+      hero = shown;
+      heroGrid = (
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          {shown.map((item) => (
+            <MediaTile
+              key={item.id}
+              item={item}
+              className="aspect-square rounded-sm"
             />
           ))}
         </div>

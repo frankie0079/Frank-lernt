@@ -10,13 +10,31 @@ export const BOOK_LAYOUTS = [
   "single",
   "two",
   "three",
+  "four",
+  "five-hero",
+  "grid-3",
   "text-left",
 ] as const;
 
 export type BookLayout = (typeof BOOK_LAYOUTS)[number];
 
-export const MAX_PHOTOS_PER_PAGE = 12;
+export const MAX_PHOTOS_PER_PAGE = 60;
 export const MAX_COMMENT_LENGTH = 2000;
+
+/**
+ * How many photos each layout shows from the selection. `grid-3` is the only
+ * "flowing" layout — it takes everything up to MAX_PHOTOS_PER_PAGE; the
+ * others show a fixed first-N.
+ */
+export const BOOK_LAYOUT_CAPACITY: Record<BookLayout, number> = {
+  single: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  "five-hero": 5,
+  "grid-3": MAX_PHOTOS_PER_PAGE,
+  "text-left": 1,
+};
 
 /**
  * A row from `book_pages`, enriched with the joined agenda item + the
@@ -68,6 +86,9 @@ export const BOOK_LAYOUT_LABELS: Record<BookLayout, string> = {
   single: "Ein großes Foto",
   two: "2 Fotos nebeneinander",
   three: "3 Fotos",
+  four: "4 Fotos im Quadrat",
+  "five-hero": "1 groß + 4 kleine (Instagram)",
+  "grid-3": "Alle Fotos im 3er-Raster",
   "text-left": "Foto + Text",
 };
 
@@ -75,5 +96,8 @@ export const BOOK_LAYOUT_DESCRIPTIONS: Record<BookLayout, string> = {
   single: "Eine große Aufnahme über die ganze Seite.",
   two: "Zwei Fotos nebeneinander, gleich groß.",
   three: "Drei Fotos in einer Reihe.",
+  four: "Vier Fotos im 2×2-Raster.",
+  "five-hero": "Ein Hero-Foto oben, vier kleinere im 2×2 darunter — Instagram-Style.",
+  "grid-3": "Alle ausgewählten Fotos im 3-Spalten-Raster (bis 60). Ideal für fotoreiche Tage.",
   "text-left": "Kommentar links, Foto rechts — für textlastige Tage.",
 };

@@ -54,6 +54,44 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
           <div className={`h-full flex-1 ${boxClass}`} />
         </div>
       );
+    case "four":
+      return (
+        <div
+          aria-hidden="true"
+          className="grid h-8 w-10 grid-cols-2 grid-rows-2 gap-0.5 rounded-sm border border-border p-0.5"
+        >
+          <div className={boxClass} />
+          <div className={boxClass} />
+          <div className={boxClass} />
+          <div className={boxClass} />
+        </div>
+      );
+    case "five-hero":
+      return (
+        <div
+          aria-hidden="true"
+          className="flex h-8 w-10 flex-col gap-0.5 rounded-sm border border-border p-0.5"
+        >
+          <div className={`h-3 w-full ${boxClass}`} />
+          <div className="grid flex-1 grid-cols-2 gap-0.5">
+            <div className={boxClass} />
+            <div className={boxClass} />
+            <div className={boxClass} />
+            <div className={boxClass} />
+          </div>
+        </div>
+      );
+    case "grid-3":
+      return (
+        <div
+          aria-hidden="true"
+          className="grid h-8 w-10 grid-cols-3 grid-rows-3 gap-[1px] rounded-sm border border-border p-0.5"
+        >
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className={boxClass} />
+          ))}
+        </div>
+      );
     case "text-left":
       return (
         <div
