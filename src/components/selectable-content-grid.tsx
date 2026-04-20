@@ -3,8 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ContentCard,
   ContentCardSkeleton,
@@ -79,6 +90,8 @@ export function SelectableContentGrid({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ContentItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const activeFilterRef = useRef<FilterValue>("all");
@@ -355,7 +368,7 @@ export function SelectableContentGrid({
                 currentUserId={userId}
                 isOrganizer={isOrganizer}
                 onTap={noop}
-                onDelete={noop}
+                onDelete={setDeleteTarget}
                 reactionsReadOnly
               />
             </div>
@@ -377,6 +390,59 @@ export function SelectableContentGrid({
           Alle Beiträge geladen
         </p>
       )}
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Beitrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Beitrag unwiderruflich löschen? Falls er in einem Bericht
+              ausgewählt ist, wird er auch dort entfernt. Diese Aktion kann
+              nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!deleteTarget) return;
+                const target = deleteTarget;
+                setDeleting(true);
+                try {
+                  const res = await fetch(
+                    `/api/events/${eventId}/content/${target.id}`,
+                    { method: "DELETE" }
+                  );
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || "Löschen fehlgeschlagen");
+                  }
+                  setItems((prev) => prev.filter((i) => i.id !== target.id));
+                  itemIdsRef.current.delete(target.id);
+                  toast.success("Beitrag gelöscht");
+                  setDeleteTarget(null);
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "Löschen fehlgeschlagen"
+                  );
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Lösche…" : "Löschen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
