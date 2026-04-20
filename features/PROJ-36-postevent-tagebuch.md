@@ -1,6 +1,6 @@
 # PROJ-36: Post-Event Tagebuch (kuratierbarer Editor)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-20
 
@@ -176,6 +176,33 @@ Laut Konvention: wird erst nach Frontend+Backend im Supabase SQL-Editor manuell 
 2. `/backend` → Migration, RLS, 2 API-Routes
 3. `/qa` → Akzeptanzkriterien, Happy-Path + Edge-Cases in Production
 4. `/deploy`
+
+## Backend Implementation (2026-04-20)
+
+### Migration
+- `supabase/migrations/20260420_book_pages.sql` — to be applied manually via Supabase SQL Editor
+
+### Tables created
+- `book_pages` — one row per agenda_item (UNIQUE), with CHECK on `layout` + `length(comment) <= 2000`, indexes on `event_id` and `(event_id, agenda_item_id)`
+- `book_page_items` — join table with UNIQUE(page_id, content_item_id), indexes on `page_id`, `(page_id, sort_order)`, and `content_item_id`
+- Both tables: RLS enabled, all grants revoked from anon/authenticated, service_role only. All access via RPCs.
+
+### RPCs created (SECURITY DEFINER)
+- `member_is_event_organizer(member_id, event_id) → boolean`
+- `member_is_in_event(member_id, event_id) → boolean`
+- `get_event_book(token, event_id) → jsonb` — auto-creates missing pages, returns all pages with joined items + author meta. Accessible to event members.
+- `save_book_page(token, agenda_item_id, layout, comment, is_visible, items) → jsonb` — upsert + bulk-replace items. Organizer-only.
+- `get_book_page_by_agenda(agenda_item_id) → jsonb` — helper used by save_book_page to return the hydrated row.
+
+### API routes created
+- `GET /api/events/[id]/book` — calls `get_event_book`. Auth via `member_token` cookie + read rate-limit. Returns `{ event_id, is_organizer, pages[] }` matching `BookGetResponse`.
+- `PUT /api/events/[id]/book/[agendaItemId]` — calls `save_book_page` after Zod validation (layout enum, comment max 2000, items max 500, no duplicates, `agenda_item.event_id === URL id`). Returns `{ page }` matching `BookPutResponse`.
+
+### Security notes
+- URL-tampering guard: PUT verifies that `agendaItemId` actually belongs to the event in the URL before invoking the RPC.
+- Duplicate-item guard: PUT rejects payloads with duplicate `content_item_id` (DB UNIQUE would also catch this).
+- Content-in-event guard: RPC validates every `content_item_id` belongs to the same event as the agenda item.
+- Organizer-only writes: enforced in the RPC via `member_is_event_organizer` (checks `events.organizer_id`).
 
 ## QA Test Results
 _To be added by /qa_

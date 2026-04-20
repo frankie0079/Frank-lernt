@@ -377,8 +377,49 @@ export default function EventDashboardPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="book" className="mt-6">
-            <SlideshowFeed eventId={eventId} />
+          <TabsContent value="book" className="mt-6 space-y-6">
+            {/* Tagebuch entry card */}
+            <div className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <BookOpen className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+                    Event-Tagebuch
+                  </h2>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {isOrganizer
+                      ? "Kuratiere für jeden Tag eine Seite mit Fotos, Kommentaren und Layout."
+                      : "Lies die kuratierten Erinnerungen dieses Events."}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="default">
+                  <Link href={`/events/${eventId}/book`}>
+                    <BookOpen className="mr-1 h-4 w-4" aria-hidden="true" />
+                    Tagebuch öffnen
+                  </Link>
+                </Button>
+                {isOrganizer && (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/events/${eventId}/book/edit`}>
+                      <Pencil className="mr-1 h-4 w-4" aria-hidden="true" />
+                      Bearbeiten
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Slideshow films feed (PROJ-34) */}
+            <div>
+              <h3 className="mb-3 font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+                Filme
+              </h3>
+              <SlideshowFeed eventId={eventId} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
