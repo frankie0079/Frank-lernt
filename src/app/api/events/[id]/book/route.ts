@@ -79,9 +79,17 @@ export async function GET(
     return NextResponse.json({ error: m.error }, { status: m.status });
   }
 
+  // Defence-in-depth: only the organizer sees hidden (is_visible=false) pages.
+  // The RPC returns every page so the editor can toggle visibility, but a
+  // regular member's API response must NOT leak invisible pages — a raw curl
+  // with only a member_token cookie must look identical to what the UI shows.
+  const allPages = Array.isArray(result.pages) ? (result.pages as Array<{ is_visible?: boolean }>) : [];
+  const isOrganizer = !!result.is_organizer;
+  const pages = isOrganizer ? allPages : allPages.filter((p) => p?.is_visible !== false);
+
   return NextResponse.json({
     event_id: result.event_id ?? id,
-    is_organizer: !!result.is_organizer,
-    pages: result.pages ?? [],
+    is_organizer: isOrganizer,
+    pages,
   });
 }

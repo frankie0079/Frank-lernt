@@ -205,7 +205,43 @@ Laut Konvention: wird erst nach Frontend+Backend im Supabase SQL-Editor manuell 
 - Organizer-only writes: enforced in the RPC via `member_is_event_organizer` (checks `events.organizer_id`).
 
 ## QA Test Results
-_To be added by /qa_
+
+### QA Round 1 (2026-04-20, code review + security audit)
+
+**AC pass rate: 14 / 14**
+
+| # | Acceptance Criterion | Status | File:line |
+|---|---|---|---|
+| 1 | Editor unter `/events/[id]/book/edit`, nur Organisator | PASS | `src/app/events/[id]/book/edit/page.tsx`; Organizer-Redirect in `book-editor.tsx:78-90` + Server-Enforcement in `save_book_page` RPC |
+| 2 | Leseansicht unter `/events/[id]/book`, alle Mitglieder | PASS | `src/app/events/[id]/book/page.tsx` + `book-read-view.tsx` |
+| 3 | Pro Agenda-Tag eine Seite, auto-generiert | PASS | `get_event_book` RPC (`20260420_book_pages.sql:141-160`) legt fehlende Seiten lazy an |
+| 4 | Multi-Select aus Content-Pool des Tages | PASS | `BookPageEditor` nutzt `SelectableContentGrid` mit `defaultAgendaItemId` (Scope: nur dieser Tag) |
+| 5 | Layout-Optionen via RadioGroup (4 Varianten) | PASS | `book-layout-picker.tsx` — single/two/three/text-left mit SVG-Mini-Previews |
+| 6 | Textarea für Tageskommentar, max 2000 Zeichen | PASS | `book-comment-textarea.tsx` + DB-CHECK-Constraint + Zod `max(2000)` in PUT |
+| 7 | Zeichenzähler | PASS | `book-comment-textarea.tsx` — amber ab 90 %, rot ab 2001 |
+| 8 | Auto-Save 2-s-Debounce + Status-Anzeige | PASS | `useDebouncedCallback(save, 2000)` in `book-page-editor.tsx`; Badge "Speichert…/Gespeichert/Fehler/Pausiert" |
+| 9 | Vorschau-Button öffnet `/book?preview=true` neuem Tab | PASS | `book-editor.tsx` mit `#day-<uuid>` Anchor |
+| 10 | Leseansicht chronologisch | PASS | `get_event_book` sortiert nach `agenda_date asc`, `book-read-view.tsx` rendert in dieser Reihenfolge |
+| 11 | Tages-Seite zeigt Datum, Titel, Fotos, Kommentar | PASS | `book-page-layout.tsx` + `DayHeader` in `book-read-view.tsx` |
+| 12 | Max 12 Fotos pro Seite, Warnung bei mehr | PASS | `MAX_PHOTOS_PER_PAGE=12` in `book-types.ts`; Warnung in Editor, `.slice(0,12)` in Leseansicht |
+| 13 | Gesamtes Tagebuch scrollbar (keine Pagination) | PASS | Single long page in `book-read-view.tsx` |
+| 14 | Edge-Cases (leer, versteckt, zu lang, Netzfehler, Kollaboration) | PASS | Alle im Frontend-Plan behandelt (siehe Tech Design Tabelle) |
+
+### Bugs gefunden + gefixt (alle vor Commit)
+
+| ID | Severity | Beschreibung | Fix |
+|---|---|---|---|
+| BUG-1 | **High (Security)** | Non-Organizer konnten versteckte Seiten über rohen `GET /api/events/[id]/book` erhalten — RPC liefert alle Seiten (nötig für Editor), Route filterte nicht. Leak-Risiko: `is_visible=false`-Seiten waren per `curl + member_token` sichtbar obwohl nicht in der UI. | API-Route filtert `is_visible` für Nicht-Organisator (`book/route.ts:79-92`). Defense-in-depth zusätzlich zum Client-Filter. |
+| BUG-2 | **High (Security)** | `?preview=true` in der URL zeigte versteckte Seiten für jeden Nicht-Organisator, der die URL manuell tippte. | `previewActive = preview && isOrganizer` in `book-read-view.tsx:138`; Preview-Badge und versteckt-Marker nur wenn Organisator. |
+| BUG-3 | **Medium (Race)** | Stale-Response-Bug: langsamer älterer Auto-Save überschrieb den Status einer neueren, bereits abgeschlossenen Speicherung. Nutzer sah falschen Status-Badge (z.B. "Fehler" obwohl der neuere Save erfolgreich war). | Generation-Counter `saveGenRef` in `book-page-editor.tsx:95-96, 114, 140, 145` — nur der neueste In-Flight-Save schreibt State. |
+
+Bonus: Stale useEffect für Page-Switch in `book-page-editor.tsx` entfernt. `BookEditor` remountet den Editor bereits per `key={activePage.agenda_item_id}`, der Re-Seed-Effect war tot Code.
+
+### Verifikation
+
+- `npx tsc --noEmit` → **0 Fehler**
+- `npm run lint` → 1 Error + 12 Warnings, alle **pre-existing** (content-card.tsx aus Commit `2032733`, nicht durch PROJ-36 eingeführt)
+- Production-E2E noch ausstehend — erst nach `/deploy`, dann happy-path mit Frank's HK-Event
 
 ## Deployment
 _To be added by /deploy_

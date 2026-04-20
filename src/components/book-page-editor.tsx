@@ -88,20 +88,13 @@ export function BookPageEditor({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Re-seed local state whenever the selected page changes (sidebar switch).
-  const pageIdRef = useRef(page.agenda_item_id);
-  useEffect(() => {
-    if (pageIdRef.current !== page.agenda_item_id) {
-      pageIdRef.current = page.agenda_item_id;
-      setLayout(page.layout);
-      setComment(page.comment ?? "");
-      setIsVisible(page.is_visible);
-      setSelectedIds(itemsToSelectedIds(page.items));
-      setItemsById(itemsToMap(page.items));
-      setSaveState("idle");
-      setErrorMsg(null);
-    }
-  }, [page]);
+  // Note: BookEditor passes `key={activePage.agenda_item_id}` so this component
+  // is remounted whenever the active day changes. No manual re-seed effect is
+  // needed — each mount initializes its state from the new `page` prop.
+
+  // Track in-flight saves so the latest one always wins. Prevents a slow older
+  // response from overwriting UI state set by a newer, already-completed save.
+  const saveGenRef = useRef(0);
 
   // ---- derived flags ----
   const commentTooLong = comment.length > MAX_COMMENT_LENGTH;
@@ -118,6 +111,7 @@ export function BookPageEditor({
       if (!isOrganizer) return;
       if (payload.comment.length > MAX_COMMENT_LENGTH) return; // client-side guard
 
+      const generation = ++saveGenRef.current;
       setSaveState("saving");
       setErrorMsg(null);
 
@@ -143,9 +137,12 @@ export function BookPageEditor({
           throw new Error(data.error || "Speichern fehlgeschlagen");
         }
         const data = (await res.json()) as BookPutResponse;
+        // Discard stale responses: only the most recent save owns the UI state.
+        if (generation !== saveGenRef.current) return;
         setSaveState("saved");
         onSaved(data.page);
       } catch (err) {
+        if (generation !== saveGenRef.current) return;
         setSaveState("error");
         setErrorMsg(
           err instanceof Error ? err.message : "Speichern fehlgeschlagen"

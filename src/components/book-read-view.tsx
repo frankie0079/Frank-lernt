@@ -134,8 +134,14 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
     );
   }
 
-  // Hide invisible pages in the live read view; show them in preview mode.
-  const visiblePages = preview ? pages : pages.filter((p) => p.is_visible);
+  // Hide invisible pages in the live read view; show them in preview mode
+  // (organizer-only). Non-organizers must never see hidden pages even if they
+  // manually append `?preview=true` to the URL — the server also filters them,
+  // this is defence-in-depth.
+  const previewActive = preview && isOrganizer;
+  const visiblePages = previewActive
+    ? pages
+    : pages.filter((p) => p.is_visible);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
@@ -148,13 +154,13 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
           </Link>
         </Button>
         <div className="flex items-center gap-2">
-          {preview && (
+          {previewActive && (
             <Badge variant="outline" className="gap-1">
               <Eye className="h-3 w-3" aria-hidden="true" />
               Vorschau
             </Badge>
           )}
-          {isOrganizer && !preview && (
+          {isOrganizer && !previewActive && (
             <Button variant="outline" size="sm" asChild>
               <Link href={`/events/${eventId}/book/edit`}>
                 <Pencil className="mr-1 h-4 w-4" aria-hidden="true" />
@@ -221,7 +227,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
               >
                 {page.agenda_title}
               </h2>
-              {preview && !page.is_visible && (
+              {previewActive && !page.is_visible && (
                 <Badge variant="outline" className="mt-1 text-[10px]">
                   versteckt — nur in der Vorschau sichtbar
                 </Badge>
