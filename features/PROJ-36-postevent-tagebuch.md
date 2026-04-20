@@ -1,6 +1,6 @@
 # PROJ-36: Post-Event Tagebuch (kuratierbarer Editor)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-08
 **Last Updated:** 2026-04-20
 
@@ -244,4 +244,10 @@ Bonus: Stale useEffect für Page-Switch in `book-page-editor.tsx` entfernt. `Boo
 - Production-E2E noch ausstehend — erst nach `/deploy`, dann happy-path mit Frank's HK-Event
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-04-20
+- **Production URL:** https://frank-lernt.vercel.app/events/[id]/book
+- **Editor URL:** https://frank-lernt.vercel.app/events/[id]/book/edit
+- **Commits:** `b654ffb` (feat), `42fdca3` (QA fixes)
+- **Migration angewendet:** `20260420_book_pages.sql` (book_pages + book_page_items + 3 RPCs)
+- **Vercel:** Auto-deploy via GitHub push auf main
