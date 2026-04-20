@@ -236,6 +236,28 @@ export async function POST(
     );
   }
 
+  // Enforce: every curated photo/video must appear as its own scene.
+  // Text/audio items are allowed to be quoted in overlay_text of other scenes.
+  const requiredIds = new Set(
+    input.items
+      .filter((it) => (it.type === "photo" || it.type === "video") && it.content_item_id)
+      .map((it) => it.content_item_id)
+  );
+  const usedIds = new Set(
+    storyboard.scenes
+      .filter((s) => s.content_item_id != null)
+      .map((s) => s.content_item_id as string)
+  );
+  const missing = [...requiredIds].filter((id) => !usedIds.has(id));
+  if (missing.length > 0) {
+    return NextResponse.json(
+      {
+        error: `KI hat ${missing.length} kuratiertes Foto/Video ausgelassen — bitte erneut generieren.`,
+      },
+      { status: 502 }
+    );
+  }
+
   // Default music_track_id if LLM left it null
   if (!storyboard.music_track_id) {
     storyboard.music_track_id = pickDefaultTrack(storyboard.mood).id;

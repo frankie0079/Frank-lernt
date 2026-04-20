@@ -4,7 +4,7 @@
 // Steps: load existing storyboard → generate (LLM) → edit → render → preview
 //        → upload to storage → publish for all members.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
@@ -62,31 +62,66 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
 
   const format: "portrait" | "landscape" = "portrait";
 
-  const loadInput = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/events/${eventId}/reports/${agendaItemId}/storyboard`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Storyboard konnte nicht geladen werden.");
+  // Serialized snapshot of the last storyboard we loaded or saved. Used to
+  // detect whether the user has unsaved local edits when a background refresh
+  // fires — we must not clobber those edits.
+  const syncedStoryboardJsonRef = useRef<string | null>(null);
+
+  const loadInput = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent === true;
+      if (!silent) setLoading(true);
+      try {
+        const res = await fetch(`/api/events/${eventId}/reports/${agendaItemId}/storyboard`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Storyboard konnte nicht geladen werden.");
+        }
+        const data = (await res.json()) as { input: InputData; music_library: MusicTrackOption[] };
+        setInput(data.input);
+        setMusicTracks(data.music_library);
+
+        const serverSb = data.input.existing_storyboard;
+        setStoryboard((prev) => {
+          if (!prev) return serverSb;
+          // Adopt server version only if local matches what we last synced,
+          // i.e. the user has no unsaved local edits.
+          const prevJson = JSON.stringify(prev);
+          if (prevJson === syncedStoryboardJsonRef.current) {
+            return serverSb;
+          }
+          return prev;
+        });
+        syncedStoryboardJsonRef.current = serverSb ? JSON.stringify(serverSb) : null;
+        setError(null);
+      } catch (err) {
+        if (!silent) setError(err instanceof Error ? err.message : "Fehler");
+      } finally {
+        if (!silent) setLoading(false);
       }
-      const data = (await res.json()) as { input: InputData; music_library: MusicTrackOption[] };
-      setInput(data.input);
-      setMusicTracks(data.music_library);
-      if (data.input.existing_storyboard) {
-        setStoryboard(data.input.existing_storyboard);
-      }
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
-    } finally {
-      setLoading(false);
-    }
-  }, [eventId, agendaItemId]);
+    },
+    [eventId, agendaItemId]
+  );
 
   useEffect(() => {
     loadInput();
   }, [loadInput]);
+
+  // Re-fetch input + storyboard when the user returns to this tab/window so
+  // stale captions/storyboard state don't linger after navigating away.
+  useEffect(() => {
+    const maybeRefetch = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      if (generating || rendering || publishing) return;
+      loadInput({ silent: true });
+    };
+    window.addEventListener("focus", maybeRefetch);
+    document.addEventListener("visibilitychange", maybeRefetch);
+    return () => {
+      window.removeEventListener("focus", maybeRefetch);
+      document.removeEventListener("visibilitychange", maybeRefetch);
+    };
+  }, [generating, rendering, publishing, loadInput]);
 
   // Cleanup blob URL on unmount or new render
   useEffect(() => {
@@ -106,7 +141,9 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
       if (!res.ok) {
         throw new Error(data.error || "KI-Generierung fehlgeschlagen");
       }
-      setStoryboard(data.storyboard as Storyboard);
+      const sb = data.storyboard as Storyboard;
+      setStoryboard(sb);
+      syncedStoryboardJsonRef.current = JSON.stringify(sb);
       toast.success("Storyboard erstellt");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler");
@@ -126,7 +163,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
   const saveStoryboard = useCallback(
     async (sb: Storyboard) => {
       try {
-        await fetch(
+        const res = await fetch(
           `/api/events/${eventId}/reports/${agendaItemId}/storyboard`,
           {
             method: "PUT",
@@ -134,6 +171,9 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
             body: JSON.stringify({ storyboard: sb }),
           }
         );
+        if (res.ok) {
+          syncedStoryboardJsonRef.current = JSON.stringify(sb);
+        }
       } catch {
         /* non-fatal */
       }
@@ -336,7 +376,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
         {hasItems && !storyboard && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              KI plant aus deinen kuratierten Beiträgen einen 45-Sekunden-Film mit
+              KI plant aus deinen kuratierten Beiträgen einen 60-Sekunden-Film mit
               Kapiteln, Übergängen und Musik.
             </p>
             <Button onClick={handleGenerate} disabled={generating} className="w-full">

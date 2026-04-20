@@ -2,13 +2,13 @@
 // and client (renderer + editor UI).
 //
 // A storyboard is the LLM-produced "shooting script" for the slideshow film.
-// Hard constraint: total scene duration <= 45000 ms.
+// Scene budget = 60 s total film minus fixed 6 s intro + 3.5 s outro phases.
 
 import { z } from "zod";
 
-export const SLIDESHOW_MAX_DURATION_MS = 45_000;
-export const SLIDESHOW_MIN_SCENE_MS = 1500;
-export const SLIDESHOW_MAX_SCENE_MS = 5000;
+export const SLIDESHOW_MAX_DURATION_MS = 50_500;
+export const SLIDESHOW_MIN_SCENE_MS = 3_000;
+export const SLIDESHOW_MAX_SCENE_MS = 6_000;
 
 export const STORYBOARD_MOODS = ["epic", "chill", "joyful", "reflective"] as const;
 export type StoryboardMood = (typeof STORYBOARD_MOODS)[number];

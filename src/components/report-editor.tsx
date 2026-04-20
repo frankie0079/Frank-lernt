@@ -270,6 +270,58 @@ export function ReportEditor({
     loadReport();
   }, [loadReport]);
 
+  // Refresh captions/author data for already-selected items when the user
+  // returns to this tab. Keeps selection + sort_order untouched (so in-flight
+  // edits aren't lost) and only overwrites display fields that may have
+  // changed elsewhere (e.g. caption edits in the content pool).
+  const refreshReportItemsSilently = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/events/${eventId}/reports/${agendaItemId}`
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        report: ReportShape;
+        items: ReportItemShape[];
+      };
+      const keyOf = (it: ReportItemShape) =>
+        it.content_item_id ?? `__del__${it.id}`;
+      setItemsById((prev) => {
+        const next = new Map(prev);
+        for (const it of data.items) {
+          const key = keyOf(it);
+          const existing = next.get(key);
+          if (!existing) continue;
+          next.set(key, {
+            ...existing,
+            caption: it.caption,
+            author_name: it.author_name,
+            author_avatar_url: it.author_avatar_url,
+            media_url: it.media_url,
+            thumbnail_url: it.thumbnail_url,
+          });
+        }
+        return next;
+      });
+    } catch {
+      /* non-fatal */
+    }
+  }, [eventId, agendaItemId]);
+
+  useEffect(() => {
+    const maybeRefetch = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      if (saveState === "saving") return;
+      refreshReportItemsSilently();
+    };
+    window.addEventListener("focus", maybeRefetch);
+    document.addEventListener("visibilitychange", maybeRefetch);
+    return () => {
+      window.removeEventListener("focus", maybeRefetch);
+      document.removeEventListener("visibilitychange", maybeRefetch);
+    };
+  }, [saveState, refreshReportItemsSilently]);
+
   // Fetch total count for "X von Y ausgewählt" counter — scoped to this day
   useEffect(() => {
     let aborted = false;
