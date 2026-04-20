@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { X, ChevronLeft, ChevronRight, Mic } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Mic } from "lucide-react";
 import type { ContentItem } from "@/components/content-card";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -91,16 +91,22 @@ export function ContentLightbox({
           Beitrag von {item.author_name || "Unbekannt"}
         </DialogTitle>
 
-        {/* Close button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-3 top-3 z-50 h-9 w-9 rounded-full bg-black/40 text-white hover:bg-black/60"
-          onClick={() => onOpenChange(false)}
-          aria-label="Schliessen"
+        {/* Back button — top-left, respects iOS safe-area-top so it stays
+            clickable below the status bar / notch in PWA standalone mode. */}
+        <div
+          className="absolute left-0 right-0 top-0 z-50 flex items-center px-3 pt-3"
+          style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
         >
-          <X className="h-5 w-5" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-full bg-black/50 text-white hover:bg-black/70"
+            onClick={() => onOpenChange(false)}
+            aria-label="Zurück"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </div>
 
         {/* Navigation buttons */}
         {hasPrev && (
