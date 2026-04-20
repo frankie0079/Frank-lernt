@@ -200,19 +200,35 @@ export async function POST(
     return serverError("storyboard:llm", err);
   }
 
-  // 3. Parse + validate via Zod
-  // Strip accidental code fences
-  if (llmText.startsWith("```")) {
-    llmText = llmText.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "");
-  }
+  // 3. Parse + validate via Zod.
+  // Be forgiving: the LLM occasionally wraps the JSON in code fences or adds a
+  // sentence before/after. Strip fences, then fall back to extracting the
+  // substring from the first "{" to the matching final "}" if needed.
+  llmText = llmText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(llmText);
   } catch {
-    return NextResponse.json(
-      { error: "KI hat ungültiges JSON zurückgegeben — bitte erneut versuchen." },
-      { status: 502 }
-    );
+    const firstBrace = llmText.indexOf("{");
+    const lastBrace = llmText.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        parsed = JSON.parse(llmText.slice(firstBrace, lastBrace + 1));
+      } catch {
+        console.error("[storyboard] LLM returned invalid JSON; preview:", llmText.slice(0, 200));
+        return NextResponse.json(
+          { error: "KI hat ungültiges JSON zurückgegeben — bitte erneut versuchen." },
+          { status: 502 }
+        );
+      }
+    } else {
+      console.error("[storyboard] LLM returned non-JSON text; preview:", llmText.slice(0, 200));
+      return NextResponse.json(
+        { error: "KI hat ungültiges JSON zurückgegeben — bitte erneut versuchen." },
+        { status: 502 }
+      );
+    }
   }
 
   const validation = storyboardSchema.safeParse(parsed);
