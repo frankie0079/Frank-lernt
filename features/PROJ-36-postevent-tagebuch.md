@@ -1,8 +1,8 @@
 # PROJ-36: Post-Event Tagebuch (kuratierbarer Editor)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-08
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-04-20
 
 ## Dependencies
 - Requires: PROJ-35 (Öffentliche Event-Seite) — Tagebuch baut auf der öffentlichen Event-Seite auf und teilt die URL-Struktur
@@ -56,7 +56,126 @@
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Scope-Entscheidung (2026-04-20)
+Foto-Auswahl erfolgt aus **allen** Event-Fotos, nicht nur aus bereits kuratierten Tages-Berichten. Der Organisator sieht im Editor den kompletten Content-Pool des jeweiligen Agenda-Tages und pickt daraus — wie im Wanderer-/Curation-Flow.
+
+### Zwei Oberflächen, eine Datenbasis
+
+```
+/events/[id]/book/edit          Organisator-Editor (geschützt, Organizer-Rolle)
+/events/[id]/book               Lese-Ansicht (alle Event-Mitglieder)
+/events/[id]/book?preview=true  Vorschau aus dem Editor heraus (neuer Tab)
+```
+
+### Neue Datenbank-Tabellen
+
+**`book_pages`** — eine Zeile pro Agenda-Tag eines Events:
+- Welches Layout (`single` / `two` / `three` / `text-left`)
+- Tageskommentar des Organisators (max. 2000 Zeichen, per CHECK-Constraint auf DB-Ebene)
+- Sichtbarkeitsflag (ausgeblendet = nicht in Leseansicht)
+- `updated_by` + `updated_at` für den Kollaborations-Hinweis
+- UNIQUE(event_id, agenda_item_id) — genau eine Seite pro Tag
+
+**`book_page_items`** — verbindet Seiten mit ausgewählten Content-Items:
+- `page_id` FK → book_pages (CASCADE)
+- `content_item_id` FK → content_items
+- `sort_order` INT
+- UNIQUE(page_id, content_item_id) — kein Foto doppelt auf einer Seite
+
+### Neue API-Endpunkte
+
+| Route | Methode | Zweck | Zugriff |
+|---|---|---|---|
+| `/api/events/[id]/book` | GET | Alle Seiten + Items für Editor + Lese-Ansicht | Event-Mitglieder |
+| `/api/events/[id]/book/[agendaItemId]` | PUT | Eine Seite speichern (layout + items + comment + visibility) | Organisator |
+
+Der PUT ist ein Upsert: existiert die Seite noch nicht, wird sie angelegt; sonst aktualisiert. `book_page_items` werden per Bulk-Replace neu geschrieben (alle alten löschen, neue einfügen) — so bleibt die Logik einfach.
+
+### Komponenten-Struktur
+
+**Editor (`/events/[id]/book/edit`):**
+```
+BookEditPage (Server Component — Auth-Check)
+└── BookEditor (Client Component — Haupt-State)
+    ├── BookDaySidebar            Sprungliste aller Tage (links, bei langen Events)
+    ├── BookPageEditor            Editor für den aktuellen Tag
+    │   ├── LayoutPicker          RadioGroup: 4 Layout-Optionen mit Mini-Vorschau-Icons
+    │   ├── BookPhotoSelector     Multi-Select aus allen Fotos des Tages
+    │   │   └── ContentCard[]     (wiederverwendet)
+    │   ├── SelectedPreviewRail   Drag-to-reorder der aktuellen Auswahl
+    │   ├── CommentTextarea       Tageskommentar + Zeichenzähler
+    │   ├── VisibilityToggle      Switch: Seite anzeigen/ausblenden
+    │   └── SaveStatusBadge       "Gespeichert" / "Speichert..." / "Nicht gespeichert"
+    ├── PreviewButton             Öffnet /book?preview=true in neuem Tab
+    └── CollaboratorHint          "Zuletzt gespeichert von [Name] um [Uhrzeit]"
+```
+
+**Lese-Ansicht (`/events/[id]/book`):**
+```
+BookReadPage (Server Component — lädt Seiten)
+└── BookReadView
+    └── BookDaySection[]          Eine Sektion pro sichtbarer Seite, chronologisch
+        ├── DayHeader             Datum + Tages-Titel (Caveat-Font, passend zum Design-Pass)
+        ├── BookPageLayout        CSS-Grid-Rendering je nach layout-Wert
+        │   └── img[] / video[]   Einzelne Medien
+        └── DayComment            Absatz mit Tageskommentar (whitespace-pre-wrap)
+```
+
+### Wiederverwendete Komponenten (keine Neuentwicklung)
+
+| Komponente | Wo im Tagebuch | Rolle |
+|---|---|---|
+| `ContentCard` | Photo-Selector im Editor | Fotos anzeigen mit Checkbox-Overlay |
+| `SelectableContentGrid` | Photo-Selector-Basis | Multi-Select-Pattern (analog zu PROJ-33) |
+| `SortableTile` | SelectedPreviewRail | Drag-Reorder der gewählten Items |
+| `RadioGroup` | LayoutPicker | 4 Layout-Optionen |
+| `Switch` | VisibilityToggle | Sichtbarkeit pro Seite |
+| `Textarea` | CommentTextarea | Tageskommentar |
+| `Badge`, `Skeleton`, `Alert` | Überall | Status, Loading, Fehler |
+
+### Datenhaltung & Sicherheit
+
+- **Kein Realtime**: Tagebuch wird von einer Person bearbeitet, letzter Speicherstand gewinnt. Gespeicherte Zeitstempel + updated_by zeigen dem Organisator, ob jemand anders gerade dran war.
+- **Auto-Save**: 2-Sekunden-Debounce via `useDebouncedCallback` (bereits im Report-Editor erprobt)
+- **RLS-Policies**:
+  - `book_pages` SELECT: Event-Mitglieder
+  - `book_pages` INSERT/UPDATE/DELETE: nur Organisator (role='organizer' in event_members)
+  - `book_page_items` analog, über page_id → event_id Join
+- **Kein öffentlicher Zugriff**: Tagebuch ist Mitglieds-only, im Gegensatz zu PROJ-35 `/e/[slug]`
+
+### Edge-Case-Behandlung (Zuordnung zu AC)
+
+| Edge-Case | Wo behandelt |
+|---|---|
+| Kein Foto für einen Tag | BookPageEditor zeigt Empty-State + VisibilityToggle standardmäßig auf "aus" |
+| Ausgeblendete Seite in Leseansicht | GET-Query filtert `is_visible=true`, Editor zeigt alle |
+| >12 Fotos ausgewählt | Editor speichert alle, Leseansicht `.slice(0, 12)` + Warning-Badge |
+| 2001+ Zeichen | Client-seitiger Zähler rot, Auto-Save suspendiert, DB-CHECK fängt Restfall |
+| Nicht-Mitglied öffnet `/book` | Server-Component-Auth redirected zu `/login` |
+| Auto-Save-Fehler (Netz) | Toast "Nicht gespeichert" + manueller "Jetzt speichern"-Button |
+| Langes Event (30 Tage) | BookDaySidebar als sticky Sprungliste links |
+
+### Neue Pakete
+
+Keine — alle shadcn-Komponenten (`RadioGroup`, `Switch`, `Textarea`, `ScrollArea`) sind bereits installiert. `use-debounce` läuft bereits in PROJ-33.
+
+### Migration
+
+Eine SQL-Migration `supabase/migrations/20260420_book_pages.sql` legt an:
+- Tabellen `book_pages` + `book_page_items`
+- Indexe auf `(event_id)`, `(event_id, agenda_item_id)`, `(page_id, sort_order)`
+- CHECK-Constraints auf `layout` und `length(comment)`
+- RLS-Policies für Read (Mitglieder) und Write (Organisator)
+
+Laut Konvention: wird erst nach Frontend+Backend im Supabase SQL-Editor manuell angewendet und committed.
+
+### Build-Reihenfolge
+
+1. `/frontend` → Client-Components (BookEditor, BookPageEditor, BookReadView, Layout-Rendering)
+2. `/backend` → Migration, RLS, 2 API-Routes
+3. `/qa` → Akzeptanzkriterien, Happy-Path + Edge-Cases in Production
+4. `/deploy`
 
 ## QA Test Results
 _To be added by /qa_
