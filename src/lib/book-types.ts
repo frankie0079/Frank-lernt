@@ -38,14 +38,15 @@ export const BOOK_LAYOUT_CAPACITY: Record<BookLayout, number> = {
 
 /**
  * A row from `book_pages`, enriched with the joined agenda item + the
- * selected content items for convenience in the UI.
+ * sections that make up this day's diary entry.
+ *
+ * As of Stage 2 (20260421_book_sections.sql) one page is a *container* for
+ * 1..many sections. Each section has its own layout, comment, and items.
  */
 export interface BookPage {
   id: string;
   event_id: string;
   agenda_item_id: string;
-  layout: BookLayout;
-  comment: string;
   is_visible: boolean;
   sort_order: number;
   updated_at: string | null;
@@ -54,7 +55,17 @@ export interface BookPage {
   /** Joined agenda meta */
   agenda_title: string;
   agenda_date: string;
-  /** Items attached to this page, already sorted by sort_order */
+  /** Ordered sections (already sorted by sort_order) */
+  sections: BookSection[];
+}
+
+export interface BookSection {
+  id: string;
+  page_id: string;
+  layout: BookLayout;
+  comment: string;
+  sort_order: number;
+  /** Items attached to this section, already sorted by sort_order */
   items: BookPageItem[];
 }
 
@@ -71,6 +82,9 @@ export interface BookPageItem {
   author_name: string | null;
   author_avatar_url: string | null;
 }
+
+/** Suggested UI cap on sections per day; not enforced on the server. */
+export const MAX_SECTIONS_PER_PAGE = 10;
 
 export interface BookGetResponse {
   event_id: string;

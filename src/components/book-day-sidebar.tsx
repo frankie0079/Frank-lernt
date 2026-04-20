@@ -29,7 +29,10 @@ export function BookDaySidebar({
           {pages.map((p) => {
             const isActive = p.agenda_item_id === activeAgendaItemId;
             const itemDate = new Date(p.agenda_date + "T00:00:00");
-            const itemCount = p.items.length;
+            const itemCount = (p.sections ?? []).reduce(
+              (sum, s) => sum + (s.items?.length ?? 0),
+              0
+            );
 
             return (
               <li key={p.id} className="shrink-0 md:shrink">

@@ -79,7 +79,7 @@ export async function GET(
     return NextResponse.json({ error: m.error }, { status: m.status });
   }
 
-  // Defence-in-depth: hidden pages must not leak their items or comment to
+  // Defence-in-depth: hidden pages must not leak their sections to
   // non-organizers. We keep the page entry in the response (so the read view
   // can render a minimal "day existed but is hidden" placeholder and the
   // chronology stays visible) but strip sensitive fields. A raw curl with
@@ -93,7 +93,7 @@ export async function GET(
     ? allPages
     : allPages.map((p) =>
         p?.is_visible === false
-          ? { ...p, items: [], comment: "" }
+          ? { ...p, sections: [] }
           : p
       );
 

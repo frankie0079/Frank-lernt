@@ -238,26 +238,32 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
               )}
             </header>
 
-            {minimal ? (
+            {minimal || (page.sections ?? []).length === 0 ? (
               <p className="text-sm italic text-muted-foreground">
                 Für diesen Tag gibt es (noch) keine Tagebuch-Seite.
               </p>
             ) : (
-              <>
-                <BookPageLayout
-                  layout={page.layout}
-                  items={page.items}
-                  sideText={page.comment}
-                />
-
-                {/* Only the text-left layout renders the comment inside the layout
-                    itself; for other layouts we render it as a caption below. */}
-                {page.layout !== "text-left" && page.comment && (
-                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-                    {page.comment}
-                  </p>
-                )}
-              </>
+              <div className="space-y-6">
+                {(page.sections ?? [])
+                  .slice()
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map((sec) => (
+                    <div key={sec.id} className="space-y-3">
+                      <BookPageLayout
+                        layout={sec.layout}
+                        items={sec.items}
+                        sideText={sec.comment}
+                      />
+                      {/* text-left renders the comment inside the layout
+                          itself; other layouts render it as a caption below. */}
+                      {sec.layout !== "text-left" && sec.comment && (
+                        <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                          {sec.comment}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
             )}
           </section>
         );

@@ -7,9 +7,10 @@ import { BOOK_LAYOUTS, MAX_COMMENT_LENGTH } from "@/lib/book-types";
 
 // PROJ-36: Post-Event Tagebuch — PUT /api/events/[id]/book/[agendaItemId]
 //
-// Upserts one book page (layout + comment + visibility + items). Items are a
-// bulk replace: the RPC deletes all previous book_page_items for this page and
-// inserts the new set. Organizer-only; enforced both by the RPC and by cookie.
+// Upserts one book page: sets visibility and replaces its sections (each
+// section has its own layout + comment + items). Sections are a full bulk
+// replace: the RPC deletes all previous sections (cascades items) and inserts
+// fresh ones. Organizer-only; enforced both by the RPC and by cookie.
 
 function isValidUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -24,13 +25,18 @@ const bookItemSchema = z.object({
   sort_order: z.number().int().min(0).max(100000),
 });
 
-const putBodySchema = z.object({
+const bookSectionSchema = z.object({
   layout: z.enum(BOOK_LAYOUTS),
   comment: z
     .string()
     .max(MAX_COMMENT_LENGTH, `Kommentar zu lang (max. ${MAX_COMMENT_LENGTH} Zeichen)`),
+  sort_order: z.number().int().min(0).max(100000),
+  items: z.array(bookItemSchema).max(60, "Zu viele Beiträge in einem Abschnitt"),
+});
+
+const putBodySchema = z.object({
   is_visible: z.boolean(),
-  items: z.array(bookItemSchema).max(500, "Zu viele Beiträge"),
+  sections: z.array(bookSectionSchema).max(20, "Zu viele Abschnitte pro Tag"),
 });
 
 function mapRpcError(code: string | undefined): { status: number; error: string } {
@@ -91,14 +97,18 @@ export async function PUT(
     );
   }
 
-  // Reject duplicate content_item_id within the payload (UNIQUE constraint would
-  // also catch this, but a clearer error here helps the client).
-  const ids = parsed.data.items.map((i) => i.content_item_id);
-  if (new Set(ids).size !== ids.length) {
-    return NextResponse.json(
-      { error: "Doppelte Beiträge auf der Seite" },
-      { status: 400 }
-    );
+  // Reject duplicate content_item_id within the same section (UNIQUE
+  // constraint on (section_id, content_item_id) would catch this, but a
+  // clearer error here helps the client). Duplicates across different
+  // sections are allowed — the same photo can appear in two sections.
+  for (const sec of parsed.data.sections) {
+    const ids = sec.items.map((i) => i.content_item_id);
+    if (new Set(ids).size !== ids.length) {
+      return NextResponse.json(
+        { error: "Doppelte Beiträge in einem Abschnitt" },
+        { status: 400 }
+      );
+    }
   }
 
   // Defence-in-depth: verify agendaItemId actually belongs to the event in the
@@ -128,10 +138,8 @@ export async function PUT(
   const { data, error } = await supabase.rpc("save_book_page", {
     p_token: token,
     p_agenda_item_id: agendaItemId,
-    p_layout: parsed.data.layout,
-    p_comment: parsed.data.comment,
     p_is_visible: parsed.data.is_visible,
-    p_items: parsed.data.items,
+    p_sections: parsed.data.sections,
   });
 
   if (error) {

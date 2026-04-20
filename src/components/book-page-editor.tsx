@@ -1,26 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, AlertTriangle, Check, Eye, Loader2 } from "lucide-react";
+import { AlertCircle, Check, Eye, Loader2, Plus } from "lucide-react";
 import type { AgendaItem } from "@/lib/event-utils";
-import type { ContentItem } from "@/components/content-card";
-import type { SelectedTileItem } from "@/components/sortable-tile";
-import { BookLayoutPicker } from "@/components/book-layout-picker";
-import { BookCommentTextarea } from "@/components/book-comment-textarea";
-import { SelectableContentGrid } from "@/components/selectable-content-grid";
-import { SelectedItemsRail } from "@/components/selected-items-rail";
+import {
+  BookSectionEditor,
+  type SectionDraft,
+  sectionToDraft,
+  emptyDraft,
+  draftToSectionPayload,
+} from "@/components/book-section-editor";
 import {
   MAX_COMMENT_LENGTH,
-  MAX_PHOTOS_PER_PAGE,
-  type BookLayout,
+  MAX_SECTIONS_PER_PAGE,
   type BookPage,
-  type BookPageItem,
   type BookPutResponse,
 } from "@/lib/book-types";
 
@@ -38,31 +36,18 @@ interface BookPageEditorProps {
   onOpenPreview: () => void;
 }
 
-function itemsToSelectedIds(items: BookPageItem[]): string[] {
-  return items
-    .filter((i) => i.content_item_id)
+function pageSectionsToDrafts(page: BookPage): SectionDraft[] {
+  const existing = (page.sections || [])
+    .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((i) => i.content_item_id);
-}
-
-function itemsToMap(items: BookPageItem[]): Map<string, SelectedTileItem> {
-  const map = new Map<string, SelectedTileItem>();
-  for (const i of items) {
-    if (!i.content_item_id) continue;
-    map.set(i.content_item_id, {
-      id: i.id,
-      content_item_id: i.content_item_id,
-      sort_order: i.sort_order,
-      deleted: i.type == null,
-      type: i.type,
-      media_url: i.media_url,
-      thumbnail_url: i.thumbnail_url,
-      caption: i.caption,
-      author_name: i.author_name,
-      author_avatar_url: i.author_avatar_url,
-    });
+    .map(sectionToDraft);
+  if (existing.length === 0) {
+    // Start with a single empty section so the editor always has something
+    // to show; if the user saves without adding anything, the server will
+    // accept an empty-sections state thanks to comment defaulting to ''.
+    return [emptyDraft(0)];
   }
-  return map;
+  return existing;
 }
 
 export function BookPageEditor({
@@ -75,41 +60,34 @@ export function BookPageEditor({
   onOpenPreview,
 }: BookPageEditorProps) {
   // ---- local editable state ----
-  const [layout, setLayout] = useState<BookLayout>(page.layout);
-  const [comment, setComment] = useState<string>(page.comment ?? "");
+  const [sections, setSections] = useState<SectionDraft[]>(() =>
+    pageSectionsToDrafts(page)
+  );
   const [isVisible, setIsVisible] = useState<boolean>(page.is_visible);
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    itemsToSelectedIds(page.items)
-  );
-  const [itemsById, setItemsById] = useState<Map<string, SelectedTileItem>>(
-    itemsToMap(page.items)
-  );
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Note: BookEditor passes `key={activePage.agenda_item_id}` so this component
-  // is remounted whenever the active day changes. No manual re-seed effect is
-  // needed — each mount initializes its state from the new `page` prop.
+  // Re-seeded on remount (BookEditor key={agenda_item_id}), no manual effect
+  // needed here.
 
-  // Track in-flight saves so the latest one always wins. Prevents a slow older
-  // response from overwriting UI state set by a newer, already-completed save.
   const saveGenRef = useRef(0);
 
   // ---- derived flags ----
-  const commentTooLong = comment.length > MAX_COMMENT_LENGTH;
-  const tooManyItems = selectedIds.length > MAX_PHOTOS_PER_PAGE;
+  const anyCommentTooLong = sections.some(
+    (s) => s.comment.length > MAX_COMMENT_LENGTH
+  );
+  const tooManySections = sections.length > MAX_SECTIONS_PER_PAGE;
 
-  // ---- Save implementation ----
+  // ---- Save ----
   const performSave = useCallback(
     async (payload: {
-      layout: BookLayout;
-      comment: string;
       is_visible: boolean;
-      item_ids: string[];
+      drafts: SectionDraft[];
     }) => {
       if (!isOrganizer) return;
-      if (payload.comment.length > MAX_COMMENT_LENGTH) return; // client-side guard
+      if (payload.drafts.some((s) => s.comment.length > MAX_COMMENT_LENGTH))
+        return;
 
       const generation = ++saveGenRef.current;
       setSaveState("saving");
@@ -122,13 +100,8 @@ export function BookPageEditor({
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              layout: payload.layout,
-              comment: payload.comment,
               is_visible: payload.is_visible,
-              items: payload.item_ids.map((id, i) => ({
-                content_item_id: id,
-                sort_order: (i + 1) * 10,
-              })),
+              sections: draftToSectionPayload(payload.drafts),
             }),
           }
         );
@@ -137,7 +110,6 @@ export function BookPageEditor({
           throw new Error(data.error || "Speichern fehlgeschlagen");
         }
         const data = (await res.json()) as BookPutResponse;
-        // Discard stale responses: only the most recent save owns the UI state.
         if (generation !== saveGenRef.current) return;
         setSaveState("saved");
         onSaved(data.page);
@@ -153,84 +125,55 @@ export function BookPageEditor({
   );
 
   const debouncedSave = useDebouncedCallback(
-    (args: {
-      layout: BookLayout;
-      comment: string;
-      is_visible: boolean;
-      item_ids: string[];
-    }) => performSave(args),
+    (args: { is_visible: boolean; drafts: SectionDraft[] }) =>
+      performSave(args),
     2000
   );
 
-  // Skip auto-save on initial render after the page loads.
+  // Skip auto-save on initial render.
   const didMountRef = useRef(false);
   useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
       return;
     }
-    if (commentTooLong) return; // auto-save suspended until valid
-    debouncedSave({
-      layout,
-      comment,
-      is_visible: isVisible,
-      item_ids: selectedIds,
-    });
-  }, [layout, comment, isVisible, selectedIds, commentTooLong, debouncedSave]);
+    if (anyCommentTooLong) return;
+    debouncedSave({ is_visible: isVisible, drafts: sections });
+  }, [sections, isVisible, anyCommentTooLong, debouncedSave]);
 
   const manualSave = useCallback(async () => {
     debouncedSave.cancel();
-    await performSave({
-      layout,
-      comment,
-      is_visible: isVisible,
-      item_ids: selectedIds,
-    });
-  }, [debouncedSave, performSave, layout, comment, isVisible, selectedIds]);
+    await performSave({ is_visible: isVisible, drafts: sections });
+  }, [debouncedSave, performSave, isVisible, sections]);
 
-  // ---- selection handlers (mirroring report-editor semantics) ----
-  const handleToggle = useCallback((item: ContentItem) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(item.id)) return prev.filter((id) => id !== item.id);
-      return [...prev, item.id];
-    });
-    setItemsById((prev) => {
-      if (prev.has(item.id)) {
-        const next = new Map(prev);
-        next.delete(item.id);
-        return next;
+  // ---- section array ops ----
+  const updateSection = useCallback((idx: number, next: SectionDraft) => {
+    setSections((prev) => prev.map((s, i) => (i === idx ? next : s)));
+  }, []);
+
+  const addSection = useCallback(() => {
+    setSections((prev) => [...prev, emptyDraft(prev.length)]);
+  }, []);
+
+  const deleteSection = useCallback((idx: number) => {
+    setSections((prev) => {
+      if (prev.length <= 1) {
+        // Never leave the page with zero sections — reset to one empty draft.
+        return [emptyDraft(0)];
       }
-      const next = new Map(prev);
-      next.set(item.id, {
-        id: "",
-        content_item_id: item.id,
-        sort_order: 0,
-        deleted: false,
-        type: item.type,
-        media_url: item.media_url,
-        thumbnail_url: item.thumbnail_url,
-        caption: item.caption,
-        author_name: item.author_name ?? null,
-        author_avatar_url: item.author_avatar_url ?? null,
-      });
-      return next;
+      return prev.filter((_, i) => i !== idx);
     });
   }, []);
 
-  const handleRemove = useCallback((contentItemId: string) => {
-    setSelectedIds((prev) => prev.filter((id) => id !== contentItemId));
-    setItemsById((prev) => {
-      const next = new Map(prev);
-      next.delete(contentItemId);
+  const moveSection = useCallback((idx: number, dir: -1 | 1) => {
+    setSections((prev) => {
+      const j = idx + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[j]] = [next[j], next[idx]];
       return next;
     });
   }, []);
-
-  const handleReorder = useCallback((newOrder: string[]) => {
-    setSelectedIds(newOrder);
-  }, []);
-
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   // ---- collaborator hint ----
   const collaboratorHint = page.updated_by_name
@@ -244,13 +187,11 @@ export function BookPageEditor({
       }`
     : null;
 
-  const noItems = selectedIds.length === 0;
-
   return (
     <div className="space-y-5">
       {/* Top status bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-        <SaveBadge state={saveState} tooLong={commentTooLong} />
+        <SaveBadge state={saveState} tooLong={anyCommentTooLong} />
         <div className="flex items-center gap-2">
           {saveState === "error" && (
             <Button
@@ -267,7 +208,6 @@ export function BookPageEditor({
             size="sm"
             variant="outline"
             onClick={() => {
-              // Try to flush unsaved changes before popping the preview tab.
               debouncedSave.flush();
               onOpenPreview();
             }}
@@ -290,64 +230,7 @@ export function BookPageEditor({
         <p className="text-xs text-muted-foreground">{collaboratorHint}</p>
       )}
 
-      {/* Empty-content hint */}
-      {noItems && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-          Keine Beiträge für diesen Tag ausgewählt.
-          {!isVisible && (
-            <span className="ml-1">Seite ist aktuell ausgeblendet.</span>
-          )}
-        </div>
-      )}
-
-      {/* Too-many warning */}
-      {tooManyItems && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-          <AlertDescription>
-            Du hast {selectedIds.length} Beiträge ausgewählt. In der
-            Leseansicht werden nur die ersten {MAX_PHOTOS_PER_PAGE} angezeigt.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Selected rail */}
-      <div className="space-y-2">
-        <Label className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
-          Auswahl
-          {selectedIds.length > 0 && (
-            <Badge variant="secondary" className="ml-2 align-middle text-xs">
-              {selectedIds.length}
-            </Badge>
-          )}
-        </Label>
-        {selectedIds.length > 0 ? (
-          <SelectedItemsRail
-            selectedIds={selectedIds}
-            itemsById={itemsById}
-            onReorder={handleReorder}
-            onRemove={handleRemove}
-          />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Tippe auf einen Beitrag unten, um ihn auf diese Seite zu holen.
-          </p>
-        )}
-      </div>
-
-      {/* Layout + settings */}
-      <BookLayoutPicker
-        value={layout}
-        onChange={setLayout}
-        disabled={!isOrganizer}
-      />
-
-      <BookCommentTextarea
-        value={comment}
-        onChange={setComment}
-        disabled={!isOrganizer}
-      />
-
+      {/* Visibility toggle (page-level) */}
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
         <div className="min-w-0">
           <Label
@@ -357,7 +240,8 @@ export function BookPageEditor({
             Seite sichtbar
           </Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Ausgeblendete Seiten erscheinen nicht in der Leseansicht.
+            Ausgeblendete Seiten erscheinen in der Leseansicht nur als
+            Platzhalter mit Datum und Titel.
           </p>
         </div>
         <Switch
@@ -369,20 +253,57 @@ export function BookPageEditor({
         />
       </div>
 
-      {/* Content selector */}
-      <div className="space-y-2">
-        <Label className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
-          Beiträge an diesem Tag
-        </Label>
-        <SelectableContentGrid
-          eventId={eventId}
-          userId={userId}
-          isOrganizer={isOrganizer}
-          agendaItems={agendaItems}
-          selectedIds={selectedSet}
-          onToggle={handleToggle}
-          defaultAgendaItemId={page.agenda_item_id}
-        />
+      {/* Sections list */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+            Abschnitte dieses Tages
+          </Label>
+          <span className="text-xs text-muted-foreground">
+            {sections.length} / {MAX_SECTIONS_PER_PAGE}
+          </span>
+        </div>
+
+        {tooManySections && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>
+              Maximal {MAX_SECTIONS_PER_PAGE} Abschnitte pro Tag. Bitte
+              entferne einen, bevor du einen weiteren hinzufügst.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {sections.map((sec, idx) => (
+          <BookSectionEditor
+            key={sec.id || `draft-${idx}`}
+            eventId={eventId}
+            userId={userId}
+            isOrganizer={isOrganizer}
+            agendaItems={agendaItems}
+            dayAgendaItemId={page.agenda_item_id}
+            index={idx}
+            section={sec}
+            canMoveUp={idx > 0}
+            canMoveDown={idx < sections.length - 1}
+            onChange={(next) => updateSection(idx, next)}
+            onMoveUp={() => moveSection(idx, -1)}
+            onMoveDown={() => moveSection(idx, 1)}
+            onDelete={() => deleteSection(idx)}
+          />
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addSection}
+          disabled={!isOrganizer || sections.length >= MAX_SECTIONS_PER_PAGE}
+          className="w-full"
+        >
+          <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
+          Abschnitt hinzufügen
+        </Button>
       </div>
     </div>
   );
@@ -429,4 +350,3 @@ function SaveBadge({
   }
   return <span className="text-xs text-muted-foreground">Bereit</span>;
 }
-
