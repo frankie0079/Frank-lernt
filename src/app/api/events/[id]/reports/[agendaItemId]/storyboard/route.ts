@@ -183,96 +183,152 @@ export async function POST(
   );
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
-  let llmText: string;
-  try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      system,
-      messages: [{ role: "user", content: user }],
-    });
-    const block = response.content.find((b) => b.type === "text");
-    if (!block || block.type !== "text") {
-      throw new Error("LLM gab keinen Text zurück");
-    }
-    llmText = block.text.trim();
-  } catch (err) {
-    return serverError("storyboard:llm", err);
-  }
 
-  // 3. Parse + validate via Zod.
-  // Be forgiving: the LLM occasionally wraps the JSON in code fences or adds a
-  // sentence before/after. Strip fences, then fall back to extracting the
-  // substring from the first "{" to the matching final "}" if needed.
-  llmText = llmText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(llmText);
-  } catch {
-    const firstBrace = llmText.indexOf("{");
-    const lastBrace = llmText.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      try {
-        parsed = JSON.parse(llmText.slice(firstBrace, lastBrace + 1));
-      } catch {
-        console.error("[storyboard] LLM returned invalid JSON; preview:", llmText.slice(0, 200));
-        return NextResponse.json(
-          { error: "KI hat ungültiges JSON zurückgegeben — bitte erneut versuchen." },
-          { status: 502 }
-        );
-      }
-    } else {
-      console.error("[storyboard] LLM returned non-JSON text; preview:", llmText.slice(0, 200));
-      return NextResponse.json(
-        { error: "KI hat ungültiges JSON zurückgegeben — bitte erneut versuchen." },
-        { status: 502 }
-      );
-    }
-  }
-
-  const validation = storyboardSchema.safeParse(parsed);
-  if (!validation.success) {
-    return NextResponse.json(
-      {
-        error: "KI-Storyboard erfüllt nicht die Constraints (Dauer/Schema). Bitte erneut versuchen.",
-        details: validation.error.issues.slice(0, 3).map((i) => i.message),
-      },
-      { status: 502 }
-    );
-  }
-  const storyboard = validation.data;
-
-  // Defensive: enforce hard duration cap server-side as last line of defense
-  const totalMs = storyboard.scenes.reduce((s, sc) => s + sc.duration_ms, 0);
-  if (totalMs > SLIDESHOW_MAX_DURATION_MS) {
-    return NextResponse.json(
-      { error: "KI-Storyboard zu lang." },
-      { status: 502 }
-    );
-  }
-
-  // Enforce: every curated photo/video must appear as its own scene.
-  // Text/audio items are allowed to be quoted in overlay_text of other scenes.
   const requiredIds = new Set(
     input.items
       .filter((it) => (it.type === "photo" || it.type === "video") && it.content_item_id)
       .map((it) => it.content_item_id)
   );
-  const usedIds = new Set(
-    storyboard.scenes
-      .filter((s) => s.content_item_id != null)
-      .map((s) => s.content_item_id as string)
-  );
-  const missing = [...requiredIds].filter((id) => !usedIds.has(id));
-  if (missing.length > 0) {
+
+  type Attempt = {
+    ok: true;
+    storyboard: z.infer<typeof storyboardSchema>;
+  } | {
+    ok: false;
+    stage: "llm" | "json" | "zod" | "duration" | "missing";
+    message: string;
+    details?: string[];
+    rawText?: string;
+  };
+
+  const callLlm = async (extraUser: string | null): Promise<Attempt> => {
+    let llmText: string;
+    try {
+      const response = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        system,
+        messages: [
+          { role: "user", content: extraUser ? `${user}\n\n${extraUser}` : user },
+        ],
+      });
+      const block = response.content.find((b) => b.type === "text");
+      if (!block || block.type !== "text") {
+        return { ok: false, stage: "llm", message: "LLM gab keinen Text zurück" };
+      }
+      llmText = block.text.trim();
+    } catch (err) {
+      return {
+        ok: false,
+        stage: "llm",
+        message: err instanceof Error ? err.message : "LLM-Fehler",
+      };
+    }
+
+    // Strip code fences / prose around the JSON.
+    llmText = llmText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(llmText);
+    } catch {
+      const first = llmText.indexOf("{");
+      const last = llmText.lastIndexOf("}");
+      if (first !== -1 && last > first) {
+        try {
+          parsed = JSON.parse(llmText.slice(first, last + 1));
+        } catch {
+          return {
+            ok: false,
+            stage: "json",
+            message: "KI hat ungültiges JSON zurückgegeben",
+            rawText: llmText.slice(0, 200),
+          };
+        }
+      } else {
+        return {
+          ok: false,
+          stage: "json",
+          message: "KI-Antwort ist kein JSON",
+          rawText: llmText.slice(0, 200),
+        };
+      }
+    }
+
+    const validation = storyboardSchema.safeParse(parsed);
+    if (!validation.success) {
+      return {
+        ok: false,
+        stage: "zod",
+        message: "KI-Storyboard verletzt Zod-Constraints",
+        details: validation.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`),
+      };
+    }
+    const sb = validation.data;
+
+    const total = sb.scenes.reduce((s, sc) => s + sc.duration_ms, 0);
+    if (total > SLIDESHOW_MAX_DURATION_MS) {
+      return {
+        ok: false,
+        stage: "duration",
+        message: `Gesamtdauer ${total} ms > Budget ${SLIDESHOW_MAX_DURATION_MS} ms`,
+      };
+    }
+
+    const usedIds = new Set(
+      sb.scenes.filter((s) => s.content_item_id != null).map((s) => s.content_item_id as string)
+    );
+    const missingIds = [...requiredIds].filter((id) => !usedIds.has(id));
+    if (missingIds.length > 0) {
+      return {
+        ok: false,
+        stage: "missing",
+        message: `${missingIds.length} kuratiertes Foto/Video ausgelassen`,
+        details: missingIds.slice(0, 5),
+      };
+    }
+
+    return { ok: true, storyboard: sb };
+  };
+
+  // Attempt 1. If it fails on zod/duration/missing, append an explicit repair
+  // instruction and try once more — this keeps a single user click from
+  // costing two daily tries while giving the model a second shot.
+  let attempt = await callLlm(null);
+  if (!attempt.ok && (attempt.stage === "zod" || attempt.stage === "duration" || attempt.stage === "missing")) {
+    const repair = [
+      "Dein vorheriger Versuch wurde abgewiesen, Grund:",
+      `- stage: ${attempt.stage}`,
+      `- message: ${attempt.message}`,
+      attempt.details && attempt.details.length > 0
+        ? `- details: ${attempt.details.join(" | ")}`
+        : null,
+      "",
+      "Bitte erstelle das Storyboard erneut und behebe den Fehler — halte dich streng an die harten Regeln oben.",
+    ].filter(Boolean).join("\n");
+    console.warn("[storyboard] attempt 1 failed, retrying with repair:", attempt);
+    attempt = await callLlm(repair);
+  }
+
+  if (!attempt.ok) {
+    console.error("[storyboard] both attempts failed:", attempt);
+    const msgMap: Record<string, string> = {
+      llm: "KI nicht erreichbar",
+      json: "KI hat kein gültiges JSON zurückgegeben",
+      zod: "KI-Storyboard verletzt Schema-Constraints",
+      duration: "KI-Storyboard überschreitet das Dauer-Budget",
+      missing: "KI hat kuratierte Fotos ausgelassen",
+    };
     return NextResponse.json(
       {
-        error: `KI hat ${missing.length} kuratiertes Foto/Video ausgelassen — bitte erneut generieren.`,
+        error: msgMap[attempt.stage] ?? "KI-Generierung fehlgeschlagen",
+        details: attempt.details,
+        stage: attempt.stage,
       },
       { status: 502 }
     );
   }
+
+  const storyboard = attempt.storyboard;
 
   // Default music_track_id if LLM left it null
   if (!storyboard.music_track_id) {

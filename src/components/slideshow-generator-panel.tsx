@@ -195,14 +195,20 @@ export function SlideshowGeneratorPanel({
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "KI-Generierung fehlgeschlagen");
+        const parts = [data.error || "KI-Generierung fehlgeschlagen"];
+        if (Array.isArray(data.details) && data.details.length > 0) {
+          parts.push(data.details.slice(0, 3).join(" · "));
+        }
+        const full = parts.join(" — ");
+        console.error("[storyboard] POST failed", { status: res.status, data });
+        throw new Error(full);
       }
       const sb = data.storyboard as Storyboard;
       setStoryboard(sb);
       syncedStoryboardJsonRef.current = JSON.stringify(sb);
       toast.success("Storyboard erstellt");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
+      toast.error(err instanceof Error ? err.message : "Fehler", { duration: 12000 });
     } finally {
       setGenerating(false);
     }
