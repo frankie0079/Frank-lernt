@@ -1,8 +1,9 @@
 "use client";
 
 // PROJ-34: Main slideshow workflow panel inside the report editor.
-// Steps: load existing storyboard → generate (LLM) → edit → render → preview
-//        → upload to storage → publish for all members.
+// Steps: load existing storyboard → generate (LLM) → edit → save → render
+// (render auto-uploads + publishes; the parent ReportEditor switches to
+// the display view with the pinned video via onSlideshowPublished).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -11,9 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, Film, Loader2, Download, Share2, Eye, Send, AlertCircle } from "lucide-react";
+import { Sparkles, Film, Loader2, Save, AlertCircle } from "lucide-react";
 import { StoryboardEditor } from "@/components/storyboard-editor";
-import { SlideshowPreviewPlayer } from "@/components/slideshow-preview-player";
 import {
   renderSlideshow,
   type RenderProgress,
@@ -41,24 +41,34 @@ interface Props {
   eventId: string;
   agendaItemId: string;
   hasItems: boolean;
+  // Called when a fresh render + upload has just completed. ReportEditor
+  // uses this to switch the page back to "display mode" with the new
+  // slideshow_url pinned at the top.
+  onSlideshowPublished?: (slideshowUrl: string, durationSec: number) => void;
 }
 
-export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Props) {
+export function SlideshowGeneratorPanel({
+  eventId,
+  agendaItemId,
+  hasItems,
+  onSlideshowPublished,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState<InputData | null>(null);
   const [musicTracks, setMusicTracks] = useState<MusicTrackOption[]>([]);
   const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [progress, setProgress] = useState<RenderProgress | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [blob, setBlob] = useState<Blob | null>(null);
-  const [blobExtension, setBlobExtension] = useState<"mp4" | "webm">("webm");
-  const [renderedDurationSec, setRenderedDurationSec] = useState<number>(0);
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
-  const [publishing, setPublishing] = useState(false);
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
+
+  // Local blob URL held only while rendering is in-flight so we can revoke
+  // it on unmount. Once upload completes, onSlideshowPublished fires and the
+  // parent unmounts this panel — the user sees the persisted video in the
+  // display card instead.
+  const blobUrlRef = useRef<string | null>(null);
 
   const format: "portrait" | "landscape" = "portrait";
 
@@ -112,7 +122,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
   useEffect(() => {
     const maybeRefetch = () => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      if (generating || rendering || publishing) return;
+      if (generating || rendering) return;
       loadInput({ silent: true });
     };
     window.addEventListener("focus", maybeRefetch);
@@ -121,14 +131,15 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
       window.removeEventListener("focus", maybeRefetch);
       document.removeEventListener("visibilitychange", maybeRefetch);
     };
-  }, [generating, rendering, publishing, loadInput]);
+  }, [generating, rendering, loadInput]);
 
-  // Cleanup blob URL on unmount or new render
+  // Cleanup any in-flight blob URL on unmount (rendering was aborted or
+  // the parent switched to display mode before we revoked it).
   useEffect(() => {
     return () => {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
     };
-  }, [blobUrl]);
+  }, []);
 
   const handleGenerate = useCallback(async () => {
     setGenerating(true);
@@ -161,7 +172,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
   );
 
   const saveStoryboard = useCallback(
-    async (sb: Storyboard) => {
+    async (sb: Storyboard): Promise<boolean> => {
       try {
         const res = await fetch(
           `/api/events/${eventId}/reports/${agendaItemId}/storyboard`,
@@ -173,26 +184,47 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
         );
         if (res.ok) {
           syncedStoryboardJsonRef.current = JSON.stringify(sb);
+          return true;
         }
-      } catch {
-        /* non-fatal */
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Speichern fehlgeschlagen");
+      } catch (err) {
+        throw err instanceof Error ? err : new Error("Speichern fehlgeschlagen");
       }
     },
     [eventId, agendaItemId]
   );
 
+  const handleSave = useCallback(async () => {
+    if (!storyboard) return;
+    setSaving(true);
+    try {
+      await saveStoryboard(storyboard);
+      toast.success("Gespeichert");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  }, [storyboard, saveStoryboard]);
+
   const handleRender = useCallback(async () => {
     if (!storyboard || !input) return;
     setRendering(true);
-    setBlob(null);
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-      setBlobUrl(null);
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
     }
     setProgress(null);
 
     // Persist current storyboard before render
-    await saveStoryboard(storyboard);
+    try {
+      await saveStoryboard(storyboard);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+      setRendering(false);
+      return;
+    }
 
     const ctrl = new AbortController();
     setAbortCtrl(ctrl);
@@ -229,12 +261,53 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
         onProgress: setProgress,
       });
 
-      const url = URL.createObjectURL(result.blob);
-      setBlob(result.blob);
-      setBlobUrl(url);
-      setBlobExtension(result.extension);
-      setRenderedDurationSec(Math.round(result.durationMs / 1000));
+      blobUrlRef.current = URL.createObjectURL(result.blob);
+      const durationSec = Math.round(result.durationMs / 1000);
+
+      // Auto-upload + publish: the user just wants to see the film pinned
+      // at the top of the curation page. We merge the old "Publish"
+      // step into Render so there's no second click.
+      setProgress({ phase: "finalizing", current: 100, total: 100, message: "Lade hoch…" });
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const path = `${eventId}/${agendaItemId}.${result.extension}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("slideshows")
+        .upload(path, result.blob, {
+          contentType:
+            result.blob.type ||
+            (result.extension === "mp4" ? "video/mp4" : "video/webm"),
+          upsert: true,
+        });
+      if (uploadErr) throw uploadErr;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("slideshows").getPublicUrl(path);
+
+      // Cache-buster: the storage URL is stable across re-renders since we
+      // upsert the same path. Append a timestamp so the browser + the
+      // SlideshowDisplayCard load the fresh video.
+      const cacheBustedUrl = `${publicUrl}?v=${Date.now()}`;
+
+      const pubRes = await fetch(
+        `/api/events/${eventId}/reports/${agendaItemId}/publish-slideshow`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slideshow_url: cacheBustedUrl,
+            duration_sec: durationSec,
+          }),
+        }
+      );
+      if (!pubRes.ok) {
+        const data = await pubRes.json().catch(() => ({}));
+        throw new Error(data.error || "Veröffentlichen fehlgeschlagen");
+      }
       toast.success("Film fertig!");
+      onSlideshowPublished?.(cacheBustedUrl, durationSec);
     } catch (err) {
       if (err instanceof Error && err.message === "Abgebrochen") {
         toast.message("Rendering abgebrochen");
@@ -246,88 +319,12 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
       setAbortCtrl(null);
       setProgress(null);
     }
-  }, [storyboard, input, format, blobUrl, saveStoryboard]);
+  }, [storyboard, input, format, saveStoryboard, eventId, agendaItemId, onSlideshowPublished]);
 
   const handleCancel = useCallback(() => {
     abortCtrl?.abort();
   }, [abortCtrl]);
 
-  const handleDownload = useCallback(() => {
-    if (!blob) return;
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `film-${input?.agenda_item.title ?? "tag"}.${blobExtension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  }, [blob, input, blobExtension]);
-
-  const handleShare = useCallback(async () => {
-    if (!blob) return;
-    const file = new File([blob], `film-${input?.agenda_item.title ?? "tag"}.${blobExtension}`, {
-      type: blob.type,
-    });
-    if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: storyboard?.title ?? "Film",
-          text: input?.event.name,
-        });
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      toast.error("Teilen wird vom Browser nicht unterstützt — bitte herunterladen.");
-    }
-  }, [blob, input, storyboard, blobExtension]);
-
-  const handlePublish = useCallback(async () => {
-    if (!blob || !input) return;
-    setPublishing(true);
-    try {
-      // 1. Upload to Supabase Storage (slideshows bucket)
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      const path = `${eventId}/${agendaItemId}.${blobExtension}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("slideshows")
-        .upload(path, blob, {
-          contentType: blob.type || (blobExtension === "mp4" ? "video/mp4" : "video/webm"),
-          upsert: true,
-        });
-      if (uploadErr) throw uploadErr;
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("slideshows").getPublicUrl(path);
-
-      // 2. Mark as published
-      const res = await fetch(
-        `/api/events/${eventId}/reports/${agendaItemId}/publish-slideshow`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slideshow_url: publicUrl,
-            duration_sec: renderedDurationSec,
-          }),
-        }
-      );
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Veröffentlichen fehlgeschlagen");
-      }
-      setPublishedUrl(publicUrl);
-      toast.success("Für alle Teilnehmer veröffentlicht");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
-    } finally {
-      setPublishing(false);
-    }
-  }, [blob, eventId, agendaItemId, input, renderedDurationSec, blobExtension]);
 
   if (loading) {
     return (
@@ -395,7 +392,7 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
           </div>
         )}
 
-        {storyboard && !rendering && !blobUrl && (
+        {storyboard && !rendering && (
           <>
             <StoryboardEditor
               storyboard={storyboard}
@@ -414,20 +411,20 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
             />
             <div className="flex flex-wrap gap-2">
               <Button
-                onClick={handleGenerate}
+                onClick={handleSave}
                 variant="outline"
-                disabled={generating}
+                disabled={saving}
                 size="sm"
               >
-                {generating ? (
+                {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Neu planen…
+                    Speichere…
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Neu planen
+                    <Save className="mr-2 h-4 w-4" />
+                    Speichern
                   </>
                 )}
               </Button>
@@ -446,56 +443,6 @@ export function SlideshowGeneratorPanel({ eventId, agendaItemId, hasItems }: Pro
             <Button onClick={handleCancel} variant="outline" size="sm" className="w-full">
               Abbrechen
             </Button>
-          </div>
-        )}
-
-        {blobUrl && !rendering && (
-          <div className="space-y-3">
-            <SlideshowPreviewPlayer src={blobUrl} format={format} />
-            <div className="text-xs text-muted-foreground">
-              Dauer: {renderedDurationSec}s · Größe:{" "}
-              {blob ? (blob.size / 1024 / 1024).toFixed(1) : "?"} MB
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleDownload} variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Herunterladen
-              </Button>
-              <Button onClick={handleShare} variant="outline" size="sm">
-                <Share2 className="mr-2 h-4 w-4" />
-                Teilen
-              </Button>
-              <Button onClick={handleRender} variant="ghost" size="sm">
-                <Eye className="mr-2 h-4 w-4" />
-                Neu rendern
-              </Button>
-            </div>
-            {!publishedUrl && (
-              <Button
-                onClick={handlePublish}
-                disabled={publishing}
-                className="w-full"
-              >
-                {publishing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Wird hochgeladen…
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Für alle Teilnehmer veröffentlichen
-                  </>
-                )}
-              </Button>
-            )}
-            {publishedUrl && (
-              <Alert>
-                <AlertDescription>
-                  Veröffentlicht — alle Mitglieder sehen den Film im Event-Buch.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         )}
       </CardContent>

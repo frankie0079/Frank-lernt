@@ -9,6 +9,7 @@ import { SelectedItemsRail } from "@/components/selected-items-rail";
 import { SelectableContentGrid } from "@/components/selectable-content-grid";
 import { ReportPreviewSheet } from "@/components/report-preview-sheet";
 import { SlideshowGeneratorPanel } from "@/components/slideshow-generator-panel";
+import { SlideshowDisplayCard } from "@/components/slideshow-display-card";
 import { OfflineBanner } from "@/components/offline-banner";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { SelectedTileItem } from "@/components/sortable-tile";
@@ -26,6 +27,10 @@ interface ReportShape {
   published_at: string | null;
   updated_at: string;
   created_by: string;
+  slideshow_url: string | null;
+  slideshow_duration_sec: number | null;
+  slideshow_published_at: string | null;
+  storyboard: { title?: string } | null;
 }
 
 interface ReportItemShape {
@@ -120,6 +125,17 @@ export function ReportEditor({
   );
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Slideshow display state (set when server has slideshow_url).
+  // While `editMode=false` and `slideshowUrl` exists, we hide the curation UI
+  // and show the film pinned at the top. Clicking "Editieren" flips editMode
+  // and brings the full workflow back; clicking "Löschen" clears everything.
+  const [slideshowUrl, setSlideshowUrl] = useState<string | null>(null);
+  const [slideshowDurationSec, setSlideshowDurationSec] = useState<number | null>(
+    null
+  );
+  const [slideshowTitle, setSlideshowTitle] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   // Track the "last known" status to detect demotion on save
   const prevStatusRef = useRef<"draft" | "published" | "empty">("empty");
@@ -237,6 +253,15 @@ export function ReportEditor({
         data.report?.status ?? "draft";
       setStatus(nextStatus);
       prevStatusRef.current = nextStatus;
+
+      // Hydrate slideshow-display state from the report. If the server says
+      // there's a rendered + published slideshow, we default to display mode
+      // (editMode stays false). If the user had clicked "Editieren" and we're
+      // just refreshing, editMode stays as-is — only the URL/duration update.
+      setSlideshowUrl(data.report?.slideshow_url ?? null);
+      setSlideshowDurationSec(data.report?.slideshow_duration_sec ?? null);
+      setSlideshowTitle(data.report?.storyboard?.title ?? null);
+
       setLoadError(null);
       // Server is source of truth — clear any stale localStorage draft.
       clearDraftFromStorage(agendaItemId);
@@ -556,6 +581,36 @@ export function ReportEditor({
     [debouncedSave, eventId, agendaItemId]
   );
 
+  // --- Slideshow display + edit mode handlers ---
+  const handleSlideshowPublished = useCallback(
+    (url: string, durationSec: number) => {
+      setSlideshowUrl(url);
+      setSlideshowDurationSec(durationSec);
+      // Return to display mode so the freshly-rendered film pins to the top.
+      setEditMode(false);
+    },
+    []
+  );
+
+  const handleEditSlideshow = useCallback(() => {
+    setEditMode(true);
+  }, []);
+
+  const handleSlideshowDeleted = useCallback(() => {
+    // The DELETE endpoint has already cleared storyboard + report_items on
+    // the server. Reset local state to match: empty selection, no slideshow,
+    // still in edit mode (= show the full curation UI with no selection).
+    setSlideshowUrl(null);
+    setSlideshowDurationSec(null);
+    setSlideshowTitle(null);
+    setSelectedIds([]);
+    setItemsById(new Map());
+    setStatus("empty");
+    prevStatusRef.current = "empty";
+    setEditMode(false);
+    clearDraftFromStorage(agendaItemId);
+  }, [agendaItemId]);
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -576,6 +631,29 @@ export function ReportEditor({
   }
 
   const effectiveTotal = totalCount;
+  const showSlideshowView = slideshowUrl != null && !editMode;
+
+  if (showSlideshowView) {
+    return (
+      <div className="space-y-4">
+        <OfflineBanner visible={!isOnline} />
+
+        {agendaTitle && (
+          <h2 className="text-lg font-semibold text-foreground">{agendaTitle}</h2>
+        )}
+
+        <SlideshowDisplayCard
+          eventId={eventId}
+          agendaItemId={agendaItemId}
+          slideshowUrl={slideshowUrl!}
+          durationSec={slideshowDurationSec}
+          title={slideshowTitle}
+          onEdit={handleEditSlideshow}
+          onDeleted={handleSlideshowDeleted}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -623,6 +701,7 @@ export function ReportEditor({
         eventId={eventId}
         agendaItemId={agendaItemId}
         hasItems={selectedIds.filter((id) => !id.startsWith("__del__")).length > 0}
+        onSlideshowPublished={handleSlideshowPublished}
       />
     </div>
   );
