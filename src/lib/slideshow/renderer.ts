@@ -61,25 +61,36 @@ function dimensionsFor(format: "portrait" | "landscape") {
     : { width: 1920, height: 1080 };
 }
 
-async function loadImage(url: string): Promise<LoadedImage> {
+async function loadImageOnce(url: string): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     const timeout = setTimeout(() => {
-      console.error("[slideshow] image load timeout (15s):", url);
       reject(new Error(`Image load timeout: ${url}`));
     }, 15000);
     img.onload = () => {
       clearTimeout(timeout);
       resolve(img);
     };
-    img.onerror = (e) => {
+    img.onerror = () => {
       clearTimeout(timeout);
-      console.error("[slideshow] image load failed:", url, e);
       reject(new Error(`Image load failed: ${url}`));
     };
     img.src = url;
   });
+}
+
+async function loadImage(url: string): Promise<LoadedImage> {
+  // Retry once with a brief delay on transient network/CORS blips before
+  // giving up. Supabase Storage is generally stable but mobile networks
+  // occasionally produce spurious load failures for a single image.
+  try {
+    return await loadImageOnce(url);
+  } catch (err) {
+    console.warn("[slideshow] image load first attempt failed, retrying:", url, err);
+    await new Promise((r) => setTimeout(r, 500));
+    return await loadImageOnce(url);
+  }
 }
 
 async function loadVideoFrame(url: string): Promise<LoadedImage> {
@@ -337,6 +348,7 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   const avatarImages = new Map<string, LoadedImage>();
   const totalToLoad = storyboard.scenes.length;
 
+  const loadFailures: Array<{ index: number; type: string; url: string }> = [];
   for (let i = 0; i < storyboard.scenes.length; i++) {
     checkAbort();
     onProgress?.({
@@ -353,10 +365,17 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
         try {
           sceneImages.set(i, await loadImage(url));
         } catch (e) {
-          console.warn("[slideshow] scene", i, "photo load failed, falling back to gradient:", e);
+          console.error("[slideshow] scene", i, "photo load failed after retry:", e);
+          // "cover" scenes with no content_item_id legitimately fall back to
+          // gradient (the dedicated intro phase already shows the event cover).
+          // A `photo` scene with a content_item_id represents a curated item
+          // that MUST appear — record it and abort after the preload pass.
+          if (scene.type === "photo") {
+            loadFailures.push({ index: i, type: "photo", url });
+          }
         }
-      } else {
-        console.warn("[slideshow] scene", i, "has no url, scene meta:", meta);
+      } else if (scene.type === "photo") {
+        loadFailures.push({ index: i, type: "photo", url: "(none)" });
       }
     } else if (scene.type === "video") {
       const meta = scene.content_item_id ? itemMeta.get(scene.content_item_id) : null;
@@ -369,8 +388,11 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
             sceneImages.set(i, await loadVideoFrame(meta.url));
           }
         } catch (e) {
-          console.warn("[slideshow] scene", i, "video frame load failed:", e);
+          console.error("[slideshow] scene", i, "video frame load failed:", e);
+          loadFailures.push({ index: i, type: "video", url });
         }
+      } else {
+        loadFailures.push({ index: i, type: "video", url: "(none)" });
       }
     }
     // Preload avatar if present
@@ -382,6 +404,16 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
         /* ignore */
       }
     }
+  }
+
+  // Abort if any curated photo/video failed to load — the user asked for
+  // every curated item to end up in the film, so silent gradient
+  // placeholders are not acceptable.
+  if (loadFailures.length > 0) {
+    const sceneList = loadFailures.map((f) => `#${f.index + 1}`).join(", ");
+    throw new Error(
+      `${loadFailures.length} Foto${loadFailures.length === 1 ? "" : "s"} konnte${loadFailures.length === 1 ? "" : "n"} nicht geladen werden (Szene ${sceneList}). Bitte Verbindung prüfen und erneut versuchen.`
+    );
   }
 
   // 2. Setup canvas

@@ -18,6 +18,7 @@ import {
   renderSlideshow,
   type RenderProgress,
 } from "@/lib/slideshow/renderer";
+import { reconcileStoryboardWithItems } from "@/lib/slideshow/reconcile";
 import type { Storyboard, StoryboardInputItem } from "@/lib/slideshow/storyboard-types";
 
 interface MusicTrackOption {
@@ -217,9 +218,46 @@ export function SlideshowGeneratorPanel({
     }
     setProgress(null);
 
-    // Persist current storyboard before render
+    // Refresh curation state so we render the ACTUAL current selection —
+    // the user may have added/removed photos after the last LLM plan, and
+    // the storyboard in local state wouldn't reflect that otherwise.
+    let freshInput = input;
     try {
-      await saveStoryboard(storyboard);
+      const res = await fetch(
+        `/api/events/${eventId}/reports/${agendaItemId}/storyboard`
+      );
+      if (res.ok) {
+        const data = (await res.json()) as {
+          input: InputData;
+          music_library: MusicTrackOption[];
+        };
+        freshInput = data.input;
+        setInput(data.input);
+        setMusicTracks(data.music_library);
+      }
+    } catch {
+      /* non-fatal — fall back to cached input */
+    }
+
+    // Reconcile: guarantee every currently-curated photo/video is a scene
+    // in the storyboard, and that no scene references a removed item. If
+    // the reconciled storyboard differs, notify the user + persist it.
+    const reconciled = reconcileStoryboardWithItems(storyboard, freshInput.items);
+    const didChange = reconciled.added > 0 || reconciled.removed > 0;
+    if (didChange) {
+      const parts: string[] = [];
+      if (reconciled.added > 0)
+        parts.push(`${reconciled.added} Foto${reconciled.added === 1 ? "" : "s"} hinzugefügt`);
+      if (reconciled.removed > 0)
+        parts.push(`${reconciled.removed} Szene${reconciled.removed === 1 ? "" : "n"} entfernt`);
+      toast.info(`Storyboard aktualisiert: ${parts.join(", ")}`);
+    }
+    const renderSb = reconciled.storyboard;
+    setStoryboard(renderSb);
+
+    // Persist reconciled storyboard before render
+    try {
+      await saveStoryboard(renderSb);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
       setRendering(false);
@@ -238,7 +276,7 @@ export function SlideshowGeneratorPanel({
         author_avatar_url: string | null;
         caption: string | null;
       }>();
-      for (const it of input.items) {
+      for (const it of freshInput.items) {
         itemMeta.set(it.content_item_id, {
           url: it.media_url,
           thumbnail_url: it.thumbnail_url,
@@ -249,14 +287,29 @@ export function SlideshowGeneratorPanel({
         });
       }
 
+      // Defense-in-depth: every photo/video scene in the reconciled
+      // storyboard must resolve to a valid media URL. If not, abort
+      // loudly so the user doesn't silently get a gradient placeholder.
+      const unresolved = renderSb.scenes.filter((sc) => {
+        if (sc.type !== "photo" && sc.type !== "video") return false;
+        if (!sc.content_item_id) return true;
+        const meta = itemMeta.get(sc.content_item_id);
+        return !meta?.url && !meta?.thumbnail_url;
+      });
+      if (unresolved.length > 0) {
+        throw new Error(
+          `${unresolved.length} Foto${unresolved.length === 1 ? "" : "s"} konnte${unresolved.length === 1 ? "" : "n"} nicht zugeordnet werden — bitte Sammlung neu laden.`
+        );
+      }
+
       const result = await renderSlideshow({
-        storyboard,
+        storyboard: renderSb,
         format,
         itemMeta,
-        eventName: input.event.name,
-        eventCoverUrl: input.event.cover_url,
-        agendaTitle: input.agenda_item.title,
-        agendaDate: input.agenda_item.date,
+        eventName: freshInput.event.name,
+        eventCoverUrl: freshInput.event.cover_url,
+        agendaTitle: freshInput.agenda_item.title,
+        agendaDate: freshInput.agenda_item.date,
         signal: ctrl.signal,
         onProgress: setProgress,
       });
