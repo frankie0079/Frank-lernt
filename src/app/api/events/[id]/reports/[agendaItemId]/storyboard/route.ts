@@ -13,6 +13,8 @@ import {
   storyboardSchema,
   type StoryboardInput,
   SLIDESHOW_MAX_DURATION_MS,
+  SLIDESHOW_MIN_SCENE_MS,
+  SLIDESHOW_MAX_SCENE_MS,
 } from "@/lib/slideshow/storyboard-types";
 import {
   buildStoryboardSystemPrompt,
@@ -251,6 +253,63 @@ export async function POST(
           message: "KI-Antwort ist kein JSON",
           rawText: llmText.slice(0, 200),
         };
+      }
+    }
+
+    // Sanitize LLM output: clamp numeric + string fields into the Zod
+    // bounds before validation so small LLM schludrichkeiten
+    // (duration_ms = 1200, title = 200 chars) don't fail the whole
+    // call. We still reject structural / semantic problems below.
+    if (parsed && typeof parsed === "object") {
+      const p = parsed as Record<string, unknown>;
+      if (typeof p.title === "string") {
+        p.title = (p.title as string).slice(0, 120);
+      }
+      if (Array.isArray(p.scenes)) {
+        for (const scRaw of p.scenes as unknown[]) {
+          if (!scRaw || typeof scRaw !== "object") continue;
+          const sc = scRaw as Record<string, unknown>;
+          if (typeof sc.duration_ms === "number") {
+            sc.duration_ms = Math.max(
+              SLIDESHOW_MIN_SCENE_MS,
+              Math.min(SLIDESHOW_MAX_SCENE_MS, Math.round(sc.duration_ms))
+            );
+          }
+          if (typeof sc.overlay_text === "string") {
+            sc.overlay_text = (sc.overlay_text as string).slice(0, 280);
+          }
+        }
+        // After clamping per-scene, if total still exceeds budget, shrink
+        // all scenes proportionally. Floor-clamp to MIN so Zod passes.
+        const total = (p.scenes as Record<string, unknown>[]).reduce(
+          (sum, sc) =>
+            sum + (typeof sc.duration_ms === "number" ? (sc.duration_ms as number) : 0),
+          0
+        );
+        if (total > SLIDESHOW_MAX_DURATION_MS) {
+          const scale = SLIDESHOW_MAX_DURATION_MS / total;
+          for (const scRaw of p.scenes as unknown[]) {
+            const sc = scRaw as Record<string, unknown>;
+            if (typeof sc.duration_ms === "number") {
+              sc.duration_ms = Math.max(
+                SLIDESHOW_MIN_SCENE_MS,
+                Math.min(
+                  SLIDESHOW_MAX_SCENE_MS,
+                  Math.floor((sc.duration_ms as number) * scale)
+                )
+              );
+            }
+          }
+        }
+      }
+      if (Array.isArray(p.chapters)) {
+        for (const chRaw of p.chapters as unknown[]) {
+          if (!chRaw || typeof chRaw !== "object") continue;
+          const ch = chRaw as Record<string, unknown>;
+          if (typeof ch.title === "string") {
+            ch.title = (ch.title as string).slice(0, 80);
+          }
+        }
       }
     }
 
