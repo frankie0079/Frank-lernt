@@ -28,9 +28,15 @@ function mapRpcError(code: string | undefined) {
   }
 }
 
+// duration_sec is a sanity check, not a hard product limit. The real
+// cap comes from the storyboard budget (SLIDESHOW_MAX_DURATION_MS) +
+// intro/outro phases — a 60 s target film can measure 60–62 s in
+// practice due to scene reconcile, rounding, or LLM leeway. Rejecting
+// the whole upload on that margin is user-hostile, so we allow up to
+// 10 minutes here.
 const postBodySchema = z.object({
   slideshow_url: z.string().min(1).max(500),
-  duration_sec: z.number().int().min(1).max(60),
+  duration_sec: z.number().int().min(1).max(600),
 });
 
 export async function POST(
