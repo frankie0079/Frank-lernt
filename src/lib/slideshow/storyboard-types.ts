@@ -7,7 +7,10 @@
 import { z } from "zod";
 
 export const SLIDESHOW_MAX_DURATION_MS = 50_500;
-export const SLIDESHOW_MIN_SCENE_MS = 3_000;
+// Min scene length is 1.5 s so films with many curated photos (up to ~33)
+// still fit in the 50.5 s scene budget. The LLM is instructed to prefer
+// 4–5 s and only drop below when the budget is tight.
+export const SLIDESHOW_MIN_SCENE_MS = 1_500;
 export const SLIDESHOW_MAX_SCENE_MS = 6_000;
 
 export const STORYBOARD_MOODS = ["epic", "chill", "joyful", "reflective"] as const;
