@@ -18,7 +18,6 @@ import {
   renderSlideshow,
   type RenderProgress,
 } from "@/lib/slideshow/renderer";
-import { reconcileStoryboardWithItems } from "@/lib/slideshow/reconcile";
 import type { Storyboard, StoryboardInputItem } from "@/lib/slideshow/storyboard-types";
 
 interface MusicTrackOption {
@@ -116,39 +115,23 @@ export function SlideshowGeneratorPanel({
         setInput(data.input);
         setMusicTracks(data.music_library);
 
-        // Reconcile on load so the editor always shows every currently-
-        // curated photo — even if the saved storyboard is stale from a
-        // previous plan. Silently persist the fix so the DB stays in sync.
-        let serverSb = data.input.existing_storyboard;
-        if (serverSb) {
-          const rec = reconcileStoryboardWithItems(serverSb, data.input.items);
-          if (rec.added > 0 || rec.removed > 0) {
-            serverSb = rec.storyboard;
-            // Fire-and-forget save. saveStoryboard updates the sync ref on ok.
-            void saveStoryboard(serverSb).catch(() => {});
-            if (!silent) {
-              const parts: string[] = [];
-              if (rec.added > 0)
-                parts.push(`${rec.added} Foto${rec.added === 1 ? "" : "s"} hinzugefügt`);
-              if (rec.removed > 0)
-                parts.push(`${rec.removed} Szene${rec.removed === 1 ? "" : "n"} entfernt`);
-              toast.info(`Storyboard aktualisiert: ${parts.join(", ")}`);
-            }
-          }
-        }
-
-        const finalSb = serverSb;
+        // NOTE: we deliberately do NOT reconcile the storyboard on load —
+        // that would silently re-add scenes for photos the admin had
+        // manually removed from the storyboard editor. Reconcile runs
+        // later in handleRender, which is the only point where we need
+        // to guarantee the film matches the curated selection.
+        const serverSb = data.input.existing_storyboard;
         setStoryboard((prev) => {
-          if (!prev) return finalSb;
+          if (!prev) return serverSb;
           // Adopt server version only if local matches what we last synced,
           // i.e. the user has no unsaved local edits.
           const prevJson = JSON.stringify(prev);
           if (prevJson === syncedStoryboardJsonRef.current) {
-            return finalSb;
+            return serverSb;
           }
           return prev;
         });
-        syncedStoryboardJsonRef.current = finalSb ? JSON.stringify(finalSb) : null;
+        syncedStoryboardJsonRef.current = serverSb ? JSON.stringify(serverSb) : null;
         setError(null);
       } catch (err) {
         if (!silent) setError(err instanceof Error ? err.message : "Fehler");
@@ -156,7 +139,7 @@ export function SlideshowGeneratorPanel({
         if (!silent) setLoading(false);
       }
     },
-    [eventId, agendaItemId, saveStoryboard]
+    [eventId, agendaItemId]
   );
 
   useEffect(() => {
@@ -239,9 +222,11 @@ export function SlideshowGeneratorPanel({
     }
     setProgress(null);
 
-    // Refresh curation state so we render the ACTUAL current selection —
-    // the user may have added/removed photos after the last LLM plan, and
-    // the storyboard in local state wouldn't reflect that otherwise.
+    // Refresh freshInput so the itemMeta map below has current media URLs.
+    // We intentionally do NOT reconcile the storyboard against items — the
+    // admin's scene edits (including deletions) are honored 1:1. If they
+    // want a photo included that isn't in the storyboard, they have to add
+    // the scene explicitly or re-plan via the KI button.
     let freshInput = input;
     try {
       const res = await fetch(
@@ -260,23 +245,9 @@ export function SlideshowGeneratorPanel({
       /* non-fatal — fall back to cached input */
     }
 
-    // Reconcile: guarantee every currently-curated photo/video is a scene
-    // in the storyboard, and that no scene references a removed item. If
-    // the reconciled storyboard differs, notify the user + persist it.
-    const reconciled = reconcileStoryboardWithItems(storyboard, freshInput.items);
-    const didChange = reconciled.added > 0 || reconciled.removed > 0;
-    if (didChange) {
-      const parts: string[] = [];
-      if (reconciled.added > 0)
-        parts.push(`${reconciled.added} Foto${reconciled.added === 1 ? "" : "s"} hinzugefügt`);
-      if (reconciled.removed > 0)
-        parts.push(`${reconciled.removed} Szene${reconciled.removed === 1 ? "" : "n"} entfernt`);
-      toast.info(`Storyboard aktualisiert: ${parts.join(", ")}`);
-    }
-    const renderSb = reconciled.storyboard;
-    setStoryboard(renderSb);
+    const renderSb = storyboard;
 
-    // Persist reconciled storyboard before render
+    // Persist current storyboard before render
     try {
       await saveStoryboard(renderSb);
     } catch (err) {
@@ -337,56 +308,84 @@ export function SlideshowGeneratorPanel({
 
       blobUrlRef.current = URL.createObjectURL(result.blob);
       const durationSec = Math.round(result.durationMs / 1000);
+      const sizeMb = (result.blob.size / 1024 / 1024).toFixed(1);
 
-      // Auto-upload + publish: the user just wants to see the film pinned
-      // at the top of the curation page. We merge the old "Publish"
-      // step into Render so there's no second click.
+      // Auto-upload + publish: one render = one click. Each step is
+      // toasted explicitly so a stuck upload/publish is visible.
       setProgress({ phase: "finalizing", current: 100, total: 100, message: "Lade hoch…" });
+      toast.message(`Film gerendert (${sizeMb} MB, ${durationSec}s) — lade hoch…`);
+
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
       const path = `${eventId}/${agendaItemId}.${result.extension}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("slideshows")
-        .upload(path, result.blob, {
-          contentType:
-            result.blob.type ||
-            (result.extension === "mp4" ? "video/mp4" : "video/webm"),
-          upsert: true,
-        });
-      if (uploadErr) throw uploadErr;
+
+      let uploadResult;
+      try {
+        uploadResult = await supabase.storage
+          .from("slideshows")
+          .upload(path, result.blob, {
+            contentType:
+              result.blob.type ||
+              (result.extension === "mp4" ? "video/mp4" : "video/webm"),
+            upsert: true,
+          });
+      } catch (upErr) {
+        console.error("[slideshow] upload threw:", upErr);
+        throw new Error(
+          `Upload fehlgeschlagen: ${upErr instanceof Error ? upErr.message : "unbekannter Netzwerkfehler"}`
+        );
+      }
+      if (uploadResult.error) {
+        console.error("[slideshow] upload error:", uploadResult.error);
+        throw new Error(`Upload fehlgeschlagen: ${uploadResult.error.message}`);
+      }
+
+      toast.message("Upload fertig — veröffentliche…");
+
       const {
         data: { publicUrl },
       } = supabase.storage.from("slideshows").getPublicUrl(path);
-
-      // Cache-buster: the storage URL is stable across re-renders since we
-      // upsert the same path. Append a timestamp so the browser + the
-      // SlideshowDisplayCard load the fresh video.
+      // Cache-buster so the video player reloads after re-render (same path).
       const cacheBustedUrl = `${publicUrl}?v=${Date.now()}`;
 
-      const pubRes = await fetch(
-        `/api/events/${eventId}/reports/${agendaItemId}/publish-slideshow`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slideshow_url: cacheBustedUrl,
-            duration_sec: durationSec,
-          }),
-        }
-      );
+      let pubRes: Response;
+      try {
+        pubRes = await fetch(
+          `/api/events/${eventId}/reports/${agendaItemId}/publish-slideshow`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              slideshow_url: cacheBustedUrl,
+              duration_sec: durationSec,
+            }),
+          }
+        );
+      } catch (pubErr) {
+        console.error("[slideshow] publish threw:", pubErr);
+        throw new Error(
+          `Veröffentlichen fehlgeschlagen: ${pubErr instanceof Error ? pubErr.message : "Netzwerkfehler"}`
+        );
+      }
       if (!pubRes.ok) {
         const data = await pubRes.json().catch(() => ({}));
-        throw new Error(data.error || "Veröffentlichen fehlgeschlagen");
+        console.error("[slideshow] publish non-ok:", pubRes.status, data);
+        throw new Error(
+          `Veröffentlichen fehlgeschlagen (${pubRes.status}): ${data.error ?? "unbekannt"}`
+        );
       }
+
       toast.success("Film fertig!");
       onSlideshowPublished?.(cacheBustedUrl, durationSec);
     } catch (err) {
       if (err instanceof Error && err.message === "Abgebrochen") {
         toast.message("Rendering abgebrochen");
       } else {
-        toast.error(err instanceof Error ? err.message : "Rendering fehlgeschlagen");
+        const msg = err instanceof Error ? err.message : "Rendering fehlgeschlagen";
+        console.error("[slideshow] handleRender failed:", err);
+        toast.error(msg, { duration: 10000 });
       }
     } finally {
       setRendering(false);
