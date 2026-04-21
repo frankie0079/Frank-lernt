@@ -61,18 +61,29 @@ function dimensionsFor(format: "portrait" | "landscape") {
     : { width: 1920, height: 1080 };
 }
 
-async function loadImageOnce(url: string): Promise<LoadedImage> {
+async function loadImageOnce(url: string, timeoutMs: number): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
+    let settled = false;
     const timeout = setTimeout(() => {
-      reject(new Error(`Image load timeout: ${url}`));
-    }, 15000);
+      if (settled) return;
+      settled = true;
+      // Detach handlers so a late-arriving load/error doesn't fire after we
+      // moved on — prevents dangling callbacks on iOS Safari.
+      img.onload = null;
+      img.onerror = null;
+      reject(new Error(`Image load timeout (${timeoutMs}ms): ${url}`));
+    }, timeoutMs);
     img.onload = () => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
       resolve(img);
     };
     img.onerror = () => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
       reject(new Error(`Image load failed: ${url}`));
     };
@@ -81,15 +92,20 @@ async function loadImageOnce(url: string): Promise<LoadedImage> {
 }
 
 async function loadImage(url: string): Promise<LoadedImage> {
-  // Retry once with a brief delay on transient network/CORS blips before
-  // giving up. Supabase Storage is generally stable but mobile networks
-  // occasionally produce spurious load failures for a single image.
+  // Two attempts, 8 s each. Hard cap ~16.5 s total. Previously 15 s/15 s
+  // caused iOS Safari + Supabase CORS edge cases to freeze the preload
+  // loop for a full half-minute per stuck image.
+  const started = performance.now();
   try {
-    return await loadImageOnce(url);
+    const img = await loadImageOnce(url, 8000);
+    console.log(`[slideshow] loaded ${((performance.now() - started)/1000).toFixed(1)}s:`, url);
+    return img;
   } catch (err) {
     console.warn("[slideshow] image load first attempt failed, retrying:", url, err);
-    await new Promise((r) => setTimeout(r, 500));
-    return await loadImageOnce(url);
+    await new Promise((r) => setTimeout(r, 400));
+    const img = await loadImageOnce(url, 8000);
+    console.log(`[slideshow] loaded (retry) ${((performance.now() - started)/1000).toFixed(1)}s:`, url);
+    return img;
   }
 }
 
@@ -395,13 +411,21 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
         loadFailures.push({ index: i, type: "video", url: "(none)" });
       }
     }
-    // Preload avatar if present
+    // Preload avatar if present — non-critical, bounded to 3 s so a hung
+    // avatar URL can't freeze the preload loop. drawAuthorBadge accepts
+    // null if the avatar didn't load in time.
     const meta = scene.content_item_id ? itemMeta.get(scene.content_item_id) : null;
     if (meta?.author_avatar_url && !avatarImages.has(meta.author_avatar_url)) {
       try {
-        avatarImages.set(meta.author_avatar_url, await loadImage(meta.author_avatar_url));
+        const avatarImg = await Promise.race([
+          loadImageOnce(meta.author_avatar_url, 3000),
+          new Promise<LoadedImage>((_, reject) =>
+            setTimeout(() => reject(new Error("avatar preload hard cap")), 3500)
+          ),
+        ]);
+        avatarImages.set(meta.author_avatar_url, avatarImg);
       } catch {
-        /* ignore */
+        /* ignore — avatar is optional */
       }
     }
   }
