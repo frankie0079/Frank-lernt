@@ -78,6 +78,30 @@ export function SlideshowGeneratorPanel({
   // fires — we must not clobber those edits.
   const syncedStoryboardJsonRef = useRef<string | null>(null);
 
+  const saveStoryboard = useCallback(
+    async (sb: Storyboard): Promise<boolean> => {
+      try {
+        const res = await fetch(
+          `/api/events/${eventId}/reports/${agendaItemId}/storyboard`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ storyboard: sb }),
+          }
+        );
+        if (res.ok) {
+          syncedStoryboardJsonRef.current = JSON.stringify(sb);
+          return true;
+        }
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Speichern fehlgeschlagen");
+      } catch (err) {
+        throw err instanceof Error ? err : new Error("Speichern fehlgeschlagen");
+      }
+    },
+    [eventId, agendaItemId]
+  );
+
   const loadInput = useCallback(
     async (opts?: { silent?: boolean }) => {
       const silent = opts?.silent === true;
@@ -92,18 +116,39 @@ export function SlideshowGeneratorPanel({
         setInput(data.input);
         setMusicTracks(data.music_library);
 
-        const serverSb = data.input.existing_storyboard;
+        // Reconcile on load so the editor always shows every currently-
+        // curated photo — even if the saved storyboard is stale from a
+        // previous plan. Silently persist the fix so the DB stays in sync.
+        let serverSb = data.input.existing_storyboard;
+        if (serverSb) {
+          const rec = reconcileStoryboardWithItems(serverSb, data.input.items);
+          if (rec.added > 0 || rec.removed > 0) {
+            serverSb = rec.storyboard;
+            // Fire-and-forget save. saveStoryboard updates the sync ref on ok.
+            void saveStoryboard(serverSb).catch(() => {});
+            if (!silent) {
+              const parts: string[] = [];
+              if (rec.added > 0)
+                parts.push(`${rec.added} Foto${rec.added === 1 ? "" : "s"} hinzugefügt`);
+              if (rec.removed > 0)
+                parts.push(`${rec.removed} Szene${rec.removed === 1 ? "" : "n"} entfernt`);
+              toast.info(`Storyboard aktualisiert: ${parts.join(", ")}`);
+            }
+          }
+        }
+
+        const finalSb = serverSb;
         setStoryboard((prev) => {
-          if (!prev) return serverSb;
+          if (!prev) return finalSb;
           // Adopt server version only if local matches what we last synced,
           // i.e. the user has no unsaved local edits.
           const prevJson = JSON.stringify(prev);
           if (prevJson === syncedStoryboardJsonRef.current) {
-            return serverSb;
+            return finalSb;
           }
           return prev;
         });
-        syncedStoryboardJsonRef.current = serverSb ? JSON.stringify(serverSb) : null;
+        syncedStoryboardJsonRef.current = finalSb ? JSON.stringify(finalSb) : null;
         setError(null);
       } catch (err) {
         if (!silent) setError(err instanceof Error ? err.message : "Fehler");
@@ -111,7 +156,7 @@ export function SlideshowGeneratorPanel({
         if (!silent) setLoading(false);
       }
     },
-    [eventId, agendaItemId]
+    [eventId, agendaItemId, saveStoryboard]
   );
 
   useEffect(() => {
@@ -170,30 +215,6 @@ export function SlideshowGeneratorPanel({
       // Debounced save would be nicer; for MVP we save on render instead.
     },
     []
-  );
-
-  const saveStoryboard = useCallback(
-    async (sb: Storyboard): Promise<boolean> => {
-      try {
-        const res = await fetch(
-          `/api/events/${eventId}/reports/${agendaItemId}/storyboard`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ storyboard: sb }),
-          }
-        );
-        if (res.ok) {
-          syncedStoryboardJsonRef.current = JSON.stringify(sb);
-          return true;
-        }
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Speichern fehlgeschlagen");
-      } catch (err) {
-        throw err instanceof Error ? err : new Error("Speichern fehlgeschlagen");
-      }
-    },
-    [eventId, agendaItemId]
   );
 
   const handleSave = useCallback(async () => {
