@@ -22,10 +22,18 @@ export async function createAudioMixer(trackUrl: string): Promise<AudioMixerHand
   const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const context = new AudioCtx();
 
-  // Fetch + decode the MP3 into an AudioBuffer (iOS-safe).
-  const res = await fetch(trackUrl);
-  if (!res.ok) throw new Error(`Music load failed: HTTP ${res.status}`);
-  const arrayBuffer = await res.arrayBuffer();
+  // Fetch + decode the MP3 into an AudioBuffer (iOS-safe). Hard 10 s
+  // timeout so a hung network request can't freeze the whole render.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  let arrayBuffer: ArrayBuffer;
+  try {
+    const res = await fetch(trackUrl, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Music load failed: HTTP ${res.status}`);
+    arrayBuffer = await res.arrayBuffer();
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const audioBuffer = await context.decodeAudioData(arrayBuffer);
 
   const gain = context.createGain();

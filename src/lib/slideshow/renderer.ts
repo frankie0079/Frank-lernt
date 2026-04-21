@@ -441,19 +441,33 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   }
 
   // 2. Setup canvas
+  onProgress?.({
+    phase: "preloading",
+    current: totalToLoad,
+    total: totalToLoad,
+    message: "Bereite Leinwand vor…",
+  });
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d", { alpha: false })!;
   ctx.imageSmoothingQuality = "high";
 
-  // 3. Setup audio
+  // 3. Setup audio — non-blocking: a hung music fetch won't freeze the
+  // render, the audio mixer has its own 10 s timeout and we fall back to
+  // a silent render if it fails.
+  onProgress?.({
+    phase: "preloading",
+    current: totalToLoad,
+    total: totalToLoad,
+    message: "Lade Musik…",
+  });
   const track = findTrack(storyboard.music_track_id) ?? pickDefaultTrack(storyboard.mood);
   let mixer: AudioMixerHandle | null = null;
   try {
     mixer = await createAudioMixer(track.file);
-  } catch {
-    // Music load failed — render silent
+  } catch (e) {
+    console.warn("[slideshow] music load failed, rendering silent:", e);
     mixer = null;
   }
   checkAbort();
