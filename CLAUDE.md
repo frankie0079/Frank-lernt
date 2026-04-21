@@ -114,7 +114,7 @@ npm run start      # Production server
 ## Aktueller Stand
 
 ### Deployed (Production)
-- **PROJ-24: Auth & User-Accounts** — QA Round 4 passed (14/14 AC, 0 bugs). 2026-04-16: Login-Cookie von 30 Tagen auf 1 Jahr verlängert (iPhone-Tippen ist mühsam).
+- **PROJ-24: Auth & User-Accounts** — QA Round 4 passed (14/14 AC, 0 bugs). 2026-04-16: Login-Cookie von 30 Tagen auf 1 Jahr verlängert (iPhone-Tippen ist mühsam). 2026-04-21: auf 3 Jahre erhöht (Frank will selten re-loggen, auch Folge-Events bleiben im selben Cookie-Fenster).
 - **PROJ-25: Event-Erstellung** — Deployed 2026-04-06 (BUG-R2-1 deferred to PROJ-33). 2026-04-13: Cover-URL-Validierung gefixt (akzeptiert jetzt alle Supabase-URLs), Abbrechen-Button im Edit-Sheet, Auto-Focus/Autofill auf Event-Name deaktiviert.
 - **PROJ-26: Teilnehmer-Einladung** — Deployed 2026-04-06, QA Round 6 in Production passed (Migration `20260406_event_members_id_column.sql` angewendet, Schema-Drift behoben, BUG-3 Error-Sanitization gefixt).
 - **PROJ-27: Wanderer-Screen** — Deployed, QA passed. 2026-04-13: Camera-Permissions-Check entfernt (blockierte iOS Safari), `capture="environment"` für direkten Kamerazugriff wiederhergestellt.

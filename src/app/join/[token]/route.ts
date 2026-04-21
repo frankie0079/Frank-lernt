@@ -49,7 +49,9 @@ export async function GET(
       return NextResponse.redirect(url);
     }
 
-    // Set member_token cookie (30 days)
+    // Set member_token cookie (3 years). Tippen eines neuen Tokens auf dem
+    // iPhone ist so muehsam, dass Re-Login selten sein muss — 3 Jahre
+    // umfassen auch Folge-Events der gleichen Gruppe.
     const url = request.nextUrl.clone();
     url.pathname = "/events";
     url.search = "";
@@ -60,7 +62,7 @@ export async function GET(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365, // 1 year — user must not re-enter token every month
+      maxAge: 60 * 60 * 24 * 365 * 3, // 3 years
     });
 
     return response;
