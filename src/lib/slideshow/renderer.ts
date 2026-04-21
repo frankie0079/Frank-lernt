@@ -481,9 +481,12 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
   }
 
   const chunks: Blob[] = [];
+  // 2.5 Mbps keeps a 60 s 1080×1920 film well under 20 MB (including
+  // audio + container) so uploads to the 50 MB `slideshows` bucket
+  // don't fail even if the film runs slightly long.
   const recorder = new MediaRecorder(combined, {
     mimeType,
-    videoBitsPerSecond: 4_000_000,
+    videoBitsPerSecond: 2_500_000,
   });
   recorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) chunks.push(e.data);

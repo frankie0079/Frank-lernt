@@ -268,7 +268,7 @@ export function SlideshowGeneratorPanel({
     // Reconcile storyboard against the CURRENT curated selection. This
     // is the final safety net: the photo grid is the source of truth, so
     // every marked photo must have a scene and no scene may reference an
-    // unmarked photo.
+    // unmarked photo. Reconcile also guarantees total ≤ SCENE budget.
     const reconciled = reconcileStoryboardWithItems(storyboard, freshInput.items);
     if (reconciled.added > 0 || reconciled.removed > 0) {
       const parts: string[] = [];
@@ -279,6 +279,21 @@ export function SlideshowGeneratorPanel({
       toast.info(`Storyboard an Auswahl angepasst: ${parts.join(", ")}`);
     }
     const renderSb = reconciled.storyboard;
+
+    // Hard-cap: defensively recompute total, shrink again if reconcile
+    // somehow left it over. Before this guard, an over-budget storyboard
+    // could sneak into the renderer and produce an 87 s video that
+    // exceeded the 50 MB storage limit at upload time.
+    {
+      const total = renderSb.scenes.reduce((sum, s) => sum + s.duration_ms, 0);
+      if (total > 50500) {
+        const scale = 50500 / total;
+        for (const s of renderSb.scenes) {
+          s.duration_ms = Math.max(1500, Math.min(6000, Math.floor(s.duration_ms * scale)));
+        }
+        console.warn("[slideshow] hard-capped storyboard from", total, "to", renderSb.scenes.reduce((sum, s) => sum + s.duration_ms, 0));
+      }
+    }
     setStoryboard(renderSb);
 
     // Persist reconciled storyboard before render

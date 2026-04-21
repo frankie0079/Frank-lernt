@@ -84,31 +84,61 @@ export function reconcileStoryboardWithItems(
 
   const merged: Scene[] = [...keptScenes, ...appended];
 
-  // 3. Fit to budget. Non-photo scenes are fixed; photo/video scenes shrink
-  //    proportionally down to SLIDESHOW_MIN_SCENE_MS. If the photo budget
-  //    can't fit even at min duration, fall through with min duration —
-  //    the resulting storyboard may exceed the hard cap, which the Zod
-  //    schema will reject upstream; the render path should surface that
-  //    as a clear error rather than silently drop frames.
-  const totalMs = merged.reduce((sum, s) => sum + s.duration_ms, 0);
+  // 3. Fit to budget — bulletproof. Three stages:
+  //    a) Shrink only photo/video scenes first (preserves LLM pacing for
+  //       cover + chapter-title beats).
+  //    b) If that's not enough, shrink ALL scenes proportionally.
+  //    c) Final guard: if somehow still over (e.g. scene count × MIN >
+  //       budget), clamp each to MIN and drop trailing non-photo scenes
+  //       until it fits. Photos are never dropped by reconcile — the
+  //       whole point is that every curated photo appears in the film.
+  let totalMs = merged.reduce((sum, s) => sum + s.duration_ms, 0);
   let rebalanced = false;
+
   if (totalMs > SLIDESHOW_MAX_DURATION_MS) {
     const photoScenes = merged.filter(isPhotoLikeScene);
     const nonPhotoMs = merged
       .filter((s) => !isPhotoLikeScene(s))
       .reduce((sum, s) => sum + s.duration_ms, 0);
     const photoBudget = SLIDESHOW_MAX_DURATION_MS - nonPhotoMs;
-    if (photoScenes.length > 0) {
-      const perScene = Math.max(
-        SLIDESHOW_MIN_SCENE_MS,
-        Math.min(
-          SLIDESHOW_MAX_SCENE_MS,
-          Math.floor(photoBudget / photoScenes.length)
-        )
+
+    // Stage a: can we fit by shrinking photos alone (each ≥ MIN)?
+    if (
+      photoScenes.length > 0 &&
+      photoBudget >= photoScenes.length * SLIDESHOW_MIN_SCENE_MS
+    ) {
+      const perScene = Math.min(
+        SLIDESHOW_MAX_SCENE_MS,
+        Math.floor(photoBudget / photoScenes.length)
       );
       for (const s of photoScenes) s.duration_ms = perScene;
-      rebalanced = true;
+    } else {
+      // Stage b: shrink everything proportionally.
+      const scale = SLIDESHOW_MAX_DURATION_MS / totalMs;
+      for (const s of merged) {
+        s.duration_ms = Math.max(
+          SLIDESHOW_MIN_SCENE_MS,
+          Math.min(SLIDESHOW_MAX_SCENE_MS, Math.floor(s.duration_ms * scale))
+        );
+      }
+      // Stage c: if MIN-clamp pushes us back over (many scenes × MIN), drop
+      // trailing non-photo scenes (cover/chapter-title) until it fits.
+      // Photos remain — that invariant is the reason reconcile exists.
+      totalMs = merged.reduce((sum, s) => sum + s.duration_ms, 0);
+      while (totalMs > SLIDESHOW_MAX_DURATION_MS) {
+        let dropIdx = -1;
+        for (let i = merged.length - 1; i >= 0; i--) {
+          if (!isPhotoLikeScene(merged[i])) {
+            dropIdx = i;
+            break;
+          }
+        }
+        if (dropIdx === -1) break; // nothing but photos — stop and accept
+        merged.splice(dropIdx, 1);
+        totalMs = merged.reduce((sum, s) => sum + s.duration_ms, 0);
+      }
     }
+    rebalanced = true;
   }
 
   return {
