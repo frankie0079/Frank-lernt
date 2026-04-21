@@ -68,10 +68,26 @@ export function SlideshowDisplayCard({
     }
   };
 
+  // Strip the cache-buster query string before extracting the extension —
+  // the URL looks like `.../video.mp4?v=1713744000000`, so `endsWith(".mp4")`
+  // on the full URL returns false and we'd mistakenly treat MP4 files as
+  // webm. That's what broke WhatsApp-Teilen.
+  const pathOnly = slideshowUrl.split("?")[0];
+  const extension: "mp4" | "webm" = pathOnly.endsWith(".mp4") ? "mp4" : "webm";
+  const mimeType = extension === "mp4" ? "video/mp4" : "video/webm";
+  // Sanitize filename: strip anything that isn't alphanumeric, space, dash,
+  // underscore. iOS Share Sheet + WhatsApp refuse filenames with certain
+  // characters (colons, slashes).
+  const safeTitle = (title ?? "film")
+    .replace(/[^\p{L}\p{N} _-]/gu, "")
+    .trim()
+    .slice(0, 80) || "film";
+  const filename = `${safeTitle}.${extension}`;
+
   const handleDownload = () => {
     const a = document.createElement("a");
     a.href = slideshowUrl;
-    a.download = `film-${title ?? "tag"}.${slideshowUrl.endsWith(".mp4") ? "mp4" : "webm"}`;
+    a.download = filename;
     a.target = "_blank";
     document.body.appendChild(a);
     a.click();
@@ -81,22 +97,33 @@ export function SlideshowDisplayCard({
   const handleShare = async () => {
     setSharing(true);
     try {
-      // Fetch the remote blob so it can be shared as a file via navigator.share.
       const res = await fetch(slideshowUrl);
-      const blob = await res.blob();
-      const ext = slideshowUrl.endsWith(".mp4") ? "mp4" : "webm";
-      const file = new File([blob], `film-${title ?? "tag"}.${ext}`, { type: blob.type });
-      if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: title ?? "Film" });
-      } else {
-        toast.error("Teilen wird vom Browser nicht unterstützt — bitte herunterladen.");
+      if (!res.ok) {
+        throw new Error(`Download fehlgeschlagen (${res.status})`);
       }
+      const remoteBlob = await res.blob();
+      // Force the MIME type we know is correct — remote CDN sometimes
+      // returns octet-stream which WhatsApp rejects.
+      const typedBlob = new Blob([remoteBlob], { type: mimeType });
+      const file = new File([typedBlob], filename, { type: mimeType });
+
+      if (typeof navigator === "undefined" || !navigator.share) {
+        toast.error("Teilen wird von diesem Browser nicht unterstützt — nutze Herunterladen.");
+        return;
+      }
+      // Some browsers implement `share` but not `canShare`; only call
+      // canShare if available, otherwise attempt share + catch.
+      if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+        toast.error("Dateityp wird nicht unterstützt — nutze Herunterladen.");
+        return;
+      }
+      await navigator.share({ files: [file], title: safeTitle });
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        /* user cancelled */
-      } else {
-        toast.error("Teilen fehlgeschlagen");
-      }
+      // AbortError = user dismissed the share sheet; not an error.
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error("[slideshow] share failed:", err);
+      const msg = err instanceof Error ? err.message : "Teilen fehlgeschlagen";
+      toast.error(`Teilen fehlgeschlagen: ${msg}`, { duration: 10000 });
     } finally {
       setSharing(false);
     }
