@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   SLIDESHOW_MAX_DURATION_MS,
   type Storyboard,
@@ -61,10 +61,6 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
     onChange({ ...storyboard, scenes: next });
   };
 
-  const removeScene = (idx: number) => {
-    if (storyboard.scenes.length <= 1) return;
-    onChange({ ...storyboard, scenes: storyboard.scenes.filter((_, i) => i !== idx) });
-  };
 
   return (
     <div className="space-y-4">
@@ -152,16 +148,6 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
                     disabled={i === storyboard.scenes.length - 1}
                   >
                     <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => removeScene(i)}
-                    aria-label="Entfernen"
-                    disabled={storyboard.scenes.length <= 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

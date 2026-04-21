@@ -18,6 +18,7 @@ import {
   renderSlideshow,
   type RenderProgress,
 } from "@/lib/slideshow/renderer";
+import { reconcileStoryboardWithItems } from "@/lib/slideshow/reconcile";
 import type { Storyboard, StoryboardInputItem } from "@/lib/slideshow/storyboard-types";
 
 interface MusicTrackOption {
@@ -115,12 +116,27 @@ export function SlideshowGeneratorPanel({
         setInput(data.input);
         setMusicTracks(data.music_library);
 
-        // NOTE: we deliberately do NOT reconcile the storyboard on load —
-        // that would silently re-add scenes for photos the admin had
-        // manually removed from the storyboard editor. Reconcile runs
-        // later in handleRender, which is the only point where we need
-        // to guarantee the film matches the curated selection.
-        const serverSb = data.input.existing_storyboard;
+        // Reconcile on load: the photo grid is the single source of
+        // truth. Whatever's curated there must appear in the storyboard;
+        // whatever's uncurated must not. Scene-delete in the editor was
+        // removed (PROJ-34, 2026-04-21) exactly so this invariant holds.
+        let serverSb = data.input.existing_storyboard;
+        if (serverSb) {
+          const rec = reconcileStoryboardWithItems(serverSb, data.input.items);
+          if (rec.added > 0 || rec.removed > 0) {
+            serverSb = rec.storyboard;
+            // Fire-and-forget persist so the DB matches what we just drew.
+            void saveStoryboard(serverSb).catch(() => {});
+            if (!silent) {
+              const parts: string[] = [];
+              if (rec.added > 0)
+                parts.push(`${rec.added} Foto${rec.added === 1 ? "" : "s"} hinzugefügt`);
+              if (rec.removed > 0)
+                parts.push(`${rec.removed} Szene${rec.removed === 1 ? "" : "n"} entfernt`);
+              toast.info(`Storyboard an Auswahl angepasst: ${parts.join(", ")}`);
+            }
+          }
+        }
         setStoryboard((prev) => {
           if (!prev) return serverSb;
           // Adopt server version only if local matches what we last synced,
@@ -139,7 +155,7 @@ export function SlideshowGeneratorPanel({
         if (!silent) setLoading(false);
       }
     },
-    [eventId, agendaItemId]
+    [eventId, agendaItemId, saveStoryboard]
   );
 
   useEffect(() => {
@@ -222,11 +238,9 @@ export function SlideshowGeneratorPanel({
     }
     setProgress(null);
 
-    // Refresh freshInput so the itemMeta map below has current media URLs.
-    // We intentionally do NOT reconcile the storyboard against items — the
-    // admin's scene edits (including deletions) are honored 1:1. If they
-    // want a photo included that isn't in the storyboard, they have to add
-    // the scene explicitly or re-plan via the KI button.
+    // Always re-fetch the curated selection just before rendering so we
+    // can't render with a stale itemMeta or a storyboard that drifted
+    // from the photo grid.
     let freshInput = input;
     try {
       const res = await fetch(
@@ -245,9 +259,23 @@ export function SlideshowGeneratorPanel({
       /* non-fatal — fall back to cached input */
     }
 
-    const renderSb = storyboard;
+    // Reconcile storyboard against the CURRENT curated selection. This
+    // is the final safety net: the photo grid is the source of truth, so
+    // every marked photo must have a scene and no scene may reference an
+    // unmarked photo.
+    const reconciled = reconcileStoryboardWithItems(storyboard, freshInput.items);
+    if (reconciled.added > 0 || reconciled.removed > 0) {
+      const parts: string[] = [];
+      if (reconciled.added > 0)
+        parts.push(`${reconciled.added} Foto${reconciled.added === 1 ? "" : "s"} hinzugefügt`);
+      if (reconciled.removed > 0)
+        parts.push(`${reconciled.removed} Szene${reconciled.removed === 1 ? "" : "n"} entfernt`);
+      toast.info(`Storyboard an Auswahl angepasst: ${parts.join(", ")}`);
+    }
+    const renderSb = reconciled.storyboard;
+    setStoryboard(renderSb);
 
-    // Persist current storyboard before render
+    // Persist reconciled storyboard before render
     try {
       await saveStoryboard(renderSb);
     } catch (err) {
