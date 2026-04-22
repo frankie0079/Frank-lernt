@@ -6,6 +6,9 @@ const withSerwist = withSerwistInit({
 });
 
 export default withSerwist({
+  // @react-pdf/renderer ships as ESM and needs to be transpiled by Next/webpack
+  // (PROJ-37 PDF-Export).
+  transpilePackages: ["@react-pdf/renderer"],
   images: {
     remotePatterns: [
       {

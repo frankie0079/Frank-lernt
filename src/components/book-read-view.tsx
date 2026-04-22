@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
+import { BookExportDialog } from "@/components/book-export-dialog";
 import { BookPageLayout } from "@/components/book-page-layout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,14 @@ import {
   Pencil,
 } from "lucide-react";
 import type { BookGetResponse, BookPage } from "@/lib/book-types";
+
+interface EventMeta {
+  name: string;
+  description?: string | null;
+  cover_url?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
 
 interface BookReadViewProps {
   eventId: string;
@@ -38,7 +47,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
 
   const [pages, setPages] = useState<BookPage[]>([]);
   const [isOrganizer, setIsOrganizer] = useState(false);
-  const [eventName, setEventName] = useState<string>("");
+  const [eventMeta, setEventMeta] = useState<EventMeta>({ name: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
@@ -66,7 +75,16 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
 
       if (eventRes.ok) {
         const eventData = await eventRes.json();
-        setEventName(eventData.event?.name || "");
+        const ev = eventData.event;
+        if (ev) {
+          setEventMeta({
+            name: ev.name || "",
+            description: ev.description ?? null,
+            cover_url: ev.cover_url ?? null,
+            start_date: ev.start_date ?? null,
+            end_date: ev.end_date ?? null,
+          });
+        }
       }
 
       setError(null);
@@ -160,6 +178,14 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
               Vorschau
             </Badge>
           )}
+          {!previewActive && (
+            <BookExportDialog
+              eventId={eventId}
+              event={eventMeta}
+              pages={pages}
+              enabled={isOrganizer}
+            />
+          )}
           {isOrganizer && !previewActive && (
             <Button variant="outline" size="sm" asChild>
               <Link href={`/events/${eventId}/book/edit`}>
@@ -176,8 +202,8 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
         <h1 className="font-[family-name:var(--font-caveat)] text-5xl font-bold leading-tight text-foreground">
           Tagebuch
         </h1>
-        {eventName && (
-          <p className="mt-1 text-base text-muted-foreground">{eventName}</p>
+        {eventMeta.name && (
+          <p className="mt-1 text-base text-muted-foreground">{eventMeta.name}</p>
         )}
       </div>
 

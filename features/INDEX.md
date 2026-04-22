@@ -28,7 +28,7 @@
 | PROJ-34 | Slideshow-Generierung & WhatsApp-Export | Deployed | [PROJ-34-slideshow-generierung.md](PROJ-34-slideshow-generierung.md) | 2026-03-08 |
 | PROJ-35 | Öffentliche Event-Seite | Deployed | [PROJ-35-oeffentliche-event-seite.md](PROJ-35-oeffentliche-event-seite.md) | 2026-03-08 |
 | PROJ-36 | Post-Event Tagebuch | Deployed | [PROJ-36-postevent-tagebuch.md](PROJ-36-postevent-tagebuch.md) | 2026-03-08 |
-| PROJ-37 | PDF-Export (Fotobuch-Druck) | Planned | [PROJ-37-pdf-export.md](PROJ-37-pdf-export.md) | 2026-03-08 |
+| PROJ-37 | PDF-Export (Fotobuch-Druck) | In Progress | [PROJ-37-pdf-export.md](PROJ-37-pdf-export.md) | 2026-03-08 |
 
 <!-- Add features above this line -->
 
