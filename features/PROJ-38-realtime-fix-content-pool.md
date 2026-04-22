@@ -1,6 +1,6 @@
 # PROJ-38: Realtime-Fix Content-Pool
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-04-22
 **Last Updated:** 2026-04-22
 
@@ -160,7 +160,70 @@ Keine neuen NPM-Pakete. Keine neuen API-Routes. Kein Supabase Storage-Zugriff.
 **Pre-apply probe (production, 2026-04-22):** Direct REST call as anon on `content_items?select=id&limit=1` returned `401 / 42501 permission denied for table content_items` — confirms the regression and the correct target for the fix.
 
 ## QA Test Results
-_To be added by /qa_
+
+**QA Date:** 2026-04-22
+**QA Round:** 1
+**Status:** PASSED (mit Einschränkung: 2-Geräte-Realtime-Test auf Benutzerwunsch übersprungen)
+
+### Test-Ausführung
+- `node scripts/verify-proj38.mjs` → 3/3 PASS (Basis-Verifier)
+- `node scripts/qa-proj38-deep.mjs` → 12/13 PASS (tiefer Security-Audit)
+- `npm run lint` → 0 errors (14 Warnings alle pre-existing, nicht aus PROJ-38)
+
+### Acceptance Criteria
+
+| # | AC | Status | Methode |
+|---|----|--------|---------|
+| 1 | Neues Foto erscheint auf anderem Gerät < 3s ohne Reload | ⚠ Nicht getestet | 2-Geräte-Test vom Benutzer explizit übersprungen. Code-Review bestätigt INSERT-Subscription korrekt; Verifier bestätigt anon CDC-SELECT entsperrt |
+| 2 | Gelöschter Beitrag verschwindet ohne Reload | ⚠ Nicht getestet | Gleiche Lage wie #1; DELETE-Handler in content-pool.tsx:330-336 ist korrekt |
+| 3 | Emoji-Reaktionen aktualisieren live | ✓ Code-Review | Reactions war vom Lockdown nicht betroffen; Deep-QA Q7 bestätigt anon SELECT auf reactions=200 |
+| 4 | Kurations-Screen zeigt live neue Beiträge | ✓ Code-Review | selectable-content-grid.tsx:192-247 nutzt identisches Muster wie content-pool |
+| 5 | Kein neuer anon-Zugriff auf sensible Daten | ✓ Deep-QA | Q2, Q3, Q4, Q5, Q6, Q8, Q9, Q10, Q11, Q12 alle PASS |
+| 6 | Funktioniert auf iOS Safari, Android Chrome, Desktop Chrome | ✓ N/A | Keine browser-spezifische Code-Pfade in PROJ-38; Supabase JS Client ist cross-browser |
+| 7 | Reconnect stellt Subscription wieder her | ✓ Code-Review | Supabase JS reconnected automatisch; `useEffect` mit fetchItems() re-fetcht bei Mount |
+| 8 | Kein Performance-Unterschied vs. pre-lockdown | ✓ Analyse | Migration stellt exakt den pre-lockdown RLS+Grant-Zustand für SELECT wieder her; keine neuen Code-Pfade |
+
+### Security-Audit (13 Probes)
+
+| # | Probe | Ergebnis |
+|---|-------|----------|
+| Q1 | anon SELECT content_items | ✓ HTTP 200 (Regression behoben) |
+| Q2 | anon UPDATE content_items | ✓ HTTP 401 (Writes bleiben gesperrt) |
+| Q3 | anon DELETE content_items | ✓ HTTP 401 (Writes bleiben gesperrt) |
+| Q4 | anon JOIN content_items→members.token | ✓ HTTP 401 (**Kritisch — Token bleibt geheim**) |
+| Q5 | anon JOIN content_items→events | ✓ HTTP 401 |
+| Q6 | anon JOIN content_items→agenda_items | ✓ HTTP 401 |
+| Q7 | anon SELECT reactions | ✓ HTTP 200 (unverändert, war schon öffentlich) |
+| Q8 | anon INSERT reactions direkt | ✓ HTTP 401 (RPC-only bleibt) |
+| Q9 | anon SELECT events | ✓ HTTP 401 (weiterhin gesperrt) |
+| Q10 | anon SELECT event_members | ✓ HTTP 401 (weiterhin gesperrt) |
+| Q11 | anon SELECT agenda_items | ✓ HTTP 401 (weiterhin gesperrt) |
+| Q12 | anon SELECT comments | ✓ HTTP 401 (weiterhin gesperrt) |
+| Q13 | get_public_event RPC mit slug | ❌ HTTP 400 — **PRE-EXISTING Bug**, nicht durch PROJ-38 verursacht |
+
+### Edge Cases verifiziert (statisch)
+
+| Edge Case | Verifikation |
+|-----------|--------------|
+| Gleichzeitige Uploads mehrerer Teilnehmer | Supabase CDC liefert jeden Event unabhängig; content-pool.tsx dedupliziert via `itemIdsRef` (Zeile 282, 297, 309) |
+| Verbindungsabbruch iOS Safari | Supabase JS Auto-Reconnect + `useEffect` re-fetcht bei Mount (Zeile 183) |
+| Nicht-Mitglied subscribed Channel | Anon sieht CDC-Events nur für content_items (keine Tokens/Member-Graph). Akzeptierte Exposition, siehe Tech-Design |
+| Löschen während andere schauen | DELETE-Handler filtert Item aus `items[]` (Zeile 330-336); React re-rendert ohne Crash |
+| 50 Teilnehmer, 500+ Beiträge | Keine neuen Subscriptions durch PROJ-38; identisches Muster zu pre-lockdown — kein Memory-Leak-Risiko |
+| Realtime-Dienst unavailable | WebSocket-Abbruch ist unabhängig von Page-State; API-Fetches liefern statischen Stand |
+
+### Gefundene Bugs
+
+**Keine PROJ-38-spezifischen Bugs gefunden.**
+
+**Pre-existing Bug entdeckt (außerhalb PROJ-38-Scope):**
+- **BUG-X1 (Pre-existing, separat zu tracken):** `public.get_public_event(p_slug)` RPC referenziert nicht-existente Spalte `ci.transcript`. HTTP 400 mit `42703: column ci.transcript does not exist`. Eingeführt in Migrationen `20260417_cover_position.sql` und `20260417_cover_scale.sql` beim Design-Pass vom 2026-04-17. Korrekter Spaltenname in `content_items` ist `caption`. Öffentliche Event-Seite `/e/[slug]` liefert daher 404/Fehler. Nicht durch PROJ-38 verursacht; PROJ-38 ändert keine RPCs. Empfehlung: eigene Fix-Migration `20260422_fix_public_event_transcript_column.sql`.
+
+### Nicht getestet
+- **Zwei-Geräte-Realtime-Smoke-Test** (AC #1, #2, #4) — vom Benutzer explizit übersprungen. Empfehlung: Beim nächsten realen Event (oder auf Desktop + iPhone parallel) manuell durchspielen. Code-Review und Verifier geben starke Zuversicht, dass es funktioniert, aber der Live-Test ist das einzige, was 3-Sekunden-Latenz unter iOS-Safari-Realbedingungen absichert.
+
+### Fazit
+PROJ-38 ist **deploymentbereit**. Die Regression ist beseitigt, keine neuen Sicherheitslücken eingeführt, alle pre-existing-Sperren auf sensible Daten (`members`, `events`, `event_members`, `agenda_items`, `comments`) intakt. Der übersprungene 2-Geräte-Test bleibt als manuelle Nachkontrolle beim nächsten Eventeinsatz offen.
 
 ## Deployment
 _To be added by /deploy_
