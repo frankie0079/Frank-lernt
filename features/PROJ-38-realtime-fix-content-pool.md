@@ -1,6 +1,6 @@
 # PROJ-38: Realtime-Fix Content-Pool
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-04-22
 **Last Updated:** 2026-04-22
 
@@ -51,7 +51,98 @@ PROJ-35 BUG-1 (2026-04-08) sperrte `SELECT ON content_items` für die `anon`-Dat
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Gewählte Lösung: Option B — Gezielte RLS-Policy für `content_items`
+
+**Entscheidung:** Option B. Option A (Broadcast) wird abgelehnt.
+
+---
+
+### Warum Option B, nicht Option A?
+
+Option A (Broadcast) erfordert, dass jede schreibende API-Route nach jeder Mutation einen Broadcast-Event publiziert. Das betrifft mindestens 4 Routen (POST und DELETE für content_items, POST und DELETE für reactions). Jede dieser Routen müsste fehlerresistent angepasst werden — und wenn eine Broadcast-Publication versagt, geht das Realtime-Update stillschweigend verloren. Der bestehende Postgres-CDC-Mechanismus ist robuster: er ist transaktional, er kann nicht „vergessen" werden, und er skaliert mit der Datenbank.
+
+Option B löst das Problem in einer einzigen Migrations-Datei, ohne eine einzige Zeile Frontend- oder API-Code zu ändern. Die CDC-Subscriptions in `content-pool.tsx` und `selectable-content-grid.tsx` sind bereits korrekt geschrieben — sie funktionieren sofort wieder, sobald Postgres wieder Events liefert.
+
+---
+
+### Was genau wurde durch den Lockdown kaputt gemacht?
+
+Die Migration `20260408_lockdown_anon_rls.sql` hat zwei Dinge gleichzeitig getan:
+1. Das SQL-Level-`GRANT SELECT` auf `content_items` von der Rolle `anon` entzogen.
+2. Alle RLS-Policies auf `content_items` gelöscht.
+
+Supabase Realtime evaluiert für jeden CDC-Event beide Ebenen: erst die SQL-Grants, dann die RLS-Policies. Fehlt eines davon, werden keine Events geliefert — der WebSocket bleibt offen, aber stumm.
+
+**Wichtig:** Die `reactions`-Tabelle wurde vom Lockdown **nicht** berührt. Der `reactions_select_public`-Policy (`USING (true)`) ist noch aktiv. Die reactions-Subscription in `content-pool.tsx` funktioniert bereits korrekt. Kein Fix nötig.
+
+---
+
+### Sicherheitsanalyse: Ist es sicher, `anon` SELECT auf `content_items` wieder zu erlauben?
+
+Die `content_items`-Tabelle enthält:
+- Event-ID, Agenda-ID, Author-ID (alles UUIDs — keine Auth-Tokens)
+- Typ (photo/video/text/audio)
+- Media-URL und Thumbnail-URL (Supabase Storage, bereits öffentlich)
+- Caption-Text, GPS-Koordinaten, EXIF-Datum
+
+**Kein einziges dieser Felder ist ein Auth-Token.** Das einzige sensible Credential der App ist `members.token`, das ausschließlich in der `members`-Tabelle steht — und diese bleibt weiterhin vollständig für anon gesperrt.
+
+Implikation: Mit der Wiederherstellung von anon SELECT auf `content_items` kann jemand, der den öffentlichen Supabase Anon Key kennt (dieser steckt per Design im JS-Bundle und ist daher nicht geheim), via REST API alle Content-Items abrufen — wenn er eine gültige Event-UUID kennt. Event-UUIDs sind jedoch nicht erratbar (v4 UUID-Raum). Diese Exposition ist vergleichbar mit dem Zustand vor dem Lockdown und wird als akzeptabel bewertet.
+
+---
+
+### Komponenten-Struktur (kein Code — was wird wo geändert)
+
+```
+Datenbankebene (einzige Änderung):
+  supabase/migrations/
+    20260422_realtime_fix_content_items.sql  ← NEU
+      • Stellt SQL-Grant SELECT auf content_items für anon wieder her
+      • Fügt neue RLS SELECT-Policy für anon hinzu (keine Bedingung: alle Rows)
+      • Berührt NICHT: members, events, event_members, agenda_items, reactions
+      • Berührt NICHT: INSERT/UPDATE/DELETE grants auf content_items
+
+Frontend (keine Änderungen):
+  src/components/content-pool.tsx            ← unverändert
+  src/components/selectable-content-grid.tsx ← unverändert
+  Alle API-Routes                            ← unverändert
+```
+
+---
+
+### Warum werden keine Frontend-Änderungen benötigt?
+
+Beide betroffenen Komponenten haben bereits korrekte Realtime-Subscriptions:
+- `content-pool.tsx` subscribed auf INSERT + DELETE von `content_items` gefiltert nach `event_id`, und auf INSERT + DELETE von `reactions` (kein Filter nötig, da kein `event_id`-Feld in reactions — client-seitige Filterung ist vorhanden).
+- `selectable-content-grid.tsx` subscribed auf INSERT + DELETE von `content_items` gefiltert nach `event_id`.
+
+Beide Komponenten haben außerdem bereits eine Reconnect-Logik: nach Verbindungstrennung (z.B. iOS Safari im Hintergrund) baut Supabase JS den Channel automatisch neu auf. Beim nächsten initialen Load werden alle Beiträge via API-Route nachgeladen.
+
+---
+
+### Migrations-Inhalt (Überblick, kein SQL)
+
+Die neue Migration stellt gezielt wieder her, was der Lockdown zu viel weggenommen hat:
+
+1. **SQL-Grant zurückgeben:** `GRANT SELECT ON content_items TO anon` — nur SELECT, keine Schreibrechte.
+2. **RLS-Policy hinzufügen:** Eine SELECT-Policy für die `anon`-Rolle ohne einschränkende Bedingung. RLS bleibt aktiviert; die Policy öffnet nur SELECT, nicht INSERT/UPDATE/DELETE.
+3. **Verifizierungskommentar:** Enthält die SQL-Statements, mit denen nach Anwendung manuell geprüft werden kann, dass (a) `anon` `content_items` lesen kann und (b) `members.token` weiterhin verboten ist.
+
+---
+
+### Reconnect / Fallback (bereits vorhanden — kein neuer Code)
+
+Die Reconnect-Anforderung aus den ACs ist bereits erfüllt:
+- Supabase JS Client reconnectet automatisch nach Verbindungstrennung.
+- Beim Tab-Wechsel auf iOS Safari: der `useEffect` mit `fetchItems()` läuft beim nächsten Render erneut, was fehlende Beiträge nachholt.
+- Deduplizierungslogik via `itemIdsRef` verhindert Doppeleinträge beim Reconnect.
+
+---
+
+### Abhängigkeiten
+
+Keine neuen NPM-Pakete. Keine neuen API-Routes. Kein Supabase Storage-Zugriff.
 
 ## QA Test Results
 _To be added by /qa_
