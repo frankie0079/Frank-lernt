@@ -1,6 +1,6 @@
 # PROJ-37: PDF-Export (Fotobuch-Druck)
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-03-08
 **Last Updated:** 2026-03-08
 
@@ -388,4 +388,18 @@ Once BUG-1 through BUG-3 are fixed, the feature is production-ready. BUG-4 throu
 
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-22
+**Production URL:** https://frank-lernt.vercel.app/events/[id]/book
+
+### Production Smoke Test
+- Login via `/join/Wizz750` → /events ✅
+- Tagebuch-Leseansicht `/events/85f0339d-edac-462d-bc0e-85d448a375f1/book` lädt ✅
+- "Als PDF"-Button sichtbar (Organizer-View) ✅
+- Fotos in Content-Pool laden korrekt ✅
+- Kein Console-Error, Playwright-Screenshot bestätigt korrekte Darstellung ✅
+
+### Commits
+- `9bda9ef` — feat(PROJ-37): initiales Feature (7 PDF-Komponenten, 3 Formate, 3 Themen, Caveat-Schrift)
+- `4ca94f9` — test(PROJ-37): QA Round 1+2 fixes (11 Bugs, inkl. Preflight URL-Validation)
+- `11120ab` — fix: pre-existing lint errors vor Deploy bereinigt

@@ -153,16 +153,18 @@ npm run start      # Production server
   - **Bug-Fixes**: PATCH /events/[id] löscht Agenda nicht mehr wenn `agenda_items` fehlt; Kommentar-Edit mit Realtime-Sync; Cover-Position/Scale gespeichert via ref (stale closure bug); Location-Picker via createPortal (Radix outside-click-Fix); Map-Picker `type="button"` (kein Form-Submit mehr)
   - **Migrationen angewendet**: `20260417_update_comment.sql` (comment edit RPC), `20260417_cover_position.sql` + `20260417_cover_scale.sql` (cover_position, cover_scale + get_public_event RPC), `20260417_agenda_item_location.sql` (lat/lng pro Agenda-Item)
 
-### Nächster Schritt
-`/architecture` für **PROJ-37: PDF-Export (Fotobuch-Druck)** — die Tagebuch-Datenstruktur (eine `book_section` = eine Fotobuch-Seite) ist exakt darauf vorbereitet. Frank will das Seitenformat später streng + wählbar (Quadrat / A4 Hoch / A4 Quer); siehe Memory `project_proj37_pdf_format.md`. `@react-pdf/renderer` steht bereits im Stack.
+- **PROJ-37: PDF-Export (Fotobuch-Druck)** — Deployed 2026-04-22. Tagebuch als PDF exportierbar via `@react-pdf/renderer` (client-side, kein Server). 3 Formate (Quadrat/A4 Hoch/A4 Quer), 3 Farbthemen, alle 7 Buch-Layouts. Cover: Caveat-Schrift + volles Bild (`object-fit: contain`) + opt-in Info-Box. Preflight URL-Validation (`src/lib/pdf-preflight.ts`) verhindert Absturz bei 404-Fotos. Caveat-TTF lokal in `/public/fonts/`. QA: 11 Bugs alle gefixt. Security clean.
+- **PROJ-26 Einladungs-Sackgasse** — Deployed 2026-04-22. Neue User ohne Cookie bekommen jetzt automatisch ein Name-Formular statt /login-Sackgasse. E2E mit Frank + Julius (HK) bestätigt.
 
 - Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37.
 
+### Nächster Schritt
+**PROJ-38: Realtime-Fix Content-Pool** (Regression aus PROJ-35 BUG-1 Lockdown — anon-SELECT auf `content_items` gesperrt, Realtime-Subscriptions broken).
+
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅
-2. **PROJ-37: PDF-Export** ← nächstes
-3. **PROJ-38: Realtime-Fix Content-Pool** (Regression aus PROJ-35 BUG-1 Lockdown)
-4. **Upload-SHA-256-Dedup** (offen aus HK-Test — verhindert künftige Duplikat-Uploads)
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅
+2. **PROJ-38: Realtime-Fix Content-Pool** ← nächstes
+3. **Upload-SHA-256-Dedup** (offen aus HK-Test — verhindert künftige Duplikat-Uploads)
 
 ## Product Context
 
