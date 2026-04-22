@@ -271,8 +271,8 @@ export function BookSectionEditor({
           />
         ) : (
           <p className="text-xs text-muted-foreground">
-            Noch keine Fotos auf dieser Seite. Tippe „Fotos wählen" um
-            welche aus dem Tag hinzuzufügen.
+            Noch keine Fotos auf dieser Seite. Tippe{" "}
+            &bdquo;Fotos wählen&ldquo; um welche aus dem Tag hinzuzufügen.
           </p>
         )}
       </div>

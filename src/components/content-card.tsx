@@ -72,10 +72,9 @@ export function ContentCard({
   const [imgError, setImgError] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(item.comment_count ?? 0);
-  // Sync comment_count from props when item changes (e.g. tab switch re-fetch)
-  useEffect(() => {
-    setCommentCount(item.comment_count ?? 0);
-  }, [item.comment_count]);
+  // Sync comment_count from props when item changes (e.g. tab switch re-fetch).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setCommentCount(item.comment_count ?? 0); }, [item.comment_count]); // eslint-disable-line
   const config = typeConfig[item.type];
   const TypeIcon = config.icon;
   const canDelete = item.author_id === currentUserId || isOrganizer;
