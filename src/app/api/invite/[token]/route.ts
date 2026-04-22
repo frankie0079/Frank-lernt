@@ -2,6 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 import { serverError } from "@/lib/api-error";
+import { z } from "zod";
+
+const joinBodySchema = z.object({
+  name: z.string().trim().min(1, "Name ist erforderlich").max(50, "Max 50 Zeichen"),
+});
 
 // Helper: get current member from token cookie
 async function getCurrentMember(request: NextRequest) {
@@ -36,7 +41,15 @@ function createSupabaseAdmin() {
   });
 }
 
-// POST /api/invite/[token] — Join event via invitation token
+// POST /api/invite/[token] — Join event via invitation token.
+//
+// Two modes:
+//   (a) Returning user (has member_token cookie): joins the event under the
+//       existing member identity.
+//   (b) NEW user (no cookie): client posts `{ name }` → we create a fresh
+//       member with a random token, set the cookie, and join them to the
+//       event. Before 2026-04-22 this path 401'd and redirected to /login,
+//       which was a dead-end for first-time invitees.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -51,15 +64,10 @@ export async function POST(
     );
   }
 
-  const currentMember = await getCurrentMember(request);
-  if (!currentMember) {
-    return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
-  }
-
-  // BUG-6 fix: use service-role client for privileged invite/join operations
   const supabase = createSupabaseAdmin();
 
-  // Find invitation by token
+  // Validate the invitation up-front so we don't create a member for a
+  // broken/expired link.
   const { data: invitation } = await supabase
     .from("invitations")
     .select("id, event_id, expires_at")
@@ -73,7 +81,6 @@ export async function POST(
     );
   }
 
-  // Check expiry
   const now = new Date();
   const expiresAt = new Date(invitation.expires_at);
   if (now > expiresAt) {
@@ -83,7 +90,6 @@ export async function POST(
     );
   }
 
-  // Get event name for response
   const { data: event } = await supabase
     .from("events")
     .select("id, name")
@@ -97,6 +103,52 @@ export async function POST(
     );
   }
 
+  // Resolve the acting member:
+  //   - existing cookie → lookup
+  //   - no cookie       → create new member from provided name
+  let currentMember = await getCurrentMember(request);
+  let memberTokenToSet: string | null = null;
+
+  if (!currentMember) {
+    const body = await request.json().catch(() => null);
+    const parsed = joinBodySchema.safeParse(body);
+    if (!parsed.success) {
+      // Client uses `code` to flip to the name form; the `error` string is
+      // only shown on raw-API debugging, keep it simple.
+      const firstIssue = parsed.error.issues[0];
+      const userFacing =
+        firstIssue && firstIssue.path.includes("name") && firstIssue.code !== "invalid_type"
+          ? firstIssue.message
+          : "Name erforderlich";
+      return NextResponse.json(
+        { error: userFacing, code: "name_required" },
+        { status: 400 }
+      );
+    }
+
+    const newToken =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+    const { data: created, error: createErr } = await supabase
+      .from("members")
+      .insert({
+        name: parsed.data.name,
+        role: "member",
+        token: newToken,
+      })
+      .select("id, name, role, avatar_url")
+      .single();
+
+    if (createErr || !created) {
+      return serverError("invite/[token]:create_member", createErr);
+    }
+
+    currentMember = created;
+    memberTokenToSet = newToken;
+  }
+
   // Check if already a member
   const { data: existingMembership } = await supabase
     .from("event_members")
@@ -106,17 +158,17 @@ export async function POST(
     .single();
 
   if (existingMembership) {
-    return NextResponse.json({
+    const res = NextResponse.json({
       already_member: true,
       event_id: invitation.event_id,
       event_name: event.name,
     });
+    if (memberTokenToSet) setMemberCookie(res, memberTokenToSet);
+    return res;
   }
 
   // BUG-2 fix: atomic join via Postgres RPC with advisory lock.
   // See supabase/migrations/20260406_join_event_rpc.sql.
-  // Race-free: count + insert run inside a transaction-scoped lock keyed on
-  // event_id, so concurrent join attempts for the same event serialize.
   const { data: rpcResult, error: rpcError } = await supabase.rpc("join_event", {
     p_event_id: invitation.event_id,
     p_member_id: currentMember.id,
@@ -129,11 +181,13 @@ export async function POST(
   const result = rpcResult as { ok: boolean; status: string } | null;
 
   if (result?.status === "already_member") {
-    return NextResponse.json({
+    const res = NextResponse.json({
       already_member: true,
       event_id: invitation.event_id,
       event_name: event.name,
     });
+    if (memberTokenToSet) setMemberCookie(res, memberTokenToSet);
+    return res;
   }
 
   if (result?.status === "full") {
@@ -150,9 +204,22 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     success: true,
     event_id: invitation.event_id,
     event_name: event.name,
+  });
+  if (memberTokenToSet) setMemberCookie(res, memberTokenToSet);
+  return res;
+}
+
+// Matches the /join/[token] cookie: 3 years, httpOnly, Secure in prod.
+function setMemberCookie(response: NextResponse, token: string) {
+  response.cookies.set("member_token", token, {
+    path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365 * 3,
   });
 }
