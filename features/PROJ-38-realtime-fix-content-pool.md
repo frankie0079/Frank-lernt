@@ -144,6 +144,21 @@ Die Reconnect-Anforderung aus den ACs ist bereits erfüllt:
 
 Keine neuen NPM-Pakete. Keine neuen API-Routes. Kein Supabase Storage-Zugriff.
 
+## Backend Implementation (2026-04-22)
+
+**Migration:** `supabase/migrations/20260422_realtime_fix_content_items.sql`
+
+- Restores `GRANT SELECT ON public.content_items TO anon` (SELECT only; INSERT/UPDATE/DELETE stay revoked).
+- Adds RLS policy `content_items_select_anon_realtime` for role `anon` with `using (true)`.
+- Idempotent `alter table ... enable row level security` + `drop policy if exists` guards allow safe re-apply.
+- Does NOT touch `members`, `events`, `event_members`, `agenda_items`, `reactions`, or the `supabase_realtime` publication.
+
+**No frontend / API code changes** — both `content-pool.tsx` and `selectable-content-grid.tsx` already subscribe to `postgres_changes` on `content_items`. Once the migration is applied, Postgres CDC starts delivering INSERT/DELETE payloads to the anon-keyed browser channels again.
+
+**Verifier:** `scripts/verify-proj38.mjs` — checks that (1) anon can SELECT `content_items`, (2) anon still cannot SELECT `members`, (3) anon still cannot INSERT into `content_items`. Run via `node scripts/verify-proj38.mjs` after applying.
+
+**Pre-apply probe (production, 2026-04-22):** Direct REST call as anon on `content_items?select=id&limit=1` returned `401 / 42501 permission denied for table content_items` — confirms the regression and the correct target for the fix.
+
 ## QA Test Results
 _To be added by /qa_
 
