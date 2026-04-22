@@ -32,7 +32,9 @@
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-38
+| PROJ-38 | Realtime-Fix Content-Pool | Planned | [PROJ-38-realtime-fix-content-pool.md](PROJ-38-realtime-fix-content-pool.md) | 2026-04-22 |
+
+## Next Available ID: PROJ-39
 
 ---
 
