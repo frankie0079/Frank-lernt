@@ -99,6 +99,7 @@ export function EventBookPdf({
         coverUrl={coverUrl}
         format={fmt}
         theme={thm}
+        totalPages={totalPages}
         about={
           includeAboutPage
             ? { description, members }

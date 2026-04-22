@@ -32,6 +32,8 @@ interface CoverPageProps {
     description?: string | null;
     members: Array<{ id: string; name: string; avatar_url?: string | null }>;
   };
+  /** Footer data (BUG-2: AC-7 requires footer on every page) */
+  totalPages: number;
 }
 
 export function CoverPage({
@@ -42,6 +44,7 @@ export function CoverPage({
   format,
   theme,
   about,
+  totalPages,
 }: CoverPageProps) {
   // Layout proportions. The Caveat handwriting font has long descenders, so
   // the bar needs generous vertical room — min 120pt is enough for a 40pt
@@ -249,6 +252,25 @@ export function CoverPage({
           )}
         </View>
       )}
+
+      {/* Footer — BUG-2: AC-7 requires event name + page number on every page */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 10,
+          left: 24,
+          right: 24,
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text style={{ fontSize: 7, color: theme.background, opacity: 0.7 }}>
+          {eventName}
+        </Text>
+        <Text style={{ fontSize: 7, color: theme.background, opacity: 0.7 }}>
+          Seite 1 / {totalPages}
+        </Text>
+      </View>
     </Page>
   );
 }

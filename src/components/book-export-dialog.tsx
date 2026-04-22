@@ -1,11 +1,18 @@
 "use client";
 
 // PROJ-37: Export dialog for the Tagebuch PDF. Format + theme picker, client-
-// side PDF generation via @react-pdf/renderer.
+// side PDF generation via @react-pdf/renderer, with a pre-flight URL check
+// (BUG-1) that gracefully handles broken Supabase Storage URLs.
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Download, FileText, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Download,
+  FileText,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +28,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { BookPage } from "@/lib/book-types";
+import { preflightPdfUrls } from "@/lib/pdf-preflight";
 import {
   PDF_FORMAT_SPECS,
   PDF_FORMATS,
@@ -60,6 +68,17 @@ interface BookExportDialogProps {
   enabled: boolean;
 }
 
+/** BUG-9: Detect iOS Safari — needs a post-generation "open in new tab" hint */
+function isIosSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /iP(hone|ad|od)/.test(ua) &&
+    /Safari/.test(ua) &&
+    !/CriOS|FxiOS|EdgiOS/.test(ua)
+  );
+}
+
 export function BookExportDialog({
   eventId,
   event,
@@ -73,6 +92,30 @@ export function BookExportDialog({
   const [includeToc, setIncludeToc] = useState(false);
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [membersLoaded, setMembersLoaded] = useState(false);
+
+  // BUG-5: Large-PDF confirmation gate
+  const [sizeAcknowledged, setSizeAcknowledged] = useState(false);
+
+  // BUG-1 preflight state — null = not run, "running" = in flight,
+  // PreflightResult = done (validated pages + broken count + cover status)
+  type PreflightState =
+    | { status: "idle" }
+    | { status: "running"; done: number; total: number }
+    | {
+        status: "done";
+        pages: BookPage[];
+        validated: number;
+        broken: number;
+        coverBroken: boolean;
+      }
+    | { status: "error"; message: string };
+  const [preflight, setPreflight] = useState<PreflightState>({
+    status: "idle",
+  });
+
+  // BUG-8 retry key — bump to force PDFDownloadLink remount
+  const [retryKey, setRetryKey] = useState(0);
+
   const [PdfComponent, setPdfComponent] = useState<React.ComponentType<{
     eventName: string;
     description?: string | null;
@@ -95,7 +138,7 @@ export function BookExportDialog({
     });
   }, [open, PdfComponent]);
 
-  // Fetch members lazily on first open (for back page)
+  // Fetch members lazily on first open (for about-box)
   useEffect(() => {
     if (!open || membersLoaded) return;
     fetch(`/api/events/${eventId}/members`)
@@ -103,17 +146,32 @@ export function BookExportDialog({
       .then((data) => {
         if (data?.members) {
           setMembers(
-            data.members.map((m: { member_id: string; member_name: string | null; member_avatar_url: string | null }) => ({
-              id: m.member_id,
-              name: m.member_name || "Unbekannt",
-              avatar_url: m.member_avatar_url,
-            }))
+            data.members.map(
+              (m: {
+                member_id: string;
+                member_name: string | null;
+                member_avatar_url: string | null;
+              }) => ({
+                id: m.member_id,
+                name: m.member_name || "Unbekannt",
+                avatar_url: m.member_avatar_url,
+              })
+            )
           );
         }
         setMembersLoaded(true);
       })
       .catch(() => setMembersLoaded(true));
   }, [open, membersLoaded, eventId]);
+
+  // Reset state when the dialog closes so re-open always re-validates
+  useEffect(() => {
+    if (!open) {
+      setPreflight({ status: "idle" });
+      setSizeAcknowledged(false);
+      setRetryKey(0);
+    }
+  }, [open]);
 
   // Only visible days with at least one section
   const publishablePages = useMemo(
@@ -130,11 +188,29 @@ export function BookExportDialog({
         (sum, p) =>
           sum +
           (p.sections ?? []).reduce(
-            (s, sec) => s + sec.items.filter((i) => i.type === "photo" || i.type === "video").length,
+            (s, sec) =>
+              s +
+              sec.items.filter(
+                (i) => i.type === "photo" || i.type === "video"
+              ).length,
             0
           ),
         0
       ),
+    [publishablePages]
+  );
+
+  // BUG-11: detect grid-3 sections with too many items (tiles become unreadable)
+  const gridOverflowSections = useMemo(
+    () =>
+      publishablePages.reduce((count, p) => {
+        return (
+          count +
+          (p.sections ?? []).filter(
+            (sec) => sec.layout === "grid-3" && sec.items.length > 12
+          ).length
+        );
+      }, 0),
     [publishablePages]
   );
 
@@ -145,9 +221,60 @@ export function BookExportDialog({
   const formatSpec = PDF_FORMAT_SPECS[format];
   const themeSpec = PDF_THEME_SPECS[theme];
 
-  const canRender = publishablePages.length > 0 && PdfComponent !== null;
+  async function runPreflight() {
+    setPreflight({ status: "running", done: 0, total: 0 });
+    try {
+      const result = await preflightPdfUrls(
+        publishablePages,
+        event.cover_url ?? null,
+        (done, total) =>
+          setPreflight({ status: "running", done, total })
+      );
+      setPreflight({
+        status: "done",
+        pages: result.pages,
+        validated: result.validated,
+        broken: result.broken,
+        coverBroken: result.coverBroken,
+      });
+      if (result.broken > 0) {
+        toast.warning(
+          `${result.broken} Foto(s) nicht erreichbar — werden durch Platzhalter ersetzt.`,
+          { duration: 7000 }
+        );
+      }
+    } catch (err) {
+      setPreflight({
+        status: "error",
+        message: err instanceof Error ? err.message : "Unbekannter Fehler",
+      });
+      toast.error("Foto-Prüfung fehlgeschlagen.");
+    }
+  }
 
   if (!enabled) return null;
+
+  // Size-gate: if large PDF expected, require explicit checkbox
+  const sizeGateBlocks = largeWarning && !sizeAcknowledged;
+
+  // Preflight gating — run on mount of "done-but-no-preflight" state
+  const canPreflight =
+    publishablePages.length > 0 &&
+    PdfComponent !== null &&
+    preflight.status === "idle" &&
+    !sizeGateBlocks;
+
+  const canRender =
+    publishablePages.length > 0 &&
+    PdfComponent !== null &&
+    preflight.status === "done";
+
+  const pagesForPdf =
+    preflight.status === "done" ? preflight.pages : publishablePages;
+  const coverUrlForPdf =
+    preflight.status === "done" && preflight.coverBroken
+      ? null
+      : event.cover_url ?? null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -303,18 +430,72 @@ export function BookExportDialog({
                 {estimatedMb} MB
               </span>
             </p>
-            {largeWarning && (
+            {gridOverflowSections > 0 && (
               <p className="mt-1 text-amber-700 dark:text-amber-500">
-                ⚠ Diese Datei könnte sehr groß werden. Die Generierung dauert
-                länger und kann auf dem iPhone Speicher verbrauchen.
+                ℹ {gridOverflowSections} Raster-Seite(n) mit mehr als 12 Fotos —
+                einzelne Bilder werden auf der Druckseite klein. Tipp: Teile
+                den Tag im Editor in mehrere Seiten auf.
               </p>
             )}
+            {largeWarning && (
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-400/60 bg-amber-50 p-2 text-amber-900 dark:border-amber-500/60 dark:bg-amber-950/40 dark:text-amber-200">
+                <AlertTriangle
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <div className="flex-1 space-y-2">
+                  <p className="font-medium">
+                    Diese Datei wird groß (~{estimatedMb} MB)
+                  </p>
+                  <p className="text-[11px]">
+                    Das Generieren dauert länger und kann auf dem iPhone
+                    Speicher verbrauchen.
+                  </p>
+                  <label className="flex cursor-pointer items-center gap-2 text-[11px] font-medium">
+                    <Checkbox
+                      checked={sizeAcknowledged}
+                      onCheckedChange={(v) =>
+                        setSizeAcknowledged(v === true)
+                      }
+                    />
+                    Ich weiß Bescheid — trotzdem erstellen
+                  </label>
+                </div>
+              </div>
+            )}
             <p className="mt-1 text-[10px]">
-              Format: {formatSpec.label} ({Math.round(formatSpec.width / 2.83)} ×{" "}
-              {Math.round(formatSpec.height / 2.83)} mm) · Thema:{" "}
+              Format: {formatSpec.label} ({Math.round(formatSpec.width / 2.83)}{" "}
+              × {Math.round(formatSpec.height / 2.83)} mm) · Thema:{" "}
               {themeSpec.label}
             </p>
           </div>
+
+          {/* Preflight status banner */}
+          {preflight.status === "running" && (
+            <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              <span>
+                Prüfe Fotos {preflight.done} / {preflight.total || "…"}
+              </span>
+            </div>
+          )}
+          {preflight.status === "done" && preflight.broken > 0 && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-500/60 dark:bg-amber-950/40 dark:text-amber-200">
+              <AlertTriangle
+                className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span>
+                {preflight.broken} Foto(s) nicht erreichbar — werden im PDF
+                durch Platzhalter ersetzt.
+              </span>
+            </div>
+          )}
+          {preflight.status === "error" && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              Foto-Prüfung fehlgeschlagen: {preflight.message}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -326,17 +507,52 @@ export function BookExportDialog({
             Abbrechen
           </Button>
 
-          {canRender && PdfComponent ? (
+          {/* State machine:
+                idle    → "Fotos prüfen & PDF erstellen" (starts preflight)
+                running → disabled "Prüfe Fotos… X / Y"
+                done    → <PDFDownloadLink> with validated pages
+                error   → "Erneut versuchen" */}
+          {preflight.status === "idle" && (
+            <Button
+              onClick={runPreflight}
+              disabled={!canPreflight}
+              title={
+                sizeGateBlocks
+                  ? "Bitte die Größen-Warnung bestätigen"
+                  : undefined
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Fotos prüfen & PDF erstellen
+            </Button>
+          )}
+
+          {preflight.status === "running" && (
+            <Button disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Prüfe Fotos…
+            </Button>
+          )}
+
+          {preflight.status === "error" && (
+            <Button onClick={runPreflight} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Erneut versuchen
+            </Button>
+          )}
+
+          {canRender && PdfComponent && preflight.status === "done" && (
             <PDFDownloadLink
+              key={retryKey}
               document={
                 <PdfComponent
                   eventName={event.name}
                   description={event.description ?? null}
-                  coverUrl={event.cover_url ?? null}
+                  coverUrl={coverUrlForPdf}
                   startDate={event.start_date ?? null}
                   endDate={event.end_date ?? null}
                   members={members}
-                  pages={publishablePages}
+                  pages={pagesForPdf}
                   format={format}
                   theme={theme}
                   includeAboutPage={includeAboutPage}
@@ -346,38 +562,52 @@ export function BookExportDialog({
               fileName={filename}
               style={{ textDecoration: "none" }}
             >
-              {({ loading, error }) => (
-                <Button
-                  disabled={loading}
-                  onClick={() => {
-                    if (!loading && !error) {
-                      toast.success("PDF wird heruntergeladen…");
-                    } else if (error) {
-                      toast.error(
-                        "PDF-Generierung fehlgeschlagen — bitte Seite neu laden."
-                      );
-                    }
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Wird generiert…
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2 h-4 w-4" />
-                      PDF herunterladen
-                    </>
-                  )}
-                </Button>
-              )}
+              {({ loading, error }) => {
+                if (error) {
+                  return (
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setRetryKey((k) => k + 1);
+                        setPreflight({ status: "idle" });
+                      }}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Erneut versuchen
+                    </Button>
+                  );
+                }
+                return (
+                  <Button
+                    disabled={loading}
+                    onClick={() => {
+                      if (!loading) {
+                        toast.success("PDF wird heruntergeladen…");
+                        if (isIosSafari()) {
+                          toast.info(
+                            "Auf dem iPhone öffnet sich das PDF oft in einem neuen Tab — über das Teilen-Symbol speichern.",
+                            { duration: 8000 }
+                          );
+                        }
+                      }
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Wird generiert…
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        PDF herunterladen
+                      </>
+                    )}
+                  </Button>
+                );
+              }}
             </PDFDownloadLink>
-          ) : (
-            <Button disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Wird vorbereitet…
-            </Button>
           )}
         </DialogFooter>
       </DialogContent>

@@ -73,7 +73,8 @@ export function sanitizeFilename(eventName: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
-  return `${base || "tagebuch"}-Tagebuch.pdf`;
+  // BUG-7: suffix lowercase for consistent casing across the whole filename.
+  return `${base || "event"}-tagebuch.pdf`;
 }
 
 export function formatDateRange(

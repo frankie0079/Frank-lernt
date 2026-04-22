@@ -11,6 +11,13 @@ const PAGE_PADDING = 36;
 const HEADER_HEIGHT = 54;
 const FOOTER_HEIGHT = 20;
 const COMMENT_RESERVED = 70;
+const MAX_COMMENT_CHARS = 2000;
+
+function truncateComment(text: string | null | undefined): string {
+  if (!text) return "";
+  if (text.length <= MAX_COMMENT_CHARS) return text;
+  return text.slice(0, MAX_COMMENT_CHARS).trimEnd() + "…";
+}
 
 interface SectionPageProps {
   dayIndex: number;
@@ -122,11 +129,13 @@ export function SectionPage({
         items={section.items}
         width={contentWidth}
         height={gridHeight}
-        sideText={section.layout === "text-left" ? section.comment : null}
+        sideText={
+          section.layout === "text-left" ? truncateComment(section.comment) : null
+        }
         theme={theme}
       />
 
-      {/* Comment (for non-text-left layouts) */}
+      {/* Comment (for non-text-left layouts) — BUG-3 truncate at 2000 chars */}
       {hasComment && (
         <Text
           style={{
@@ -136,7 +145,7 @@ export function SectionPage({
             color: theme.text,
           }}
         >
-          {section.comment}
+          {truncateComment(section.comment)}
         </Text>
       )}
 
