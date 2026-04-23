@@ -1,6 +1,6 @@
 # PROJ-38: Realtime-Fix Content-Pool
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-22
 **Last Updated:** 2026-04-22
 
@@ -226,4 +226,16 @@ Keine neuen NPM-Pakete. Keine neuen API-Routes. Kein Supabase Storage-Zugriff.
 PROJ-38 ist **deploymentbereit**. Die Regression ist beseitigt, keine neuen Sicherheitslücken eingeführt, alle pre-existing-Sperren auf sensible Daten (`members`, `events`, `event_members`, `agenda_items`, `comments`) intakt. Der übersprungene 2-Geräte-Test bleibt als manuelle Nachkontrolle beim nächsten Eventeinsatz offen.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-22
+**Production URL:** https://frank-lernt.vercel.app
+
+### Angewendete Migrationen
+1. `supabase/migrations/20260422_realtime_fix_content_items.sql` — Stellt anon SELECT auf `content_items` wieder her (PROJ-38 Kern-Fix)
+2. `supabase/migrations/20260422_fix_public_event_transcript_column.sql` — Behebt pre-existing Bug: `ci.transcript` → `ci.caption` in `get_public_event` RPC
+
+### Verifikation
+- `node scripts/verify-proj38.mjs` → 3/3 PASS
+- `node scripts/qa-proj38-deep.mjs` → 13/13 PASS (inkl. public-event RPC nach Bugfix)
+- `npm run build` → erfolgreich
+- Vercel Deploy via git push auf main ausgelöst
