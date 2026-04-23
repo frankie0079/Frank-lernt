@@ -1,6 +1,6 @@
 # PROJ-40: Event-Countdown
 
-## Status: Planned
+## Status: In Review
 **Created:** 2026-04-23
 **Last Updated:** 2026-04-23
 
@@ -61,7 +61,21 @@ Eine frühere Version des Countdowns existiert bereits als `src/components/publi
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+_Skipped on Frank's request — tiny pure-frontend change, implementation details documented directly in spec above._
+
+## Frontend Implementation
+
+**Files changed:**
+
+- `src/components/public-countdown.tsx`
+  - New optional prop `targetHour?: number` (default `12`). Target is computed as `new Date(y, m-1, d, targetHour, 0, 0, 0)` in local browser time.
+  - Seconds column removed (`grid-cols-4` → `grid-cols-3`), `seconds` field removed from `diffParts`.
+  - Update interval reduced from `1000ms` to `60_000ms`. Switched to a `now`-state + derived `parts` pattern to avoid the `set-state-in-effect` lint rule while still recomputing immediately when `target` changes.
+  - `aria-live="polite"` preserved.
+- `src/app/e/[slug]/page.tsx`
+  - Existing call site passes `targetHour={0}` explicitly to preserve midnight behavior from PROJ-35.
+- `src/app/events/[id]/page.tsx`
+  - `PublicCountdown` imported and rendered between the cover `<div>` and the "Event Title + Meta" block, guarded by `event.start_date`. Default `targetHour={12}` applies. Wrapper uses `mx-auto max-w-2xl px-4 pt-4` to line up with the title block on mobile. The component itself returns `null` once `parts.done`, so no extra status check is needed. Because the countdown sits above the `Tabs`, it is visible on every tab (including "Erfassen").
 
 ## QA Test Results
 _To be added by /qa_

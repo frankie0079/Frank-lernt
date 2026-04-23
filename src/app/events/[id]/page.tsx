@@ -19,6 +19,7 @@ import {
 import { WandererScreen } from "@/components/wanderer-screen";
 import { ContentPool } from "@/components/content-pool";
 import { SlideshowFeed } from "@/components/slideshow-feed";
+import { PublicCountdown } from "@/components/public-countdown";
 import {
   ArrowLeft,
   CalendarDays,
@@ -195,6 +196,13 @@ export default function EventDashboardPage() {
         )}
 
       </div>
+
+      {/* Countdown — only if start_date is set; component itself returns null once elapsed */}
+      {event.start_date && (
+        <div className="mx-auto max-w-2xl px-4 pt-4">
+          <PublicCountdown startDate={event.start_date} />
+        </div>
+      )}
 
       {/* Event Title + Meta */}
       <div className="mx-auto max-w-2xl px-4 py-4">

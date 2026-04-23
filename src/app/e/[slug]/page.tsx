@@ -189,7 +189,9 @@ export default async function PublicEventPage({
       />
 
       <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        {isFuture ? <PublicCountdown startDate={event.start_date} /> : null}
+        {isFuture ? (
+          <PublicCountdown startDate={event.start_date} targetHour={0} />
+        ) : null}
 
         {sortedReports.length === 0 ? (
           <Card className="p-8 text-center">
