@@ -33,8 +33,9 @@
 <!-- Add features above this line -->
 
 | PROJ-38 | Realtime-Fix Content-Pool | Deployed | [PROJ-38-realtime-fix-content-pool.md](PROJ-38-realtime-fix-content-pool.md) | 2026-04-22 |
+| PROJ-39 | Upload-SHA-256-Dedup | Planned | [PROJ-39-upload-sha256-dedup.md](PROJ-39-upload-sha256-dedup.md) | 2026-04-23 |
 
-## Next Available ID: PROJ-39
+## Next Available ID: PROJ-40
 
 ---
 

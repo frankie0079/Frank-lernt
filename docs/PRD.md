@@ -61,6 +61,7 @@ Erste Anwendung: Wandergruppen und Reise-Events.
 | P1 | Öffentliche Event-Seite | Planned | PROJ-35 |
 | P2 | Post-Event Tagebuch | Planned | PROJ-36 |
 | P2 | PDF-Export (Fotobuch-Druck) | Planned | PROJ-37 |
+| P2 | Upload-SHA-256-Dedup | Planned | PROJ-39 |
 
 ## Success Metrics
 
