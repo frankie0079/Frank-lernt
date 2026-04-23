@@ -63,6 +63,7 @@ Erste Anwendung: Wandergruppen und Reise-Events.
 | P2 | PDF-Export (Fotobuch-Druck) | Planned | PROJ-37 |
 | P2 | Upload-SHA-256-Dedup | Planned | PROJ-39 |
 | P2 | Event-Countdown | Planned | PROJ-40 |
+| P2 | Tour-Tracker | Planned | PROJ-41 |
 
 ## Success Metrics
 
