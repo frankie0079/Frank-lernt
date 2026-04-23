@@ -155,16 +155,16 @@ npm run start      # Production server
 
 - **PROJ-37: PDF-Export (Fotobuch-Druck)** — Deployed 2026-04-22. Tagebuch als PDF exportierbar via `@react-pdf/renderer` (client-side, kein Server). 3 Formate (Quadrat/A4 Hoch/A4 Quer), 3 Farbthemen, alle 7 Buch-Layouts. Cover: Caveat-Schrift + volles Bild (`object-fit: contain`) + opt-in Info-Box. Preflight URL-Validation (`src/lib/pdf-preflight.ts`) verhindert Absturz bei 404-Fotos. Caveat-TTF lokal in `/public/fonts/`. QA: 11 Bugs alle gefixt. Security clean.
 - **PROJ-26 Einladungs-Sackgasse** — Deployed 2026-04-22. Neue User ohne Cookie bekommen jetzt automatisch ein Name-Formular statt /login-Sackgasse. E2E mit Frank + Julius (HK) bestätigt.
+- **PROJ-39: Upload-SHA-256-Dedup** — Deployed 2026-04-23. Verhindert Duplikat-Uploads aus dem HK-Test. Browser berechnet SHA-256 via Web Crypto API vor dem Storage-Upload; Server prüft per `GET ?hash=` ob dieses Event das Foto schon kennt; UNIQUE PARTIAL-Index `(event_id, file_hash) WHERE file_hash IS NOT NULL` als Race-Safety-Netz. Betrifft photo-sheet, video-sheet, audio-sheet, wanderer-screen (Bulk-Upload inkl. In-Batch-Dedup), offline-queue (idempotenter Replay). Shared-Helper `src/lib/file-hash.ts`. QA: 23/23 automatisierte Checks grün, keine Bugs.
 - **PROJ-38: Realtime-Fix Content-Pool** — Deployed 2026-04-22. Regression aus PROJ-35 BUG-1 behoben: `GRANT SELECT ON content_items TO anon` + minimale RLS SELECT-Policy wiederhergestellt. Postgres CDC liefert jetzt wieder INSERT/DELETE-Events an Browser-Subscriber. Verifier 3/3 PASS, Deep-QA 13/13 PASS (inkl. members.token bleibt gesperrt, anon-Writes bleiben gesperrt). Bonus: Pre-existing Bug in `get_public_event` RPC behoben (`ci.transcript` → `ci.caption`, öffentliche Event-Seite `/e/[slug]` funktioniert wieder). 2-Geräte-Realtime-Smoke-Test auf Benutzerwunsch übersprungen — empfohlen beim nächsten realen Eventeinsatz.
 
 - Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37.
 
 ### Nächster Schritt
-**Upload-SHA-256-Dedup** (offen aus HK-Test — verhindert künftige Duplikat-Uploads)
+Keine offenen Rückstand-Features. Nächstes Feature nach Bedarf mit `/requirements` starten.
 
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅
-3. **Upload-SHA-256-Dedup** (offen aus HK-Test — verhindert künftige Duplikat-Uploads)
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅
 
 ## Product Context
 

@@ -1,6 +1,6 @@
 # PROJ-39: Upload-SHA-256-Dedup
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-23
 **Last Updated:** 2026-04-23
 
@@ -279,4 +279,14 @@ Alle benötigten APIs sind browser-nativ (Web Crypto API). Keine neuen Abhängig
 PROJ-39 ist **deploymentbereit**. Die Dedup-Logik ist korrekt verdrahtet, das DB-Constraint ist authoritativ, der Silent-Fallback ist robust (kein blockierter Upload bei Hash-Fehler), alle Security-Invarianten halten (anon kann weder lesen noch schreiben über die Dedup-Pfade). Der übersprungene iOS-Bulk-Test bleibt als manuelle Nachkontrolle beim nächsten Eventeinsatz offen.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-23
+**Production URL:** https://frank-lernt.vercel.app
+
+### Angewendete Migrationen
+1. `supabase/migrations/20260423_content_items_file_hash.sql` — `file_hash TEXT NULL` + Lookup-Index + Partial UNIQUE-Index `(event_id, file_hash) WHERE file_hash IS NOT NULL`
+
+### Verifikation
+- `node scripts/verify-proj39.mjs` → 5/5 PASS (nach Deploy)
+- QA Round 1: 23/23 PASS (vor Deploy)
+- Vercel Deploy via git push auf main ausgelöst
