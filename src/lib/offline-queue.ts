@@ -142,6 +142,17 @@ export async function flushQueue(): Promise<number> {
     try {
       let payload = { ...item.payload };
 
+      // PROJ-39: hash the stored blob once so the replay is idempotent.
+      // If the original upload actually went through but the POST was never
+      // ACKed (e.g. network dropped right after Storage upload), the server's
+      // unique index will recognise the hash and return the existing row
+      // instead of creating a duplicate.
+      let replayFileHash: string | null = null;
+      if (item.fileBlob && (payload.type === "photo" || payload.type === "audio" || payload.type === "video")) {
+        const { computeSHA256 } = await import("@/lib/file-hash");
+        replayFileHash = await computeSHA256(item.fileBlob);
+      }
+
       // If this is a photo item with a stored blob, re-run the upload pipeline
       if (payload.type === "photo" && item.fileBlob) {
         const { processAndUploadImage } = await import("@/lib/content-upload");
@@ -161,6 +172,7 @@ export async function flushQueue(): Promise<number> {
           latitude: result.exif.latitude ?? payload.latitude,
           longitude: result.exif.longitude ?? payload.longitude,
           exif_date: result.exif.exifDate,
+          file_hash: replayFileHash,
         };
       }
 
@@ -178,6 +190,7 @@ export async function flushQueue(): Promise<number> {
         payload = {
           ...payload,
           media_url: result.mediaUrl,
+          file_hash: replayFileHash,
         };
         // Strip the helper field — backend doesn't expect it
         delete (payload as Record<string, unknown>).audio_mime_type;

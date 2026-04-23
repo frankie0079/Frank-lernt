@@ -16,6 +16,8 @@ import { processAndUploadImage } from "@/lib/content-upload";
 import { enqueue, OfflineQuotaError } from "@/lib/offline-queue";
 import { isNetworkError } from "@/lib/network-utils";
 import { CONTENT_MAX_CAPTION_LENGTH } from "@/lib/validations/content";
+import { computeSHA256, checkDuplicate } from "@/lib/file-hash";
+import { toast } from "sonner";
 import { Loader2, AlertCircle, X } from "lucide-react";
 import type { GpsPosition } from "@/hooks/use-geolocation";
 
@@ -84,6 +86,23 @@ export function PhotoSheet({
     setProgress(0);
 
     try {
+      // PROJ-39: pre-upload dedup probe. Silent-fail if the browser can't
+      // hash (too slow, crypto unavailable) — we just skip the check and
+      // let the server race-safety net catch any true duplicates.
+      const fileHash = await computeSHA256(file);
+      if (fileHash) {
+        const existing = await checkDuplicate(eventId, fileHash);
+        if (existing) {
+          toast.info("Dieses Foto wurde bereits hochgeladen.", {
+            duration: 5000,
+          });
+          if (navigator.vibrate) navigator.vibrate([30]);
+          onSubmitSuccess();
+          handleOpenChange(false);
+          return;
+        }
+      }
+
       // Process: EXIF -> compress -> upload to storage
       const result = await processAndUploadImage(
         file,
@@ -109,6 +128,7 @@ export function PhotoSheet({
           latitude,
           longitude,
           exif_date: result.exif.exifDate,
+          file_hash: fileHash,
         }),
       });
 
@@ -117,6 +137,17 @@ export function PhotoSheet({
         throw new Error(
           data?.error || "Beitrag konnte nicht gespeichert werden."
         );
+      }
+
+      // PROJ-39: server race-safety net — if another client won the INSERT
+      // race, the server returns 200 + { duplicate: true } instead of 201.
+      const resData = (await res.json().catch(() => null)) as
+        | { content_item?: unknown; duplicate?: boolean }
+        | null;
+      if (resData?.duplicate) {
+        toast.info("Dieses Foto wurde bereits hochgeladen.", {
+          duration: 5000,
+        });
       }
 
       // Haptic feedback on iOS

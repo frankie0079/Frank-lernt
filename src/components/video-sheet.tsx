@@ -20,6 +20,7 @@ import {
 } from "@/lib/content-upload";
 import { isNetworkError } from "@/lib/network-utils";
 import { CONTENT_MAX_CAPTION_LENGTH } from "@/lib/validations/content";
+import { computeSHA256, checkDuplicate } from "@/lib/file-hash";
 import {
   useVideoRecorder,
   type UseVideoRecorderReturn,
@@ -176,6 +177,22 @@ export function VideoSheet({
     setProgress(0);
 
     try {
+      // PROJ-39: pre-upload dedup probe. Works on both gallery uploads
+      // (File) and in-app recordings (Blob) since computeSHA256 accepts Blob.
+      const fileHash = await computeSHA256(blobToUpload);
+      if (fileHash) {
+        const existing = await checkDuplicate(eventId, fileHash);
+        if (existing) {
+          toast.info("Dieses Video wurde bereits hochgeladen.", {
+            duration: 5000,
+          });
+          if (navigator.vibrate) navigator.vibrate([30]);
+          onSubmitSuccess();
+          handleOpenChange(false);
+          return;
+        }
+      }
+
       // Generate thumbnail from first frame
       setProgress(5);
       const thumbnailBlob = await generateVideoThumbnail(blobToUpload);
@@ -205,6 +222,7 @@ export function VideoSheet({
           caption: caption.trim() || null,
           latitude: gpsPosition?.latitude ?? null,
           longitude: gpsPosition?.longitude ?? null,
+          file_hash: fileHash,
         }),
       });
 
@@ -213,6 +231,17 @@ export function VideoSheet({
         throw new Error(
           data?.error || "Beitrag konnte nicht gespeichert werden."
         );
+      }
+
+      // PROJ-39: server race-safety net — if another client won the INSERT
+      // race, the server returns 200 + { duplicate: true } instead of 201.
+      const resData = (await res.json().catch(() => null)) as
+        | { content_item?: unknown; duplicate?: boolean }
+        | null;
+      if (resData?.duplicate) {
+        toast.info("Dieses Video wurde bereits hochgeladen.", {
+          duration: 5000,
+        });
       }
 
       setProgress(100);

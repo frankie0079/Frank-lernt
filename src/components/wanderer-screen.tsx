@@ -21,6 +21,7 @@ import {
 } from "@/lib/validations/content";
 import { VIDEO_MAX_FILE_SIZE_BYTES, processAndUploadImage } from "@/lib/content-upload";
 import { startOnlineSync } from "@/lib/offline-queue";
+import { computeSHA256, checkDuplicate } from "@/lib/file-hash";
 import type { AgendaItem } from "@/lib/event-utils";
 import { AlertCircle } from "lucide-react";
 
@@ -70,6 +71,7 @@ export function WandererScreen({
   const [bulkTotal, setBulkTotal] = useState(0);
   const [bulkDone, setBulkDone] = useState(0);
   const [bulkErrors, setBulkErrors] = useState<string[]>([]);
+  const [bulkDuplicates, setBulkDuplicates] = useState(0);
 
   // Sheet states
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
@@ -134,7 +136,15 @@ export function WandererScreen({
     uploadInputRef.current?.click();
   }, []);
 
-  // Bulk upload: process multiple images without preview/caption
+  // Bulk upload: process multiple images without preview/caption.
+  // PROJ-39 flow:
+  //   1) hash every file up front (5s timeout per file — silent fallback)
+  //   2) drop duplicates WITHIN the picked batch (same hash twice)
+  //   3) for each unique hash, probe the server — known duplicates are
+  //      skipped without ever touching Storage
+  //   4) only the survivors go through compress + upload + POST
+  // Progress counter counts every picked file (processed = upload OR skipped
+  // duplicate OR error) so the "X / N" reads monotonically.
   const handleBulkUpload = useCallback(
     async (files: File[]) => {
       if (!selectedAgendaId) {
@@ -145,11 +155,48 @@ export function WandererScreen({
       setBulkTotal(files.length);
       setBulkDone(0);
       setBulkErrors([]);
+      setBulkDuplicates(0);
       const errors: string[] = [];
+
+      // --- Phase 1: hash every file (parallel, each with its own timeout).
+      const hashes = await Promise.all(files.map((f) => computeSHA256(f)));
+
+      // --- Phase 2: in-batch dedup. If a hash appears more than once in
+      // the batch, only the first occurrence goes through to upload; the
+      // rest count as duplicates immediately.
+      const seenHashes = new Set<string>();
+      let duplicateCount = 0;
+      let processed = 0;
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const hash = hashes[i];
+
         try {
+          // In-batch duplicate (same hash picked twice)?
+          if (hash && seenHashes.has(hash)) {
+            duplicateCount++;
+            processed++;
+            setBulkDone(processed);
+            setBulkDuplicates(duplicateCount);
+            continue;
+          }
+
+          // Server-side duplicate (already uploaded to this event)?
+          if (hash) {
+            const existing = await checkDuplicate(eventId, hash);
+            if (existing) {
+              duplicateCount++;
+              processed++;
+              setBulkDone(processed);
+              setBulkDuplicates(duplicateCount);
+              seenHashes.add(hash);
+              continue;
+            }
+            seenHashes.add(hash);
+          }
+
+          // Genuinely new — compress + upload + POST.
           const result = await processAndUploadImage(file, eventId, userId);
           const latitude = result.exif.latitude ?? position?.latitude ?? null;
           const longitude = result.exif.longitude ?? position?.longitude ?? null;
@@ -166,6 +213,7 @@ export function WandererScreen({
               latitude,
               longitude,
               exif_date: result.exif.exifDate,
+              file_hash: hash,
             }),
           });
 
@@ -173,20 +221,45 @@ export function WandererScreen({
             const data = await res.json().catch(() => null);
             throw new Error(data?.error || `HTTP ${res.status}`);
           }
+
+          // PROJ-39 race-safety net — a second tab finished first.
+          const resData = (await res.json().catch(() => null)) as
+            | { content_item?: unknown; duplicate?: boolean }
+            | null;
+          if (resData?.duplicate) {
+            duplicateCount++;
+            setBulkDuplicates(duplicateCount);
+          }
         } catch (err) {
           const name = file.name.length > 25 ? file.name.slice(0, 22) + "..." : file.name;
           const msg = err instanceof Error ? err.message : "Unbekannter Fehler";
           errors.push(`${name}: ${msg}`);
         }
-        setBulkDone(i + 1);
+        processed++;
+        setBulkDone(processed);
       }
 
       setBulkErrors(errors);
       setBulkUploading(false);
-      const ok = files.length - errors.length;
+      const ok = files.length - errors.length - duplicateCount;
       if (ok > 0) {
-        toast.success(`${ok} von ${files.length} Fotos hochgeladen ✓`, { duration: 5000 });
+        if (duplicateCount > 0) {
+          toast.success(
+            `${ok} hochgeladen, ${duplicateCount} Duplikat${duplicateCount === 1 ? "" : "e"} übersprungen ✓`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.success(`${ok} von ${files.length} Fotos hochgeladen ✓`, {
+            duration: 5000,
+          });
+        }
         refreshGps();
+      } else if (duplicateCount > 0 && errors.length === 0) {
+        // Nothing new, but nothing failed either — all were duplicates.
+        toast.info(
+          `Alle ${duplicateCount} Fotos waren bereits hochgeladen.`,
+          { duration: 5000 }
+        );
       }
       if (errors.length > 0) {
         toast.error(`${errors.length} Fotos fehlgeschlagen`, { duration: 5000 });

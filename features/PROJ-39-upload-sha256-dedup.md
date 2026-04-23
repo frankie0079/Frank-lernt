@@ -1,6 +1,6 @@
 # PROJ-39: Upload-SHA-256-Dedup
 
-## Status: Planned
+## Status: In Review
 **Created:** 2026-04-23
 **Last Updated:** 2026-04-23
 
@@ -170,6 +170,41 @@ Alle benötigten APIs sind browser-nativ (Web Crypto API). Keine neuen Abhängig
 `supabase/migrations/20260423_content_items_file_hash.sql`
 - Fügt Spalte `file_hash TEXT NULL` zu `content_items` hinzu
 - Legt UNIQUE PARTIAL-Index auf `(event_id, file_hash) WHERE file_hash IS NOT NULL` an
+
+## Frontend Implementation
+
+**Neue Shared-Util:** `src/lib/file-hash.ts`
+- `computeSHA256(blob: Blob): Promise<string | null>` — nutzt `crypto.subtle.digest('SHA-256', ...)` via `Blob.arrayBuffer()` (FileReader-Fallback für alte Browser). 5s-Timeout, alle Fehler silent-fail auf `null`. Output: lowercase hex, 64 chars, validiert mit `/^[0-9a-f]{64}$/`. Akzeptiert sowohl `File` (Gallery) als auch `Blob` (MediaRecorder-Aufnahmen), da `File extends Blob`.
+- `checkDuplicate(eventId: string, hash: string): Promise<DuplicateProbeItem | null>` — GET `/api/events/{id}/content?hash=<sha>`. Returns existing item bei 200+`exists=true`, sonst `null`. Netzwerkfehler/4xx/5xx → `null` (silent fallback).
+
+**4 Upload-Komponenten angepasst** — alle folgen jetzt dem Pattern:
+1. Hash berechnen (silent-fail → null → kein Dedup-Check)
+2. GET-Probe via `checkDuplicate(eventId, hash)`; bei Treffer: typ-spezifischer Info-Toast + `onSubmitSuccess()` + Sheet schließen, KEIN Upload
+3. Bei neuem Hash: normaler Upload-Pfad mit `file_hash` im POST-Body
+4. Race-Safety: Wenn POST mit `{ duplicate: true }` antwortet (HTTP 200 statt 201), selben Info-Toast zeigen
+
+- `src/components/photo-sheet.tsx` — Einzel-Foto-Sheet, Toast „Dieses Foto wurde bereits hochgeladen."
+- `src/components/video-sheet.tsx` — Video-Sheet (Gallery + Recording), hashing auf Blob-Level. Toast „Dieses Video wurde bereits hochgeladen."
+- `src/components/audio-sheet.tsx` — Nur der Audio-Pfad (`handleSubmit`) hashed; Text-only-Pfad (`handleTextSubmit`) sendet keinen Hash (Server forciert ohnehin `file_hash=null` für `type=text`). Toast „Diese Sprachmemo wurde bereits hochgeladen."
+
+**`src/components/wanderer-screen.tsx` — Bulk-Upload mit In-Batch-Dedup:**
+1. Phase 1: alle Hashes parallel via `Promise.all(files.map(computeSHA256))`
+2. Phase 2: iteriere — `seenHashes` Set filtert Duplikate innerhalb des Batches (erstes Vorkommen geht durch, Rest zählt als Duplikat)
+3. Phase 3: pro Unique-Hash → `checkDuplicate` → bei Treffer skip (Server-side Dup)
+4. Phase 4: nur Überlebende werden via `processAndUploadImage` + POST hochgeladen
+5. Fortschrittszähler (`bulkDone`) zählt alle verarbeiteten Files (Upload oder Skip oder Error); neuer `bulkDuplicates`-State.
+6. Abschluss-Toast: „X hochgeladen, Y Duplikate übersprungen" bei gemischt, „Alle N Fotos waren bereits hochgeladen." wenn nur Duplikate, sonst normaler Erfolgs-Toast.
+
+**`src/lib/offline-queue.ts` — Replay-Idempotenz:**
+- Beim Queue-Replay wird der gespeicherte `fileBlob` (Photo/Audio) vor dem Re-Upload gehasht und im POST-Body mitgeschickt. Wenn der erste Upload-Versuch die POST-Phase nicht mehr erreicht hat, aber trotzdem als neues Item eingefügt wurde (selten, aber möglich bei Sync-Race), fängt der Server-Unique-Index die zweite Einfügung ab und liefert das existierende Item zurück.
+
+**UX-Details:**
+- Toast-Dauer für Duplikate: 5s
+- Haptic-Feedback bei Duplikat: `navigator.vibrate([30])` (kürzer als normaler Erfolg `[50]`)
+- Hash-Timeout/Fehler: kein Toast, Upload läuft normal weiter
+- Keine neuen shadcn-Komponenten nötig (nur `toast` aus sonner — bereits im Einsatz)
+
+**Build:** `npm run lint` grün (0 errors, 14 pre-existing warnings), `npm run build` grün.
 
 ## QA Test Results
 _To be added by /qa_
