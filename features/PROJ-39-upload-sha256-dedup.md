@@ -65,7 +65,111 @@ Die Lösung: Bevor eine Datei hochgeladen wird, berechnet der Browser ihren SHA-
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Schlüsselerkenntnis: wo im Upload-Ablauf der Hash greift
+
+Der bestehende Upload-Ablauf läuft in zwei getrennten Schritten:
+1. **Client → Supabase Storage** (Datei direkt hochladen, liefert URL zurück)
+2. **Client → API `POST /content`** (URL + Metadaten als JSON an unseren Server)
+
+Die Dedup-Prüfung muss **vor Schritt 1** stattfinden, bevor überhaupt Speicherplatz verbraucht wird. Käme sie danach, müssten wir die soeben hochgeladene Datei sofort wieder löschen — das ist fehleranfällig und verschwenderisch.
+
+---
+
+### Neuer Upload-Ablauf (gilt für alle 4 Upload-Typen)
+
+```
+Bisheriger Ablauf:
+  Datei auswählen → Storage-Upload → POST /content → fertig
+
+Neuer Ablauf:
+  Datei auswählen
+    ↓
+  SHA-256-Hash berechnen (im Browser, kein Server-Call)
+    ↓ (bei Fehler: direkt zu "Storage-Upload" ohne Dedup)
+  GET /content?hash=<sha256> — prüfe ob bereits vorhanden
+    ↓ vorhanden                ↓ nicht vorhanden
+  Toast anzeigen           Storage-Upload
+  Abbrechen                    ↓
+                           POST /content (inkl. file_hash)
+                               ↓
+                           Fertig
+```
+
+---
+
+### Komponenten-Übersicht
+
+```
+Neue Hilfsfunktion (shared):
+  src/lib/file-hash.ts                  ← NEU
+    Berechnet SHA-256 eines Files,
+    bricht nach 5s Timeout ab, gibt null zurück
+
+Geänderte Upload-Komponenten (kein neues UI, nur Logik):
+  src/components/photo-sheet.tsx        ← Hash-Check vor Upload einfügen
+  src/components/wanderer-screen.tsx    ← Hash-Check im Bulk-Loop + in-batch-Dedup
+  src/components/video-sheet.tsx        ← Hash-Check vor Upload einfügen
+  src/components/audio-sheet.tsx        ← Hash-Check vor Upload einfügen
+
+Geänderte API-Route:
+  GET  /api/events/[id]/content         ← Neuer ?hash= Query-Parameter
+  POST /api/events/[id]/content         ← Nimmt file_hash im Request-Body entgegen
+```
+
+---
+
+### Datenmodell-Änderung
+
+```
+content_items (bestehend — eine neue Spalte):
+  file_hash  TEXT  optional (null für Text-Posts und Legacy-Items)
+
+Neuer Datenbank-Index:
+  UNIQUE auf (event_id, file_hash)
+  — aber nur wenn file_hash nicht leer ist (PARTIAL-Index)
+  → verhindert, dass null-Werte fälschlicherweise als Duplikate gelten
+  → liefert Schutz auch bei Race Conditions (DB erzwingt Eindeutigkeit)
+```
+
+---
+
+### Drei Kernmechanismen
+
+**1. Hash-Berechnung im Browser**
+SHA-256 ist in jedem modernen Browser nativ verfügbar (Web Crypto API). Kein neues NPM-Paket nötig. Für ein 10-MB-Foto dauert die Berechnung typischerweise unter 200ms. Bei Fehler oder Timeout (>5s, relevant für sehr große Videos) springt die Logik zum normalen Upload weiter — kein Blockieren, kein Absturz.
+
+**2. Pre-Upload-Prüfung via GET**
+Bevor der Storage-Upload startet, fragt der Client mit dem Hash die bestehende Content-API. Der Server schaut in der Datenbank nach: gibt es ein `content_item` für dieses Event mit genau diesem Hash? Wenn ja → sofort Bescheid geben, kein Upload. Wenn nein → Upload darf starten.
+
+**3. Doppeltes Netz: UNIQUE-Constraint auf der DB**
+Selbst wenn zwei Teilnehmer gleichzeitig dieselbe Datei hochladen und beide den Pre-Check gleichzeitig machen (Race Condition: beide sehen "nicht vorhanden"), verhindert der UNIQUE-Index auf `(event_id, file_hash)`, dass beide ein neues DB-Eintrag anlegen. Der "Verlierer" des Rennens bekommt den Constraint-Fehler, der Server fängt ihn ab und gibt das bereits vorhandene Item zurück — für den Nutzer sieht es wie ein normaler Erfolg aus.
+
+---
+
+### Bulk-Upload: Dedup innerhalb derselben Auswahl
+
+Beim Bulk-Upload (iOS-Fotos-App, Multi-Select) kann es passieren, dass zwei identische Fotos in *derselben* Auswahl landen (z.B. dasselbe JPEG in zwei verschiedenen Alben sichtbar). Diese werden bereits **client-seitig** dedupliziert, noch bevor der erste Netzwerk-Request abgeht: alle Hashes werden berechnet, Duplikate in der Auswahl werden herausgefiltert, der Toast zählt sie zusammen.
+
+---
+
+### Was sich für den Nutzer ändert
+
+- **Normaler Upload:** kein Unterschied spürbar (Hash-Berechnung < 500ms für Fotos)
+- **Duplikat erkannt:** Toast erscheint — z.B. „Dieses Foto wurde für dieses Event bereits hochgeladen" — und das Foto wird nicht noch einmal hochgeladen. Das vorhandene Foto bleibt im Content-Pool wie gehabt.
+- **Bulk-Upload mit Duplikaten:** Progress-Anzeige zählt korrekt (Duplikate werden nicht als "hochgeladen" gezählt), am Ende ein Toast mit Zusammenfassung
+- **Alter Upload (Legacy-Item, kein Hash):** kein Schutz, da der DB-Eintrag keinen Hash hat. Akzeptiert.
+
+---
+
+### Keine neuen NPM-Pakete
+
+Alle benötigten APIs sind browser-nativ (Web Crypto API). Keine neuen Abhängigkeiten.
+
+### Neue Migration
+`supabase/migrations/20260423_content_items_file_hash.sql`
+- Fügt Spalte `file_hash TEXT NULL` zu `content_items` hinzu
+- Legt UNIQUE PARTIAL-Index auf `(event_id, file_hash) WHERE file_hash IS NOT NULL` an
 
 ## QA Test Results
 _To be added by /qa_
