@@ -10,6 +10,7 @@ import {
   formatDateRange,
 } from "@/lib/event-utils";
 import { CalendarDays, Users } from "lucide-react";
+import { PublicCountdown } from "@/components/public-countdown";
 
 interface EventCardProps {
   event: EventData;
@@ -54,6 +55,12 @@ export function EventCard({ event }: EventCardProps) {
             />
           )}
         </div>
+
+        {event.start_date && (
+          <div className="w-full px-4 pt-4">
+            <PublicCountdown startDate={event.start_date} compact />
+          </div>
+        )}
 
         <CardContent className="p-4">
           <h3 className="mb-1 font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground line-clamp-1 leading-tight">

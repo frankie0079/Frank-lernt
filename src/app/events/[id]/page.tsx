@@ -200,7 +200,7 @@ export default function EventDashboardPage() {
       {/* Countdown — only if start_date is set; component itself returns null once elapsed */}
       {event.start_date && (
         <div className="mx-auto max-w-2xl px-4 pt-4">
-          <PublicCountdown startDate={event.start_date} />
+          <PublicCountdown startDate={event.start_date} compact />
         </div>
       )}
 

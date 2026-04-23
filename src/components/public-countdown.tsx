@@ -17,6 +17,12 @@ interface Props {
    * The public event page (PROJ-35) passes `0` to preserve midnight behavior.
    */
   targetHour?: number;
+  /**
+   * Compact variant: smaller padding, smaller digits, smaller header text.
+   * Used in tight spaces like event cards and between cover/title on the
+   * event dashboard. Defaults to `false` (full banner size for the public page).
+   */
+  compact?: boolean;
 }
 
 function diffParts(target: number, now: number) {
@@ -27,7 +33,7 @@ function diffParts(target: number, now: number) {
   return { days, hours, minutes, done: ms === 0 };
 }
 
-export function PublicCountdown({ startDate, targetHour = 12 }: Props) {
+export function PublicCountdown({ startDate, targetHour = 12, compact = false }: Props) {
   const target = useMemo(() => {
     // Parse YYYY-MM-DD into local Date at the requested hour.
     const [y, m, d] = startDate.split("-").map((n) => parseInt(n, 10));
@@ -59,6 +65,42 @@ export function PublicCountdown({ startDate, targetHour = 12 }: Props) {
 
   if (parts.done) return null;
 
+  if (compact) {
+    // Compact text-only variant used on /events and /events/[id]:
+    // no box, no fill — plain text with "in:" prefix before the digits.
+    return (
+      <div className="text-right">
+        <div className="flex items-center justify-end gap-1.5 text-primary">
+          <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="text-xs font-semibold">Startet am {formatted}</span>
+        </div>
+        <div
+          className="flex items-baseline justify-end gap-2 text-foreground"
+          role="timer"
+          aria-live="polite"
+          aria-label="Countdown bis Eventstart"
+        >
+          <span className="text-sm font-semibold text-primary">in:</span>
+          {[
+            { label: "Tage", value: parts.days },
+            { label: "Std", value: parts.hours },
+            { label: "Min", value: parts.minutes },
+          ].map((p) => (
+            <span key={p.label} className="flex items-baseline gap-1">
+              <span className="text-base font-bold tabular-nums leading-none">
+                {p.value.toString().padStart(2, "0")}
+              </span>
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                {p.label}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Full banner variant (public event page / PROJ-35) — unchanged look.
   return (
     <Card className="border-primary/30 bg-primary/5 p-5 text-center">
       <div className="mb-2 flex items-center justify-center gap-2 text-primary">
