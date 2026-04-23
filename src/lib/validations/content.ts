@@ -5,6 +5,13 @@ import { z } from "zod";
 export const contentTypeEnum = z.enum(["photo", "video", "text", "audio"]);
 export type ContentType = z.infer<typeof contentTypeEnum>;
 
+// SHA-256 in lowercase hex is always exactly 64 chars of [0-9a-f]. We enforce
+// this at the API boundary so malformed or oversized hashes can't poison the
+// unique index or slip past the dedup probe (PROJ-39).
+export const fileHashSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, "Ungültiger Datei-Hash");
+
 export const contentCreateSchema = z.object({
   type: contentTypeEnum,
   agenda_item_id: z.string().uuid().nullable().optional(),
@@ -19,6 +26,9 @@ export const contentCreateSchema = z.object({
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
   exif_date: z.string().nullable().optional(),
+  // PROJ-39: optional SHA-256 of the uploaded file. Null/absent for
+  // text-only posts and legacy clients.
+  file_hash: fileHashSchema.nullable().optional(),
 });
 
 export type ContentCreatePayload = z.infer<typeof contentCreateSchema>;

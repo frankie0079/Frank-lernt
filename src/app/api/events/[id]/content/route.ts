@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
-import { contentCreateSchema } from "@/lib/validations/content";
+import { contentCreateSchema, fileHashSchema } from "@/lib/validations/content";
 import { serverError } from "@/lib/api-error";
 
 async function getCurrentMember(request: NextRequest) {
@@ -71,6 +71,7 @@ export async function GET(
   const filterType = url.searchParams.get("filter");
   const agendaId = url.searchParams.get("agenda");
   const singleId = url.searchParams.get("id");
+  const hashParam = url.searchParams.get("hash");
   const limitParam = url.searchParams.get("limit");
   const limit = Math.min(Math.max(parseInt(limitParam || "20", 10) || 20, 1), 200);
 
@@ -84,6 +85,37 @@ export async function GET(
   // Validate cursor is a plausible ISO timestamp
   if (cursor && isNaN(Date.parse(cursor))) {
     return NextResponse.json({ error: "Ungültiges Cursor-Format" }, { status: 400 });
+  }
+
+  // PROJ-39: pre-upload dedup probe. Returns a tiny payload so clients can
+  // bail out before they even hit Supabase Storage. Validated with the same
+  // strict regex the POST path uses to keep the attack surface identical.
+  if (hashParam !== null) {
+    const hashCheck = fileHashSchema.safeParse(hashParam);
+    if (!hashCheck.success) {
+      return NextResponse.json(
+        { error: "Ungültiger Datei-Hash" },
+        { status: 400 }
+      );
+    }
+    const { data: existing, error: hashError } = await supabase
+      .from("content_items")
+      .select(
+        "id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at, file_hash"
+      )
+      .eq("event_id", id)
+      .eq("file_hash", hashCheck.data)
+      .limit(1)
+      .maybeSingle();
+
+    if (hashError) {
+      return serverError("events/[id]/content:hash_probe", hashError);
+    }
+
+    if (existing) {
+      return NextResponse.json({ exists: true, content_item: existing });
+    }
+    return NextResponse.json({ exists: false });
   }
 
   let query = supabase
@@ -288,7 +320,7 @@ export async function POST(
     );
   }
 
-  const { type, agenda_item_id, media_url, thumbnail_url, caption, latitude, longitude, exif_date } = parsed.data;
+  const { type, agenda_item_id, media_url, thumbnail_url, caption, latitude, longitude, exif_date, file_hash } = parsed.data;
 
   // Photo/video/audio require media_url
   if (type !== "text" && !media_url) {
@@ -351,6 +383,32 @@ export async function POST(
     }
   }
 
+  // PROJ-39: hash is only meaningful for file-based types. Strip it on
+  // text posts so a buggy client can't poison the unique index with a
+  // hash that does not correspond to any uploaded file.
+  const effectiveFileHash = type === "text" ? null : file_hash ?? null;
+
+  // PROJ-39: fast-path dedup. Even though the browser does a GET probe
+  // first, a second identical POST can still arrive because of (a) a race
+  // between two tabs, (b) a Background-Sync replay, or (c) a retry after a
+  // flaky network. Checking here keeps the happy path a single round-trip
+  // and produces an identical shape to a fresh insert.
+  if (effectiveFileHash) {
+    const { data: prior } = await supabase
+      .from("content_items")
+      .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at")
+      .eq("event_id", id)
+      .eq("file_hash", effectiveFileHash)
+      .limit(1)
+      .maybeSingle();
+    if (prior) {
+      return NextResponse.json(
+        { content_item: prior, duplicate: true },
+        { status: 200 }
+      );
+    }
+  }
+
   const { data: item, error: insertError } = await supabase
     .from("content_items")
     .insert({
@@ -364,11 +422,34 @@ export async function POST(
       latitude: latitude ?? null,
       longitude: longitude ?? null,
       exif_date: exif_date || null,
+      file_hash: effectiveFileHash,
     })
     .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at")
     .single();
 
   if (insertError) {
+    // PROJ-39: race-safety net. If two clients finish the pre-check at the
+    // same instant, the partial unique index (event_id, file_hash) on
+    // content_items rejects the second INSERT with 23505. We translate
+    // that into an idempotent success by returning the row that won the
+    // race — same shape as a fresh insert, with `duplicate: true` so
+    // callers can show the right toast.
+    const pgError = insertError as { code?: string } | null;
+    if (pgError?.code === "23505" && effectiveFileHash) {
+      const { data: winner } = await supabase
+        .from("content_items")
+        .select("id, event_id, agenda_item_id, author_id, type, media_url, thumbnail_url, caption, latitude, longitude, exif_date, created_at")
+        .eq("event_id", id)
+        .eq("file_hash", effectiveFileHash)
+        .limit(1)
+        .maybeSingle();
+      if (winner) {
+        return NextResponse.json(
+          { content_item: winner, duplicate: true },
+          { status: 200 }
+        );
+      }
+    }
     return serverError("events/[id]/content:create", insertError);
   }
 
