@@ -1,6 +1,6 @@
 # PROJ-41: Tour-Tracker
 
-## Status: Planned
+## Status: In Review
 **Created:** 2026-04-23
 **Last Updated:** 2026-04-23
 
@@ -81,6 +81,34 @@ Der Tour-Tracker schließt diese Lücke: Ein Tipp auf „Tour-Tracker" startet d
 
 ## Tech Design (Solution Architect)
 _Übersprungen — vollständiger Tech-Plan liegt in `.claude/plans/gleaming-questing-tide.md`_
+
+## Frontend Implementation
+
+**Implementiert am:** 2026-04-23
+
+### Neue Dateien
+- **`src/hooks/use-tour-tracker.ts`** — GPS-Tracking-Hook. Kapselt `navigator.geolocation.watchPosition` mit `{ enableHighAccuracy: true, timeout: 10_000, maximumAge: 2_000 }`. Drosselt Punkte auf min. 3 s Abstand. Berechnet Distanz via Haversine zwischen konsekutiven Punkten. Elevation Gain/Loss mit EMA-Filter (α=0,3) und 2 m-Mindest-Delta. Current Speed bevorzugt `coords.speed`, fällt zurück auf Δ-Distanz/Δ-Zeit der letzten beiden Punkte. Avg Speed = `distanceM / (activeDurationMs/1000)` in km/h. `pause()`/`resume()` verwalten Segment-basierte `activeDurationMs`-Akkumulation und setzen ein Skip-Flag, damit der erste Punkt nach Resume nicht als Distanz-Schritt zum pre-pause Punkt gezählt wird. Signalverlust: wenn >10 s seit dem letzten Update kein Tick, `currentSpeedKmh=0` und `signalLost=true`. localStorage-Snapshot (`tour-tracker-snapshot-${eventId}`, TTL 24 h) alle 30 s während Recording, beim Pause und beim Start. `resumeFromSnapshot()` lädt den Snapshot und setzt den Status auf `paused`, damit der User aktiv weiterstarten muss. GPS-Status wird initial über `navigator.permissions.query` probiert.
+- **`src/components/tour-tracker-sheet.tsx`** — Drei-Phasen-UI (Idle / Recording / Paused). Im Idle: Info-Alert zu iOS-Wake-Lock + destructive „Starte die Aufnahme"-Button. In Recording: Timer (HH:MM:SS), 6 StatCards (Geschwindigkeit, Ø-Geschwindigkeit, Distanz, Dauer, ↑ Aufstieg, ↓ Abstieg), Pausieren- + Speichern-Button. In Paused: identische Stats (gedimmt), Fortsetzen- + Speichern-Button + Verwerfen-Footer. Resume-Dialog (AlertDialog) beim Öffnen wenn `hasSnapshot=true`. Wake-Lock wird beim Eintritt in `recording` angefordert und bei `visibilitychange` reakquiriert. Speichern-Flow: `renderTourReport()` → `File` → `computeSHA256` → `checkDuplicate` → `processAndUploadImage` → `POST /api/events/[id]/content` mit `type="photo"`, `caption = formatTourCaption(stats)`, Startpunkt-GPS als lat/lng, `exif_date = startedAt.toISOString()`. Mindestanforderung zum Speichern: 50 m Distanz UND 5 GPS-Punkte. Schließen während Recording zeigt Bestätigungsdialog; Tour bleibt via localStorage-Snapshot erhalten.
+- **`src/lib/tour-report.ts`** — Pure-Canvas-Rendering (OffscreenCanvas wenn verfügbar, sonst `document.createElement("canvas")`). 1200×1200 px. Kopf (200 px): Event-Name in Caveat/Dancing Script-Schrift (auto-shrink wenn zu breit) + Datum. Mitte (600 px): Polyline-Karte auf hellgrauem Rounded-Rect, Teal-Route, grüner A-Marker (Start), roter B-Marker (Ende). RDP-Simplifikation (ε=0,00005°) bei >2000 Punkten. Kollabierte/fehlende Routen zeigen Platzhalter „Kein Routenverlauf". Unten (400 px): Stats in 2 Reihen (Distanz/Dauer/Ø-Speed in Reihe 1, Aufstieg/Abstieg grün/rot in Reihe 2). Export via `canvas.convertToBlob({ type: "image/png" })` mit Fallback auf `HTMLCanvasElement.toBlob`. Exportiert Formatter `formatDistance`, `formatDuration`, `formatSpeed`, `formatTourCaption` für Sheet-Wiederverwendung.
+
+### Geänderte Dateien
+- **`src/components/action-button-grid.tsx`** — Neue Prop `onTourTracker`, 5. Button mit `col-span-2`, horizontalem Layout, Icon `Route`, Label „Tour-Tracker".
+- **`src/components/wanderer-screen.tsx`** — Neue Prop `eventName`, neuer State `tourSheetOpen`, Handler `handleTourTracker`, `<TourTrackerSheet>` unten eingebaut. Disabled-Logik für ActionButtonGrid erweitert um `tourSheetOpen`.
+- **`src/app/events/[id]/page.tsx`** — `eventName={event.name}` an `<WandererScreen>` durchgereicht.
+
+### Edge-Cases, die durch die Implementierung gelöst sind
+- **GPS-Permission denied:** Banner im Sheet zeigt Erklärung, Start-Button ist disabled.
+- **GPS-Signalverlust mitten in der Tour:** `currentSpeedKmh=0`, Alert-Banner, Distanz wächst nicht, Tour läuft weiter sobald Position wiederkommt.
+- **iPhone-Sperre während Recording:** Wake-Lock-API wird angefordert; bei Fehlen eine Toast-Warnung. visibilitychange-Listener reakquiriert den Lock beim Foreground-Wechsel. Snapshot alle 30 s minimiert Datenverlust.
+- **>2000 Punkte:** RDP-Simplifikation vor Polyline-Draw; Stats bleiben aus Rohdaten korrekt.
+- **Altitude-Noise:** EMA α=0,3 + 2 m-Delta-Filter.
+- **OffscreenCanvas nicht verfügbar:** Fallback auf `document.createElement("canvas")` + Promise-Wrapper um `toBlob`.
+- **Doppelter Speicher-Klick:** `saving` Guard im Sheet, dedup via SHA-256 (PROJ-39) greift automatisch.
+- **Pause mitten in einem Meter-Sprung:** `skipNextHaversineRef` überspringt den ersten Punkt nach Resume.
+- **Ranzige Snapshots >24 h:** werden beim Read automatisch gelöscht.
+
+### Nicht implementiert (Field-Test erforderlich)
+- Echter GPS-Test unter Bewegung (iPhone, Feldbedingungen, >30 min Aufnahme, Tunnel/Gebäude, iOS Safari PWA Lock/Unlock).
 
 ## QA Test Results
 _To be added by /qa_
