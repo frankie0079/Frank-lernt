@@ -1,0 +1,370 @@
+/* ============================================================
+   ALOHA-SIXTY — Komponenten-Stile
+   ============================================================ */
+
+/* ---------- Layout-Helfer für die Design-System-Seite ---------- */
+.as-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--as-s-8) var(--as-s-6) var(--as-s-9);
+}
+.as-section { margin-top: var(--as-s-9); }
+.as-section:first-of-type { margin-top: var(--as-s-7); }
+
+.as-eyebrow {
+  font-family: var(--as-font-headline);
+  text-transform: uppercase;
+  letter-spacing: var(--as-track-wide);
+  font-weight: 600;
+  font-size: var(--as-t-small);
+  color: var(--as-terracotta);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--as-s-2);
+}
+.as-eyebrow::before {
+  content: "";
+  width: 22px; height: 2px;
+  background: currentColor;
+  display: inline-block;
+}
+
+.as-h1 { font-family: var(--as-font-display); font-size: var(--as-t-display-m); line-height: var(--as-lh-tight); letter-spacing: var(--as-track-tight); color: var(--as-forest); margin: var(--as-s-3) 0 var(--as-s-4); }
+.as-h2 { font-family: var(--as-font-display); font-size: var(--as-t-h1); line-height: var(--as-lh-tight); color: var(--as-forest); margin: 0 0 var(--as-s-5); }
+.as-h3 { font-family: var(--as-font-headline); font-weight: 600; font-size: var(--as-t-h3); letter-spacing: var(--as-track-mid); text-transform: uppercase; color: var(--as-ink); margin: 0 0 var(--as-s-3); }
+.as-lead { font-size: var(--as-t-body-l); color: var(--as-fg-muted); max-width: 62ch; }
+
+/* ---------- Grid helpers ---------- */
+.as-grid { display: grid; gap: var(--as-s-4); }
+.as-grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.as-grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.as-grid-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.as-grid-6 { grid-template-columns: repeat(6, minmax(0,1fr)); }
+@media (max-width: 900px){
+  .as-grid-4, .as-grid-6 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .as-grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   COLOR TOKENS
+   ============================================================ */
+.as-swatch {
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-r-md);
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.as-swatch__chip {
+  aspect-ratio: 4/3;
+  display: flex; align-items: flex-end; padding: var(--as-s-3);
+  color: var(--as-paper);
+  font-family: var(--as-font-headline);
+  font-weight: 600;
+  letter-spacing: var(--as-track-mid);
+  text-transform: uppercase;
+  font-size: var(--as-t-small);
+}
+.as-swatch__chip--light { color: var(--as-ink); }
+.as-swatch__meta {
+  padding: var(--as-s-3);
+  display: flex; flex-direction: column; gap: 2px;
+  font-size: var(--as-t-small);
+  background: #fff;
+}
+.as-swatch__name { font-weight: 600; color: var(--as-ink); }
+.as-swatch__hex  { font-family: var(--as-font-mono); color: var(--as-fg-subtle); }
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+.as-type-row {
+  border-top: 1px solid var(--as-border);
+  padding: var(--as-s-5) 0;
+  display: grid; grid-template-columns: 180px 1fr 180px; gap: var(--as-s-5); align-items: baseline;
+}
+.as-type-row:last-child { border-bottom: 1px solid var(--as-border); }
+.as-type-meta { font-family: var(--as-font-mono); font-size: var(--as-t-caption); color: var(--as-fg-subtle); text-transform: uppercase; letter-spacing: var(--as-track-mid); }
+@media (max-width: 720px){
+  .as-type-row { grid-template-columns: 1fr; gap: var(--as-s-2); }
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.as-btn {
+  --_fg: var(--as-paper);
+  --_bg: var(--as-terracotta);
+  --_bd: var(--as-terracotta-deep);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--as-s-2);
+  font-family: var(--as-font-headline);
+  font-weight: 600;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: var(--as-track-wide);
+  padding: 14px 22px;
+  border-radius: var(--as-r-md);
+  background: var(--_bg);
+  color: var(--_fg);
+  border: 2px solid var(--_bd);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  box-shadow: 0 2px 0 var(--_bd);
+  text-decoration: none;
+  user-select: none;
+}
+.as-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 0 var(--_bd); }
+.as-btn:active { transform: translateY(1px);  box-shadow: 0 0   0 var(--_bd); }
+.as-btn:focus-visible { outline: 3px solid var(--as-mustard); outline-offset: 2px; }
+
+.as-btn--secondary { --_bg: var(--as-teal); --_bd: var(--as-teal-deep); }
+.as-btn--accent    { --_bg: var(--as-mustard); --_bd: var(--as-mustard-deep); --_fg: var(--as-ink); }
+.as-btn--ghost     { --_bg: transparent; --_fg: var(--as-ink); --_bd: var(--as-ink); box-shadow: none; }
+.as-btn--ghost:hover { background: color-mix(in srgb, var(--as-ink) 8%, transparent); box-shadow: none; transform: none; }
+.as-btn--sm { padding: 10px 14px; font-size: 13px; }
+.as-btn--lg { padding: 18px 28px; font-size: 17px; }
+.as-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.as-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--as-font-headline);
+  text-transform: uppercase;
+  letter-spacing: var(--as-track-wide);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--as-r-sm);
+  background: var(--as-terracotta);
+  color: var(--as-paper);
+  border: 1px solid var(--as-terracotta-deep);
+}
+.as-badge--mustard { background: var(--as-mustard); color: var(--as-ink); border-color: var(--as-mustard-deep); }
+.as-badge--forest  { background: var(--as-forest);  color: var(--as-paper); border-color: var(--as-forest-deep); }
+.as-badge--teal    { background: var(--as-teal);    color: var(--as-paper); border-color: var(--as-teal-deep); }
+.as-badge--outline { background: transparent; color: var(--as-ink); border-color: var(--as-ink); }
+.as-badge--dot::before { content:""; width:6px; height:6px; border-radius:50%; background: currentColor; display:inline-block; }
+
+/* ============================================================
+   CARDS / EVENT-TILES
+   ============================================================ */
+.as-card {
+  background: #FFFCF4;
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-r-lg);
+  padding: var(--as-s-5);
+  display: flex; flex-direction: column; gap: var(--as-s-3);
+  box-shadow: var(--as-shadow-sm);
+}
+.as-card__head { display:flex; align-items:center; justify-content:space-between; gap: var(--as-s-3); }
+.as-card__title { font-family: var(--as-font-display); font-size: 28px; line-height: var(--as-lh-tight); color: var(--as-forest); }
+.as-card__meta  { font-family: var(--as-font-mono); font-size: var(--as-t-caption); color: var(--as-fg-subtle); text-transform: uppercase; letter-spacing: var(--as-track-wide); }
+.as-card__body  { color: var(--as-fg-muted); }
+.as-card__foot  { margin-top: auto; display: flex; gap: var(--as-s-2); align-items: center; justify-content: space-between; }
+
+.as-event-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--as-r-lg);
+  border: 1px solid var(--as-border);
+  background: var(--as-forest);
+  color: var(--as-paper);
+  padding: var(--as-s-6);
+  min-height: 220px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.as-event-tile--mustard { background: var(--as-mustard); color: var(--as-ink); }
+.as-event-tile--terra   { background: var(--as-terracotta); color: var(--as-paper); }
+.as-event-tile--teal    { background: var(--as-teal); color: var(--as-paper); }
+.as-event-tile__date {
+  font-family: var(--as-font-display);
+  font-size: 56px; line-height: 1;
+}
+.as-event-tile__kicker {
+  font-family: var(--as-font-headline);
+  text-transform: uppercase;
+  letter-spacing: var(--as-track-wide);
+  font-size: 13px;
+  opacity: .85;
+}
+.as-event-tile__title {
+  font-family: var(--as-font-display);
+  font-size: 26px;
+  line-height: var(--as-lh-tight);
+}
+
+/* ============================================================
+   FORM-ELEMENTE
+   ============================================================ */
+.as-field { display: flex; flex-direction: column; gap: 6px; }
+.as-label {
+  font-family: var(--as-font-headline);
+  text-transform: uppercase;
+  letter-spacing: var(--as-track-wide);
+  font-size: 12px;
+  color: var(--as-fg-muted);
+  font-weight: 600;
+}
+.as-input, .as-select, .as-textarea {
+  font-family: var(--as-font-body);
+  font-size: 16px;
+  padding: 12px 14px;
+  border: 2px solid var(--as-ink);
+  border-radius: var(--as-r-md);
+  background: #FFFCF4;
+  color: var(--as-ink);
+  transition: box-shadow .15s ease, border-color .15s ease;
+  width: 100%;
+}
+.as-input:focus, .as-select:focus, .as-textarea:focus {
+  outline: none;
+  border-color: var(--as-terracotta);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--as-terracotta) 30%, transparent);
+}
+.as-textarea { min-height: 110px; resize: vertical; }
+
+.as-check {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 15px; color: var(--as-ink); cursor: pointer;
+}
+.as-check input {
+  appearance: none;
+  width: 20px; height: 20px;
+  border: 2px solid var(--as-ink);
+  border-radius: 4px;
+  background: #FFFCF4;
+  display: grid; place-content: center;
+  cursor: pointer;
+}
+.as-check input:checked { background: var(--as-terracotta); border-color: var(--as-terracotta-deep); }
+.as-check input:checked::after {
+  content: ""; width: 10px; height: 6px;
+  border-left: 2px solid var(--as-paper);
+  border-bottom: 2px solid var(--as-paper);
+  transform: rotate(-45deg) translate(1px,-1px);
+}
+
+.as-radio { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:15px; }
+.as-radio input {
+  appearance: none; width: 20px; height: 20px;
+  border: 2px solid var(--as-ink); border-radius: 50%;
+  background: #FFFCF4; display: grid; place-content: center;
+  cursor: pointer;
+}
+.as-radio input:checked::after {
+  content:""; width: 10px; height: 10px; border-radius:50%;
+  background: var(--as-terracotta);
+}
+
+/* ============================================================
+   STAMP — Die Briefmarken-Komponente
+   ============================================================ */
+.as-stamp {
+  --stamp-gap: 10px;
+  --stamp-tooth: 6px;
+  position: relative;
+  background: var(--as-ink);
+  padding: var(--stamp-gap);
+  display: inline-block;
+  filter: drop-shadow(0 14px 28px rgba(14,26,26,.3));
+}
+.as-stamp__inner {
+  background: var(--as-paper);
+  padding: 24px;
+  position: relative;
+  /* Perforation als Maske an allen 4 Kanten */
+  --d: calc(var(--stamp-tooth) * 2);
+  mask:
+    radial-gradient(circle var(--stamp-tooth) at var(--stamp-tooth) 0, transparent 98%, #000) 0 0 / var(--d) var(--stamp-tooth) repeat-x,
+    radial-gradient(circle var(--stamp-tooth) at var(--stamp-tooth) 100%, transparent 98%, #000) 0 100% / var(--d) var(--stamp-tooth) repeat-x,
+    radial-gradient(circle var(--stamp-tooth) at 0 var(--stamp-tooth), transparent 98%, #000) 0 0 / var(--stamp-tooth) var(--d) repeat-y,
+    radial-gradient(circle var(--stamp-tooth) at 100% var(--stamp-tooth), transparent 98%, #000) 100% 0 / var(--stamp-tooth) var(--d) repeat-y,
+    linear-gradient(#000, #000);
+  mask-composite: exclude, exclude, exclude, exclude, add;
+  -webkit-mask-composite: source-out, source-out, source-out, source-out, source-over;
+}
+
+/* ============================================================
+   TICKET / SAVE-THE-DATE
+   ============================================================ */
+.as-ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  background: #FFFCF4;
+  border: 2px solid var(--as-ink);
+  border-radius: var(--as-r-lg);
+  overflow: hidden;
+  box-shadow: var(--as-shadow-md);
+}
+.as-ticket__main {
+  padding: var(--as-s-6);
+  display: flex; flex-direction: column; gap: var(--as-s-3);
+  border-right: 2px dashed var(--as-ink);
+  position: relative;
+}
+.as-ticket__stub {
+  background: var(--as-terracotta);
+  color: var(--as-paper);
+  padding: var(--as-s-5);
+  display: flex; flex-direction: column; justify-content: space-between;
+  writing-mode: vertical-rl;
+  align-items: center;
+  font-family: var(--as-font-headline);
+  text-transform: uppercase;
+  letter-spacing: var(--as-track-wide);
+}
+.as-ticket__date {
+  font-family: var(--as-font-display);
+  font-size: 44px; color: var(--as-forest);
+  line-height: var(--as-lh-tight);
+}
+.as-ticket__title {
+  font-family: var(--as-font-display);
+  font-size: 38px; color: var(--as-ink);
+  line-height: var(--as-lh-tight);
+}
+/* Lochungen links/rechts der gestrichelten Linie */
+.as-ticket__main::before,
+.as-ticket__main::after {
+  content: "";
+  position: absolute; right: -12px; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--as-paper);
+  border: 2px solid var(--as-ink);
+}
+.as-ticket__main::before { top: -12px; }
+.as-ticket__main::after  { bottom: -12px; }
+
+/* ============================================================
+   BANNER / RIBBON (wie "FRANKIE'S"-Balken)
+   ============================================================ */
+.as-ribbon {
+  background: var(--as-terracotta);
+  color: var(--as-paper);
+  padding: 14px 22px;
+  display: inline-flex; align-items: center; gap: var(--as-s-3);
+  font-family: var(--as-font-display);
+  font-size: 28px;
+  letter-spacing: var(--as-track-tight);
+  line-height: 1;
+}
+.as-ribbon__num {
+  background: var(--as-paper);
+  color: var(--as-terracotta);
+  padding: 4px 10px;
+  font-size: 20px;
+}
+
+/* ============================================================
+   DIVIDERS — Wellen wie im Briefmarken-Wasser
+   ============================================================ */
+.as-waves {
+  height: 26px;
+  background-image: radial-gradient(circle at 50% 100%, var(--as-teal) 10px, transparent 11px);
+  background-size: 26px 26px;
+  background-repeat: repeat-x;
+  background-position: 0 50%;
+}

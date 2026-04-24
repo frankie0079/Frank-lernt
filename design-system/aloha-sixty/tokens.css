@@ -1,0 +1,114 @@
+/* ============================================================
+   ALOHA-SIXTY — Design Tokens
+   Extrahiert aus der "Frankie's Aloha-Sixty" Briefmarke
+   ============================================================ */
+
+:root {
+  /* ---------- Core palette (direkt aus der Briefmarke) ---------- */
+  --as-paper:        #F2E7CE;  /* Cremefarbenes Briefmarkenpapier */
+  --as-paper-deep:   #E8D9B5;  /* Etwas tiefer, für Flächen */
+  --as-ink:          #0E1A1A;  /* Fast-Schwarz, Briefmarkenrand */
+
+  --as-terracotta:   #C94A2B;  /* Warmes Rot-Orange, Titelbalken, Ukulele */
+  --as-terracotta-deep: #A93A1F;
+
+  --as-mustard:      #E9B63A;  /* Senfgelb, "FRANKIE'S", Hibiskus */
+  --as-mustard-deep: #C99628;
+
+  --as-forest:       #1E4A3C;  /* Tanne, "ALOHA-SIXTY" Titel */
+  --as-forest-deep:  #143229;
+
+  --as-teal:         #2A6A6A;  /* Petrol, "60", Save-the-Date */
+  --as-teal-deep:    #1E4E4E;
+
+  --as-leaf:         #4C7A3A;  /* Palmwedel-Grün (Akzent) */
+
+  /* ---------- Rollen ---------- */
+  --as-bg:           var(--as-paper);
+  --as-bg-alt:       var(--as-paper-deep);
+  --as-fg:           var(--as-ink);
+  --as-fg-muted:     #3A4747;
+  --as-fg-subtle:    #6A7575;
+
+  --as-primary:      var(--as-terracotta);
+  --as-primary-fg:   var(--as-paper);
+  --as-secondary:    var(--as-teal);
+  --as-accent:       var(--as-mustard);
+  --as-accent-fg:    var(--as-ink);
+  --as-success:      var(--as-forest);
+
+  --as-border:       color-mix(in srgb, var(--as-ink) 15%, transparent);
+  --as-border-strong:color-mix(in srgb, var(--as-ink) 35%, transparent);
+
+  /* ---------- Radien ---------- */
+  --as-r-none: 0;
+  --as-r-sm:   4px;
+  --as-r-md:   8px;
+  --as-r-lg:   14px;
+  --as-r-xl:   22px;
+  --as-r-full: 999px;
+
+  /* ---------- Spacing (4px Raster) ---------- */
+  --as-s-1:   4px;
+  --as-s-2:   8px;
+  --as-s-3:   12px;
+  --as-s-4:   16px;
+  --as-s-5:   24px;
+  --as-s-6:   32px;
+  --as-s-7:   48px;
+  --as-s-8:   64px;
+  --as-s-9:   96px;
+
+  /* ---------- Schatten (matt, nicht glossy) ---------- */
+  --as-shadow-sm: 0 1px 0 rgba(14,26,26,.08), 0 2px 4px rgba(14,26,26,.06);
+  --as-shadow-md: 0 2px 0 rgba(14,26,26,.06), 0 10px 24px -10px rgba(14,26,26,.25);
+  --as-shadow-lg: 0 4px 0 rgba(14,26,26,.06), 0 22px 44px -18px rgba(14,26,26,.35);
+  --as-shadow-stamp: 0 1px 0 rgba(14,26,26,.15), 0 18px 36px -18px rgba(14,26,26,.5);
+
+  /* ---------- Typografie ---------- */
+  --as-font-display: "Alfa Slab One", "Ultra", Georgia, serif;
+  --as-font-headline:"Oswald", "Impact", sans-serif;
+  --as-font-body:    "Work Sans", "Helvetica Neue", Arial, sans-serif;
+  --as-font-mono:    "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+  /* Type scale — großzügig, plakativ */
+  --as-t-display-xl: clamp(56px, 9vw, 128px);
+  --as-t-display-l:  clamp(44px, 6vw, 88px);
+  --as-t-display-m:  clamp(32px, 4.5vw, 60px);
+  --as-t-h1:         40px;
+  --as-t-h2:         32px;
+  --as-t-h3:         24px;
+  --as-t-h4:         20px;
+  --as-t-body-l:     18px;
+  --as-t-body:       16px;
+  --as-t-small:      14px;
+  --as-t-caption:    12px;
+
+  --as-lh-tight: 1.05;
+  --as-lh-snug:  1.25;
+  --as-lh-body:  1.55;
+
+  --as-track-wide: 0.14em;
+  --as-track-mid:  0.06em;
+  --as-track-tight:-0.01em;
+}
+
+/* ---------- Basis ---------- */
+html, body {
+  background: var(--as-bg);
+  color: var(--as-fg);
+  font-family: var(--as-font-body);
+  font-size: var(--as-t-body);
+  line-height: var(--as-lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Papier-Textur ---------- */
+.as-paper-texture {
+  background-color: var(--as-paper);
+  background-image:
+    radial-gradient(rgba(14,26,26,.04) 1px, transparent 1px),
+    radial-gradient(rgba(14,26,26,.03) 1px, transparent 1px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
+}
