@@ -4,74 +4,66 @@
 
 @layer base {
   :root {
-    --background: 180 15% 94%;
-    --foreground: 210 20% 14%;
-    --card: 0 0% 100%;
-    --card-foreground: 210 20% 14%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 20% 14%;
-    --primary: 174 62% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 15% 95%;
-    --secondary-foreground: 210 20% 25%;
-    --muted: 210 15% 96%;
-    --muted-foreground: 210 10% 45%;
-    --accent: 38 90% 55%;
-    --accent-foreground: 210 20% 14%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 15% 90%;
-    --input: 210 15% 90%;
-    --ring: 174 62% 38%;
-    --radius: 0.75rem;
-    --chart-1: 174 62% 38%;
-    --chart-2: 38 90% 55%;
-    --chart-3: 210 60% 50%;
-    --chart-4: 150 50% 45%;
-    --chart-5: 350 65% 55%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 210 20% 14%;
-    --sidebar-primary: 174 62% 38%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 15% 96%;
-    --sidebar-accent-foreground: 210 20% 14%;
-    --sidebar-border: 210 15% 90%;
-    --sidebar-ring: 174 62% 38%;
-  }
+    /* ================================================================
+       Aloha-Sixty design tokens
+       Vintage Hawaii postage-stamp palette (derived from "Frankie's
+       Aloha-Sixty" stamp artwork). Warm cream paper, terracotta,
+       mustard, forest, teal. Not a dark theme — no .dark variant.
+       ================================================================ */
 
-  .dark {
-    --background: 210 20% 8%;
-    --foreground: 0 0% 98%;
-    --card: 210 20% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 210 20% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 174 62% 45%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 15% 18%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 210 15% 18%;
-    --muted-foreground: 210 10% 60%;
-    --accent: 38 90% 55%;
-    --accent-foreground: 210 20% 8%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 15% 20%;
-    --input: 210 15% 20%;
-    --ring: 174 62% 45%;
-    --chart-1: 174 62% 45%;
-    --chart-2: 38 90% 55%;
-    --chart-3: 210 60% 55%;
-    --chart-4: 150 50% 50%;
-    --chart-5: 350 65% 60%;
-    --sidebar-background: 210 20% 8%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 174 62% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 15% 18%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 210 15% 20%;
-    --sidebar-ring: 174 62% 45%;
+    /* Paper / Ink base */
+    --background: 42 58% 88%;            /* #F2E7CE Paper */
+    --foreground: 180 29% 8%;             /* #0E1A1A Ink */
+
+    /* Cards & popovers — slightly warmer off-white so they lift off the paper */
+    --card: 45 100% 98%;                  /* #FFFCF4 */
+    --card-foreground: 180 29% 8%;
+    --popover: 45 100% 98%;
+    --popover-foreground: 180 29% 8%;
+
+    /* Primary = Terracotta (title bars, primary buttons) */
+    --primary: 12 64% 48%;                /* #C94A2B */
+    --primary-foreground: 42 58% 88%;     /* Paper on terracotta */
+
+    /* Secondary = Teal (secondary buttons, "60" numerals) */
+    --secondary: 180 43% 29%;             /* #2A6A6A */
+    --secondary-foreground: 42 58% 88%;
+
+    /* Muted = Paper-deep (subtle surfaces, filled inputs) */
+    --muted: 41 52% 81%;                  /* #E8D9B5 */
+    --muted-foreground: 180 11% 25%;      /* #3A4747 */
+
+    /* Accent = Mustard (highlights, focus-rings, hibiscus pops) */
+    --accent: 43 80% 57%;                 /* #E9B63A */
+    --accent-foreground: 180 29% 8%;      /* Ink on mustard */
+
+    /* Destructive = Terracotta-deep (red-orange instead of traffic-light red) */
+    --destructive: 12 69% 39%;            /* #A93A1F */
+    --destructive-foreground: 42 58% 88%;
+
+    /* Borders & rings */
+    --border: 42 30% 75%;                 /* Paper-tinted neutral */
+    --input: 42 30% 75%;
+    --ring: 43 80% 57%;                   /* Mustard focus outline */
+
+    --radius: 0.75rem;                    /* 12px — Aloha lg is 14px, close enough */
+
+    /* Chart colors — full Aloha sweep (used by recharts etc.) */
+    --chart-1: 12 64% 48%;                /* Terracotta */
+    --chart-2: 43 80% 57%;                /* Mustard */
+    --chart-3: 180 43% 29%;               /* Teal */
+    --chart-4: 162 43% 20%;               /* Forest */
+    --chart-5: 105 36% 35%;               /* Leaf */
+
+    /* Sidebar (shadcn sidebar primitive) */
+    --sidebar-background: 45 100% 98%;
+    --sidebar-foreground: 180 29% 8%;
+    --sidebar-primary: 12 64% 48%;
+    --sidebar-primary-foreground: 42 58% 88%;
+    --sidebar-accent: 41 52% 81%;
+    --sidebar-accent-foreground: 180 29% 8%;
+    --sidebar-border: 42 30% 75%;
+    --sidebar-ring: 43 80% 57%;
   }
 }
 
@@ -82,4 +74,15 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Subtle paper-grain background accent (not on <body> to keep scrolling light
+   — usage: add class `paper-texture` to hero-level containers where you want
+   the stamp-paper feel visible). */
+.paper-texture {
+  background-image:
+    radial-gradient(hsl(var(--foreground) / 0.04) 1px, transparent 1px),
+    radial-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
 }

@@ -54,3 +54,4 @@ public/serwist-worker-*.js.map
 
 # QA / debug screenshots from skill runs (not source)
 /*.png
+temp/

@@ -116,7 +116,7 @@ export function BookLayoutPicker({
 }: BookLayoutPickerProps) {
   return (
     <div className="space-y-2">
-      <Label className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+      <Label className="font-display text-2xl font-bold text-foreground">
         Layout
       </Label>
       <RadioGroup

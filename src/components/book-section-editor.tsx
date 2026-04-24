@@ -181,7 +181,7 @@ export function BookSectionEditor({
     <div className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
       {/* Header with section number + actions */}
       <div className="flex items-center justify-between gap-2">
-        <Label className="font-[family-name:var(--font-caveat)] text-xl font-bold text-foreground">
+        <Label className="font-display text-xl font-bold text-foreground">
           Seite {index + 1}
         </Label>
         <div className="flex gap-1">
@@ -288,7 +288,7 @@ export function BookSectionEditor({
       <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
         <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
           <SheetHeader className="space-y-1">
-            <SheetTitle className="font-[family-name:var(--font-caveat)] text-2xl font-bold">
+            <SheetTitle className="font-display text-2xl font-bold">
               Fotos wählen · Seite {index + 1}
             </SheetTitle>
             <SheetDescription>

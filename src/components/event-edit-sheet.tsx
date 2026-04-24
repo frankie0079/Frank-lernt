@@ -281,7 +281,7 @@ export function EventEditSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
         <SheetHeader className="px-6 pt-6 pb-2">
-          <SheetTitle className="font-[family-name:var(--font-caveat)] text-4xl leading-none">
+          <SheetTitle className="font-display text-4xl leading-none">
             Event bearbeiten
           </SheetTitle>
           <SheetDescription>
@@ -429,7 +429,7 @@ export function EventEditSheet({
               <Separator />
 
               <div>
-                <h3 className="mb-3 font-[family-name:var(--font-caveat)] text-3xl font-bold leading-none">
+                <h3 className="mb-3 font-display text-3xl font-bold leading-none">
                   Agenda
                 </h3>
 
@@ -615,7 +615,7 @@ export function EventEditSheet({
 
               {/* Danger Zone */}
               <div className="space-y-3 pb-6">
-                <h3 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-destructive leading-none">
+                <h3 className="font-display text-2xl font-bold text-destructive leading-none">
                   Gefahrenzone
                 </h3>
 

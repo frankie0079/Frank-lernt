@@ -257,7 +257,7 @@ export function BookPageEditor({
       {/* Sections list */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <Label className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+          <Label className="font-display text-2xl font-bold text-foreground">
             Seitee dieses Tages
           </Label>
           <span className="text-xs text-muted-foreground">

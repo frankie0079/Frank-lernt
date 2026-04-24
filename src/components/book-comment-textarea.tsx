@@ -24,7 +24,7 @@ export function BookCommentTextarea({
       <div className="flex items-baseline justify-between">
         <Label
           htmlFor="book-page-comment"
-          className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground"
+          className="font-display text-2xl font-bold text-foreground"
         >
           Tageskommentar
         </Label>

@@ -92,7 +92,7 @@ export default function EventsPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
-          <h1 className="min-w-0 truncate font-[family-name:var(--font-caveat)] text-5xl font-bold text-foreground leading-none">
+          <h1 className="min-w-0 truncate font-display text-5xl font-bold text-foreground leading-none">
             Meine Events
           </h1>
           <div className="flex shrink-0 items-center gap-3">

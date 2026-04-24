@@ -183,7 +183,7 @@ export function BookEditor({ eventId }: BookEditorProps) {
             className="mx-auto mb-3 h-10 w-10 text-muted-foreground"
             aria-hidden="true"
           />
-          <h1 className="font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground">
+          <h1 className="font-display text-3xl font-bold text-foreground">
             Tagebuch
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -230,7 +230,7 @@ export function BookEditor({ eventId }: BookEditorProps) {
       </div>
 
       <div className="space-y-1">
-        <h1 className="font-[family-name:var(--font-caveat)] text-4xl font-bold text-foreground">
+        <h1 className="font-display text-4xl font-bold text-foreground">
           Tagebuch bearbeiten
         </h1>
         <p className="text-sm text-muted-foreground">

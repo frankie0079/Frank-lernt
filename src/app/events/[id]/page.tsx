@@ -207,7 +207,7 @@ export default function EventDashboardPage() {
       {/* Event Title + Meta */}
       <div className="mx-auto max-w-2xl px-4 py-4">
         <div className="mb-2 flex items-start justify-between gap-3">
-          <h1 className="min-w-0 flex-1 font-[family-name:var(--font-caveat)] text-3xl font-bold text-foreground leading-tight">
+          <h1 className="min-w-0 flex-1 font-display text-3xl font-bold text-foreground leading-tight">
             {event.name}
           </h1>
           <Button
@@ -277,7 +277,7 @@ export default function EventDashboardPage() {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground leading-tight">
+                          <h3 className="font-display text-2xl font-bold text-foreground leading-tight">
                             {item.title}
                           </h3>
                           {item.description && (
@@ -394,7 +394,7 @@ export default function EventDashboardPage() {
                   <BookOpen className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+                  <h2 className="font-display text-2xl font-bold text-foreground">
                     Event-Tagebuch
                   </h2>
                   <p className="mt-0.5 text-sm text-muted-foreground">
@@ -424,7 +424,7 @@ export default function EventDashboardPage() {
 
             {/* Slideshow films feed (PROJ-34) */}
             <div>
-              <h3 className="mb-3 font-[family-name:var(--font-caveat)] text-2xl font-bold text-foreground">
+              <h3 className="mb-3 font-display text-2xl font-bold text-foreground">
                 Filme
               </h3>
               <SlideshowFeed eventId={eventId} />

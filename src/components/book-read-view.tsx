@@ -199,7 +199,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
 
       {/* Title */}
       <div>
-        <h1 className="font-[family-name:var(--font-caveat)] text-5xl font-bold leading-tight text-foreground">
+        <h1 className="font-display text-5xl font-bold leading-tight text-foreground">
           Tagebuch
         </h1>
         {eventMeta.name && (
@@ -253,7 +253,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
               </p>
               <h2
                 id={`day-title-${page.agenda_item_id}`}
-                className="font-[family-name:var(--font-caveat)] text-3xl font-bold leading-tight text-foreground"
+                className="font-display text-3xl font-bold leading-tight text-foreground"
               >
                 {page.agenda_title}
               </h2>
