@@ -1,8 +1,8 @@
 # PROJ-40: Event-Countdown
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-23
-**Last Updated:** 2026-04-23
+**Last Updated:** 2026-04-24
 
 ## Dependencies
 - Requires: PROJ-25 (Event-Erstellung) — liefert `start_date`-Feld
@@ -78,7 +78,58 @@ _Skipped on Frank's request — tiny pure-frontend change, implementation detail
   - `PublicCountdown` imported and rendered between the cover `<div>` and the "Event Title + Meta" block, guarded by `event.start_date`. Default `targetHour={12}` applies. Wrapper uses `mx-auto max-w-2xl px-4 pt-4` to line up with the title block on mobile. The component itself returns `null` once `parts.done`, so no extra status check is needed. Because the countdown sits above the `Tabs`, it is visible on every tab (including "Erfassen").
 
 ## QA Test Results
-_To be added by /qa_
+
+**QA Date:** 2026-04-23
+**QA Round:** 1
+**Status:** PASSED
+
+### Test-Ausführung
+- `npm run lint` → 0 errors (14 Warnings alle pre-existing)
+- `npm run build` → grün, alle Routes kompiliert
+- Visueller Smoke-Test auf Desktop: Frank hat mehrere UX-Iterationen durchgespielt (Rechteck rausgenommen, „in:"-Prefix, rechtsbündig, compact-Variante) und am Ende bestätigt: „ok. passt."
+
+### Acceptance Criteria
+
+| # | AC | Status | Methode |
+|---|----|--------|---------|
+| 1 | Countdown erscheint bei zukünftigem start_date auf /events/[id] | ✓ | Rota Vincentina (2026-06-14): Countdown sichtbar, HK (Vergangenheit): nicht sichtbar |
+| 2 | Tage/Std/Min — keine Sekunden | ✓ | `grid-cols-4` → `grid-cols-3`, seconds aus `diffParts` entfernt |
+| 3 | Automatisches Update mind. alle 60s | ✓ | setInterval 60_000ms in useEffect |
+| 4 | Countdown verschwindet ab Startzeit | ✓ | `if (parts.done) return null` — Client-Timer bumpt `now`, parts wird neu berechnet |
+| 5 | Sichtbar auf Übersichts-Tab | ✓ | Wrapper oberhalb der Tabs in /events/[id]/page.tsx |
+| 6 | Sichtbar auf Erfassen-Tab | ✓ | Gleiche Position → automatisch auf jedem Tab sichtbar |
+| 7 | Vergangene Events zeigen keinen Countdown | ✓ | Gleiche parts.done-Logik; HK-Event getestet |
+| 8 | Lesbares Startdatum-Format | ✓ | `toLocaleDateString("de-DE", { weekday, day, month, year })` |
+| 9 | Kein Countdown auf /e/[slug] | ✓ | Öffentliche Seite nutzt `targetHour={0}` + Full-Banner-Variante; Compact-Variante nur in /events |
+
+### Zusätzlich: EventCard (Meine-Events-Liste)
+
+Frank hat nach erstem Durchlauf gewünscht, dass der Countdown auch auf der Event-Liste erscheint. Ergänzt in `src/components/event-card.tsx`. Gleiche compact-Variante.
+
+### UX-Iterationen (vor Final-Approval)
+
+1. Rechteck mit Füllung (`border-2 border-primary bg-primary/15`) → zu prominent
+2. Text-only, kein Rechteck → besser
+3. „in:"-Prefix vor der ersten Zahl → Frank-Wunsch
+4. Linksbündig → dann rechtsbündig (Finalversion)
+
+### Fazit
+PROJ-40 ist **deploymentbereit**. Keine Bugs, keine offenen ACs. Reine Frontend-Änderung, keine DB-Änderung, keine API-Änderung.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-24
+**Production URL:** https://frank-lernt.vercel.app
+
+### Änderungen
+- `src/components/public-countdown.tsx` — Neue `targetHour`- und `compact`-Props. Compact-Variante text-only, rechtsbündig, mit „in:"-Prefix
+- `src/app/events/[id]/page.tsx` — Countdown zwischen Cover und Titel eingefügt, `compact`-Variante
+- `src/components/event-card.tsx` — Countdown auch auf der Meine-Events-Liste eingebaut
+- `src/app/e/[slug]/page.tsx` — Expliziter `targetHour={0}` zur Erhaltung der PROJ-35-Mitternacht-Semantik
+
+### Verifikation
+- `npm run lint` → 0 errors
+- `npm run build` → grün
+- Visueller Smoke-Test mit Rota-Vincentina-Event (Start 2026-06-14) → Countdown zeigt ~52 Tage
+- HK-Event (Vergangenheit) → kein Countdown, wie erwartet
+- Vercel Deploy via git push auf main ausgelöst

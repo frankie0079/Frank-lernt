@@ -34,7 +34,7 @@
 
 | PROJ-38 | Realtime-Fix Content-Pool | Deployed | [PROJ-38-realtime-fix-content-pool.md](PROJ-38-realtime-fix-content-pool.md) | 2026-04-22 |
 | PROJ-39 | Upload-SHA-256-Dedup | Deployed | [PROJ-39-upload-sha256-dedup.md](PROJ-39-upload-sha256-dedup.md) | 2026-04-23 |
-| PROJ-40 | Event-Countdown | In Review | [PROJ-40-event-countdown.md](PROJ-40-event-countdown.md) | 2026-04-23 |
+| PROJ-40 | Event-Countdown | Deployed | [PROJ-40-event-countdown.md](PROJ-40-event-countdown.md) | 2026-04-23 |
 | PROJ-41 | Tour-Tracker | In Review | [PROJ-41-tour-tracker.md](PROJ-41-tour-tracker.md) | 2026-04-23 |
 
 ## Next Available ID: PROJ-42

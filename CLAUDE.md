@@ -157,6 +157,7 @@ npm run start      # Production server
 - **PROJ-26 Einladungs-Sackgasse** — Deployed 2026-04-22. Neue User ohne Cookie bekommen jetzt automatisch ein Name-Formular statt /login-Sackgasse. E2E mit Frank + Julius (HK) bestätigt.
 - **PROJ-39: Upload-SHA-256-Dedup** — Deployed 2026-04-23. Verhindert Duplikat-Uploads aus dem HK-Test. Browser berechnet SHA-256 via Web Crypto API vor dem Storage-Upload; Server prüft per `GET ?hash=` ob dieses Event das Foto schon kennt; UNIQUE PARTIAL-Index `(event_id, file_hash) WHERE file_hash IS NOT NULL` als Race-Safety-Netz. Betrifft photo-sheet, video-sheet, audio-sheet, wanderer-screen (Bulk-Upload inkl. In-Batch-Dedup), offline-queue (idempotenter Replay). Shared-Helper `src/lib/file-hash.ts`. QA: 23/23 automatisierte Checks grün, keine Bugs.
 - **PROJ-38: Realtime-Fix Content-Pool** — Deployed 2026-04-22. Regression aus PROJ-35 BUG-1 behoben: `GRANT SELECT ON content_items TO anon` + minimale RLS SELECT-Policy wiederhergestellt. Postgres CDC liefert jetzt wieder INSERT/DELETE-Events an Browser-Subscriber. Verifier 3/3 PASS, Deep-QA 13/13 PASS (inkl. members.token bleibt gesperrt, anon-Writes bleiben gesperrt). Bonus: Pre-existing Bug in `get_public_event` RPC behoben (`ci.transcript` → `ci.caption`, öffentliche Event-Seite `/e/[slug]` funktioniert wieder). 2-Geräte-Realtime-Smoke-Test auf Benutzerwunsch übersprungen — empfohlen beim nächsten realen Eventeinsatz.
+- **PROJ-40: Event-Countdown** — Deployed 2026-04-24. Countdown zwischen Cover und Titel auf /events/[id] UND als Overlay unter dem Cover in der Meine-Events-Liste (EventCard). Compact-Variante: text-only, rechtsbündig, „in:"-Prefix vor der Tages-Zahl, „Startet am Montag, X. Monat YYYY" als Header. Ziel-Uhrzeit start_date 12:00 Uhr lokale Zeit. Update alle 60s (Tage/Std/Min, keine Sekunden). Wiederverwendung von `src/components/public-countdown.tsx` (PROJ-35) mit neuem `targetHour` + `compact` Props; öffentliche Event-Seite bleibt auf Mitternacht-Mode und Full-Banner-Variante.
 
 - Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37.
 
@@ -164,7 +165,7 @@ npm run start      # Production server
 Keine offenen Rückstand-Features. Nächstes Feature nach Bedarf mit `/requirements` starten.
 
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅ ~~PROJ-40~~ ✅
 
 ## Product Context
 
