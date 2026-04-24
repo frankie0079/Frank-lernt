@@ -32,36 +32,41 @@ export interface PdfThemeSpec {
   placeholderText: string;
 }
 
+// Re-themed on the Aloha-Sixty palette (vintage Hawaii stamp). All three
+// variants stay on-brand with the app, each hits a different mood:
+//   classic → the "default postcard" (paper + ink, terracotta accent bar)
+//   warm    → "golden hour" (paper-deep + forest, mustard accent bar)
+//   dark    → "Aloha night" (forest-deep + paper, mustard accent bar)
 export const PDF_THEME_SPECS: Record<PdfTheme, PdfThemeSpec> = {
   classic: {
     label: "Classic",
-    background: "#ffffff",
-    text: "#1a1a1a",
-    textMuted: "#6b7280",
-    accent: "#374151",
-    footer: "#9ca3af",
-    placeholderBg: "#0d9488",
-    placeholderText: "#ffffff",
+    background: "#F2E7CE",       // Paper
+    text: "#0E1A1A",              // Ink
+    textMuted: "#3A4747",         // fg-muted
+    accent: "#C94A2B",            // Terracotta
+    footer: "#6A7575",            // fg-subtle
+    placeholderBg: "#2A6A6A",     // Teal (for missing-photo placeholders)
+    placeholderText: "#F2E7CE",   // Paper
   },
   warm: {
     label: "Warm",
-    background: "#fdf6ee",
-    text: "#2d1e0f",
-    textMuted: "#8a6a4a",
-    accent: "#78350f",
-    footer: "#a87d4e",
-    placeholderBg: "#a16207",
-    placeholderText: "#fffbeb",
+    background: "#E8D9B5",       // Paper-deep
+    text: "#1E4A3C",              // Forest
+    textMuted: "#3A4747",
+    accent: "#E9B63A",            // Mustard
+    footer: "#6A7575",
+    placeholderBg: "#A93A1F",     // Terracotta-deep
+    placeholderText: "#F2E7CE",
   },
   dark: {
     label: "Dark",
-    background: "#1e1e1e",
-    text: "#f5f5f5",
-    textMuted: "#9ca3af",
-    accent: "#d1d5db",
-    footer: "#6b7280",
-    placeholderBg: "#0f766e",
-    placeholderText: "#f0fdfa",
+    background: "#143229",       // Forest-deep
+    text: "#F2E7CE",              // Paper
+    textMuted: "#E8D9B5",         // Paper-deep
+    accent: "#E9B63A",            // Mustard
+    footer: "#E8D9B5",
+    placeholderBg: "#C94A2B",     // Terracotta
+    placeholderText: "#F2E7CE",
   },
 };
 

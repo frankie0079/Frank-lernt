@@ -1,21 +1,32 @@
-// PROJ-37: Consolidated cover page — photo on top, Caveat-script title in a
-// narrow accent bar below, optional "about box" (description + members) in
-// the bottom-right corner.
+// PROJ-37: Consolidated cover page — photo on top, Alfa Slab One display
+// title in a narrow accent bar below, optional "about box" (description +
+// members) in the bottom-right corner.
 
 import { Font, Image, Page, Text, View } from "@react-pdf/renderer";
 import type { PdfFormatSpec, PdfThemeSpec } from "./pdf-theme";
 import { formatDateRange } from "./pdf-theme";
 
-// Register the Caveat handwriting font used in the app so the PDF cover
-// matches the app look. TTFs are served locally from /public/fonts/ — relying
-// on gstatic.com CDN caused sporadic render failures (stale hash URLs).
-// Safe to call multiple times — @react-pdf treats repeated register as no-op.
+// Register the Aloha-Sixty fonts used in the app so the PDF matches the
+// web look. TTFs served locally from /public/fonts/ — gstatic CDN caused
+// sporadic render failures in the past. Safe to call multiple times —
+// @react-pdf treats repeated register as no-op.
 if (typeof window !== "undefined") {
   Font.register({
-    family: "Caveat",
+    family: "AlfaSlabOne",
+    fonts: [{ src: "/fonts/AlfaSlabOne-Regular.ttf", fontWeight: 400 }],
+  });
+  Font.register({
+    family: "Oswald",
     fonts: [
-      { src: "/fonts/Caveat-Regular.ttf", fontWeight: 400 },
-      { src: "/fonts/Caveat-Bold.ttf", fontWeight: 700 },
+      { src: "/fonts/Oswald-Regular.ttf", fontWeight: 400 },
+      { src: "/fonts/Oswald-Bold.ttf", fontWeight: 700 },
+    ],
+  });
+  Font.register({
+    family: "WorkSans",
+    fonts: [
+      { src: "/fonts/WorkSans-Regular.ttf", fontWeight: 400 },
+      { src: "/fonts/WorkSans-Bold.ttf", fontWeight: 700 },
     ],
   });
 }
@@ -46,9 +57,9 @@ export function CoverPage({
   about,
   totalPages,
 }: CoverPageProps) {
-  // Layout proportions. The Caveat handwriting font has long descenders, so
-  // the bar needs generous vertical room — min 120pt is enough for a 40pt
-  // title at line-height 1.5 plus date + label + padding.
+  // Layout proportions. Alfa Slab One is a chunky slab with moderate
+  // descenders — 120pt min is enough for a 40pt title at line-height 1.2
+  // plus date + label + padding.
   const imageH = format.height * 0.58;
   const barH = Math.max(120, format.height * 0.18);
   const barTop = imageH;
@@ -90,7 +101,7 @@ export function CoverPage({
         />
       )}
 
-      {/* Narrow accent bar with Caveat title */}
+      {/* Narrow accent bar with Alfa Slab One title */}
       <View
         style={{
           position: "absolute",
@@ -108,11 +119,11 @@ export function CoverPage({
       >
         <Text
           style={{
-            fontFamily: "Caveat",
-            fontWeight: 700,
+            fontFamily: "AlfaSlabOne",
+            fontWeight: 400,
             fontSize: Math.min(40, format.width / 16),
             color: theme.background,
-            lineHeight: 1.5,
+            lineHeight: 1.2,
           }}
         >
           {eventName}
@@ -229,7 +240,8 @@ export function CoverPage({
                         <Text
                           style={{
                             fontSize: 7,
-                            fontFamily: "Helvetica-Bold",
+                            fontFamily: "Oswald",
+                            fontWeight: 700,
                             color: theme.background,
                           }}
                         >

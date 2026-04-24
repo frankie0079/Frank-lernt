@@ -53,9 +53,11 @@ export function TocPage({
       <Text
         style={{
           marginTop: 4,
-          fontSize: 22,
-          fontFamily: "Helvetica-Bold",
+          fontSize: 26,
+          fontFamily: "AlfaSlabOne",
+          fontWeight: 400,
           color: theme.text,
+          lineHeight: 1.1,
         }}
       >
         Unsere Tage
@@ -94,7 +96,8 @@ export function TocPage({
                 <Text
                   style={{
                     fontSize: 13,
-                    fontFamily: "Helvetica-Bold",
+                    fontFamily: "Oswald",
+                    fontWeight: 700,
                     color: theme.text,
                   }}
                 >
@@ -105,7 +108,8 @@ export function TocPage({
                 style={{
                   fontSize: 12,
                   color: theme.accent,
-                  fontFamily: "Helvetica-Bold",
+                  fontFamily: "Oswald",
+                  fontWeight: 700,
                   marginLeft: 16,
                 }}
               >

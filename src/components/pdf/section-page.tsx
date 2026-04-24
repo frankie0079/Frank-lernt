@@ -92,11 +92,11 @@ export function SectionPage({
           <Text
             style={{
               fontSize: 28,
-              fontFamily: "Caveat",
-              fontWeight: 700,
+              fontFamily: "AlfaSlabOne",
+              fontWeight: 400,
               color: theme.text,
               flex: 1,
-              lineHeight: 1.0,
+              lineHeight: 1.1,
             }}
           >
             {dayTitle}
