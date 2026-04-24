@@ -1,8 +1,8 @@
 # PROJ-41: Tour-Tracker
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-23
-**Last Updated:** 2026-04-23
+**Last Updated:** 2026-04-24
 
 ## Dependencies
 - Requires: PROJ-27 (Wanderer-Screen) — der Erfassen-Tab, in den der Tour-Tracker-Button eingebaut wird
@@ -111,7 +111,86 @@ _Übersprungen — vollständiger Tech-Plan liegt in `.claude/plans/gleaming-que
 - Echter GPS-Test unter Bewegung (iPhone, Feldbedingungen, >30 min Aufnahme, Tunnel/Gebäude, iOS Safari PWA Lock/Unlock).
 
 ## QA Test Results
-_To be added by /qa_
+
+**QA Date:** 2026-04-24
+**QA Round:** 1
+**Status:** PASSED (Field-Test auf echter Wanderung ausstehend)
+
+### Test-Ausführung
+- `npm run lint` → 0 errors (14 Warnings alle pre-existing)
+- `npm run build` → grün, alle Routes kompiliert
+- **Desktop-Smoke-Test durch Frank** mit Chrome DevTools Sensors-Panel, simuliertem GPS-Track (Rota Vincentina Startkoordinaten, schrittweise Bewegung). Alle Flows durchgespielt: Start → Recording → Pause → Fortsetzen → Speichern. Upload des Reportfotos in den Content-Pool bestätigt. Zitat: „alles getestet, alles passt. super."
+
+### Acceptance Criteria
+
+| # | AC | Status | Methode |
+|---|----|--------|---------|
+| 1 | 5. Button „Tour-Tracker" auf Erfassen-Tab, deutlich unterscheidbar | ✓ | `col-span-2` horizontal, Route-Icon, Smoke-Test |
+| 2 | Tippen öffnet Sheet mit rotem „Starte die Aufnahme"-Button | ✓ | Smoke-Test |
+| 3 | Aufnahme startet GPS-Tracking, zeigt Live-Stats (Speed, Ø Speed, Distanz, ↑/↓ Höhe) | ✓ | Smoke-Test mit simuliertem Track |
+| 4 | Pause-Button friert Stats ein und stoppt GPS | ✓ | Smoke-Test: Werte blieben eingefroren |
+| 5 | Fortsetzen-Button (rot) + Speichern-Button im Pause-Zustand | ✓ | Smoke-Test |
+| 6 | Speichern rendert Reportfoto und lädt als Content-Item hoch, Sheet schließt | ✓ | Smoke-Test: neues Foto im Content-Pool |
+| 7 | Reportfoto mit Event-Name, Datum, allen 5 Stats, Polyline-Karte mit A/B-Markern | ✓ | Canvas-Layout in `src/lib/tour-report.ts`; Smoke-Test bestätigt Erscheinen |
+| 8 | Hochgeladener Beitrag hat „Foto"-Badge + Reaktionen/Kommentare | ✓ | Uploaded as `type="photo"` → erbt alle Content-Pool-Features |
+| 9 | Wake-Lock-Hinweis beim Sheet-Öffnen | ✓ | Toast/Info-Hinweis in `tour-tracker-sheet.tsx` |
+| 10 | GPS-denied-Fehlerhinweis + disabled-Button | ✓ | Frank hat GPS blockiert → Sheet zeigte Settings-Hinweis |
+| 11 | GPS-Signalverlust: Speed auf 0, Hinweis, auto-recovery | ✓ | 10s-Timeout-Detection in `use-tour-tracker.ts` |
+| 12 | Nach App-Neustart: Resume-Dialog mit gespeicherten Stats | ✓ | localStorage-Snapshot (30s TTL 24h) + AlertDialog |
+
+### Security/Code-Review
+
+- **Keine neuen API-Routes, keine neuen Berechtigungen**: Reportfoto-Upload nutzt exakt die bestehende `POST /api/events/[id]/content`-Route. Alle Auth/Membership/Rate-Limit-Checks greifen unverändert.
+- **Dedup erbt automatisch**: Da das Reportfoto als normales File durch `computeSHA256` + `checkDuplicate` läuft (PROJ-39-Pfad), kann kein doppelter Upload desselben PNGs zu Duplikaten im Event führen.
+- **localStorage-Snapshot ist event-scoped** (`tour-tracker-snapshot-${eventId}`), kein Leak zwischen Events desselben Users.
+- **GPS-Daten werden nicht persistiert außer im Reportfoto-Rendering** — keine Rohkoordinaten in DB oder externen Services.
+
+### Edge Cases verifiziert (statisch + Smoke-Test)
+
+| Edge Case | Verifikation |
+|-----------|--------------|
+| GPS-Permission denied | Frank hat selbst blockiert → Sheet zeigte korrekten Hinweis auf Browser-Settings |
+| Wake-Lock API nicht verfügbar | Toast-Warnung wird angezeigt, keine Fehler-Eskalation |
+| App-Neustart / Tab-Reload während Aufnahme | Snapshot wird geladen, Resume-Dialog öffnet (statisch verifiziert in Hook) |
+| Kein Speichern ohne Mindestdaten | Check `distanceM < 50 || points.length < 5` in tour-tracker-sheet |
+| Upload-Fehler | Error-Toast, Sheet bleibt offen, Daten bleiben erhalten |
+
+### Nicht getestet (Feldtest)
+
+- **Echte GPS-Aufnahme auf iPhone während einer echten Wanderung** — nicht Teil der QA, kann nur Frank selbst beim nächsten Spaziergang oder spätestens auf der Rota Vincentina (2026-06-14–21) verifizieren. Zu testen:
+  - Tatsächliche Distanz-Genauigkeit gegen GPS-App
+  - Höhenmeter-Akkumulation über längere Strecke (EMA + Min-Delta gegen Rauschen)
+  - Bildschirm-Sperre mit iOS Safari → Wake-Lock-Verhalten
+  - Tatsächliches Upload-Verhalten über mobiles Netz
+  - Reportfoto-Rendering-Zeit bei langer Tour (>1000 Punkte)
+
+### Fazit
+PROJ-41 ist **deploymentbereit**. Alle testbaren ACs grün, Security-Invarianten halten, Dedup-Pfad erbt sauber von PROJ-39. Der Feldtest bleibt als manuelle Nachkontrolle beim nächsten Spaziergang / bei der Rota Vincentina offen.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-24
+**Production URL:** https://frank-lernt.vercel.app
+
+### Änderungen
+
+**Neue Dateien:**
+- `src/hooks/use-tour-tracker.ts` — GPS-Tracking-Hook (watchPosition, Haversine, EMA-geglättete Höhenmeter, Pause/Resume mit Segment-basierter Active-Duration, localStorage-Snapshot mit 24h-TTL, 10s-Signal-Verlust-Detection)
+- `src/lib/tour-report.ts` — Pure Canvas-Renderer (1200×1200 PNG, OffscreenCanvas + HTMLCanvasElement Fallback, RDP-Simplifikation für >2000 Punkte, Collapsed-Route-Placeholder, A/B-Marker, 2-row Stats-Grid, Caveat-Font-Header)
+- `src/components/tour-tracker-sheet.tsx` — Drei-Phasen-UI (Idle/Recording/Paused), Resume-Dialog via AlertDialog bei Snapshot-Detection, Wake-Lock-Acquisition + Visibility-Change-Re-Acquisition, Save-Flow (Render → File → SHA-256 Dedup → processAndUploadImage → POST als `type="photo"`)
+
+**Geänderte Dateien:**
+- `src/components/action-button-grid.tsx` — 5. Button mit `col-span-2` + Route-Icon
+- `src/components/wanderer-screen.tsx` — neue `eventName`-Prop, Tour-Sheet-State + Handler
+- `src/app/events/[id]/page.tsx` — reicht `eventName={event.name}` an WandererScreen durch
+
+### Keine DB-Änderungen, keine neuen API-Routes, keine neuen Pakete
+
+### Verifikation
+- `npm run lint` → 0 errors
+- `npm run build` → grün, alle Routes kompilieren
+- Desktop-Smoke-Test durch Frank mit Chrome DevTools Sensors-Panel: Start/Pause/Resume/Save-Flow einschließlich Upload bestätigt grün
+- Vercel Deploy via git push auf main ausgelöst
+
+### Ausstehend: Field-Test
+- Frank testet beim nächsten realen Spaziergang bzw. spätestens auf der Rota Vincentina (2026-06-14). Dort zu verifizieren: Distanz-Genauigkeit, Höhenmeter-Stabilität, iOS-Wake-Lock, mobile Netz-Uploads, Rendering-Zeit bei langen Touren.
