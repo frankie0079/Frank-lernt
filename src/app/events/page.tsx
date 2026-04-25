@@ -92,7 +92,7 @@ export default function EventsPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
-          <h1 className="min-w-0 truncate font-display text-5xl font-bold text-foreground leading-none">
+          <h1 className="min-w-0 truncate font-display text-3xl font-bold text-foreground leading-none sm:text-4xl">
             Meine Events
           </h1>
           <div className="flex shrink-0 items-center gap-3">
@@ -141,9 +141,9 @@ export default function EventsPage() {
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
-            <Button size="lg" className="w-full h-16 text-2xl justify-start px-6 shadow-md [&_svg]:size-6" asChild>
+            <Button size="lg" className="w-full h-14 text-lg justify-start px-5 shadow-md [&_svg]:size-5" asChild>
               <Link href="/events/new">
-                <Plus className="mr-3" aria-hidden="true" />
+                <Plus className="mr-2" aria-hidden="true" />
                 Neues Event erstellen
               </Link>
             </Button>
