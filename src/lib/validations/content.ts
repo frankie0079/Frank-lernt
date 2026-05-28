@@ -35,7 +35,7 @@ export type ContentCreatePayload = z.infer<typeof contentCreateSchema>;
 
 // --- Constants ---
 
-export const CONTENT_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+export const CONTENT_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // Original photo pick limit; stored images are compressed before upload.
 export const CONTENT_ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -49,5 +49,5 @@ export const CONTENT_ALLOWED_VIDEO_TYPES = [
   "video/webm",
 ] as const;
 export const CONTENT_MAX_CAPTION_LENGTH = 2500;
-export const CONTENT_MAX_IMAGE_DIMENSION = 1920; // px
+export const CONTENT_MAX_IMAGE_DIMENSION = 1600; // px
 export const CONTENT_THUMBNAIL_DIMENSION = 400; // px

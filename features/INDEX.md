@@ -36,8 +36,9 @@
 | PROJ-39 | Upload-SHA-256-Dedup | Deployed | [PROJ-39-upload-sha256-dedup.md](PROJ-39-upload-sha256-dedup.md) | 2026-04-23 |
 | PROJ-40 | Event-Countdown | Deployed | [PROJ-40-event-countdown.md](PROJ-40-event-countdown.md) | 2026-04-23 |
 | PROJ-41 | Tour-Tracker | Deployed | [PROJ-41-tour-tracker.md](PROJ-41-tour-tracker.md) | 2026-04-23 |
+| PROJ-42 | Storage-Optimierung & Event-Archivierung | In Review | [PROJ-42-storage-optimierung-archivierung.md](PROJ-42-storage-optimierung-archivierung.md) | 2026-05-28 |
 
-## Next Available ID: PROJ-42
+## Next Available ID: PROJ-43
 
 ---
 

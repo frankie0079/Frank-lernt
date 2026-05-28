@@ -65,8 +65,6 @@ export function WandererScreen({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const videoCameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // Bulk upload state
@@ -113,19 +111,6 @@ export function WandererScreen({
     } else {
       setFileError("Nur Bilder und Videos erlaubt (JPEG, PNG, WebP, HEIC, MP4, WebM, MOV)");
     }
-  }, []);
-
-  // Camera button handler — file inputs don't need navigator.permissions;
-  // iOS handles camera access itself via the system picker.
-  const handleCamera = useCallback(() => {
-    setFileError(null);
-    cameraInputRef.current?.click();
-  }, []);
-
-  // Video button handler — open native camera in video mode
-  const handleVideo = useCallback(() => {
-    setFileError(null);
-    videoCameraInputRef.current?.click();
   }, []);
 
   // Note button handler — unified text/audio input
@@ -370,8 +355,6 @@ export function WandererScreen({
 
       {/* Action Buttons — disabled when any sheet or bulk upload is active */}
       <ActionButtonGrid
-        onCamera={handleCamera}
-        onVideo={handleVideo}
         onNote={handleNote}
         onUpload={handleUpload}
         onTourTracker={handleTourTracker}
@@ -385,31 +368,6 @@ export function WandererScreen({
       />
 
       {/* Hidden file inputs */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileChange}
-        className="hidden"
-        aria-label="Foto mit Kamera aufnehmen"
-      />
-      <input
-        ref={videoCameraInputRef}
-        type="file"
-        accept="video/*"
-        capture="environment"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            setSelectedVideoFile(file);
-            setVideoSheetOpen(true);
-          }
-          e.target.value = "";
-        }}
-        className="hidden"
-        aria-label="Video mit Kamera aufnehmen"
-      />
       <input
         ref={uploadInputRef}
         type="file"

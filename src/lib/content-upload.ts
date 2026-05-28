@@ -52,7 +52,7 @@ export async function extractExif(file: File): Promise<ExifData> {
 }
 
 /**
- * Compress an image to full size (max 1920px, 1MB) and generate a thumbnail (400px).
+ * Compress an image to the app archive size and generate a thumbnail (400px).
  * Returns both blobs.
  */
 export async function compressImage(
@@ -60,9 +60,10 @@ export async function compressImage(
 ): Promise<{ full: Blob; thumbnail: Blob }> {
   const full = await imageCompression(file, {
     maxWidthOrHeight: CONTENT_MAX_IMAGE_DIMENSION,
-    maxSizeMB: 1,
+    maxSizeMB: 0.7,
     useWebWorker: true,
     fileType: "image/jpeg",
+    initialQuality: 0.78,
   });
 
   const thumbnail = await imageCompression(file, {
@@ -70,6 +71,7 @@ export async function compressImage(
     maxSizeMB: 0.1,
     useWebWorker: true,
     fileType: "image/jpeg",
+    initialQuality: 0.75,
   });
 
   return { full, thumbnail };
@@ -174,8 +176,8 @@ export async function processAndUploadImage(
 
 // --- Video Upload ---
 
-/** Max video file size: 50 MB (Supabase free tier plan limit on media bucket) */
-export const VIDEO_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+/** Max uploaded video file size for Supabase Free storage discipline. */
+export const VIDEO_MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 /**
  * Generate a thumbnail from the first frame of a video blob.

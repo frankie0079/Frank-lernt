@@ -26,7 +26,7 @@ import {
   Users,
   Pencil,
   AlertCircle,
-  Camera,
+  ImagePlus,
   LayoutGrid,
   Shield,
   BookOpen,
@@ -300,7 +300,7 @@ export default function EventDashboardPage() {
         <Tabs defaultValue="capture" className="w-full">
           <TabsList className="w-full grid grid-cols-4 h-auto p-1">
             <TabsTrigger value="capture" className="flex flex-col items-center gap-0.5 py-2 text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md sm:flex-row sm:gap-1 sm:text-sm">
-              <Camera className="h-4 w-4" aria-hidden="true" />
+              <ImagePlus className="h-4 w-4" aria-hidden="true" />
               <span>Erfassen</span>
             </TabsTrigger>
             <TabsTrigger value="pool" className="flex flex-col items-center gap-0.5 py-2 text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md sm:flex-row sm:gap-1 sm:text-sm">

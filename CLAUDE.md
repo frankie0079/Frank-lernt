@@ -16,7 +16,7 @@
 - **PWA:** Serwist (Service Worker, App-Shell Caching)
 - **Karten:** Leaflet + react-leaflet + OpenStreetMap (kostenlos)
 - **Foto-Verarbeitung:** browser-image-compression + exifr (EXIF)
-- **Video:** MediaRecorder API (Browser-nativ, bis 90s)
+- **Video:** Datei-Upload aus der Handy-Mediathek; keine In-App-Kameraaufnahme mehr seit PROJ-42
 - **Transkription:** Web Speech API (kostenlos, Browser-nativ)
 - **Slideshow:** Canvas API + MediaRecorder (client-side MP4/WebM)
 - **PDF:** @react-pdf/renderer (client-side)
@@ -161,13 +161,15 @@ npm run start      # Production server
 - **Aloha-Sixty Design-System** — Deployed 2026-04-24. App-weiter Theme-Wechsel vom Mint/Amber-shadcn-Default auf die Vintage-Hawaii-Briefmarken-Palette (Terracotta `#C94A2B` primary, Mustard `#E9B63A` accent, Teal `#2A6A6A` secondary, Forest `#1E4A3C`, Cream `#F2E7CE` background). Fonts: Alfa Slab One (display), Oswald (headline), Work Sans (body) — Caveat + Dancing_Script entfernt. Alle 20 `font-[family-name:var(--font-caveat)]`-Occurrences auf `font-display` migriert. Neue `.paper-texture`-Utility (radial-gradient Dot-Pattern) für Hero-Bereiche. `.dark`-Variante aus `globals.css` entfernt (war Dead Code). Handoff-Bundle kam aus claude.ai/design. **Folge-Pass (2026-04-24):** PDF-Export (`src/components/pdf/*`) auch auf Aloha migriert — alte Caveat-TTFs gelöscht, 5 neue TTFs in `/public/fonts/` (AlfaSlabOne, Oswald Reg/Bold, WorkSans Reg/Bold), 3 PDF-Themes (Classic/Warm/Dark) mit Aloha-Palette re-coloured, alle `fontFamily: "Caveat"` → `"AlfaSlabOne"` und `"Helvetica-Bold"` → `"Oswald"` umgestellt. PDFs und Web-App jetzt visuell konsistent.
 - **PROJ-41: Tour-Tracker** — Deployed 2026-04-24. 5. Button auf dem Erfassen-Tab (neben Kamera/Video/Upload/Notiz) startet GPS-Aufnahme via `navigator.geolocation.watchPosition`. Live-Stats: Current/Ø-Geschwindigkeit (km/h), Distanz (Haversine), Höhenmeter ↑/↓ (EMA α=0.3 + Min-Delta 2m gegen GPS-Rauschen). Pause/Resume mit Segment-basierter Active-Duration. Save → Canvas-PNG (1200×1200) mit Event-Header, Polyline-Karte (RDP-Simplifikation bei >2000 Punkten, A/B-Marker) + 5-Stats-Grid → Upload als normales `type="photo"` via bestehende `POST /content`-Route (erbt PROJ-39-Dedup automatisch). Crash-Recovery via localStorage-Snapshot (30s-Intervall, 24h-TTL). Wake-Lock-Acquisition + Visibility-Change-Re-Acquisition + Toast-Warnung für iOS-Safari-Constraint. Keine DB-Änderungen, keine neuen API-Routes. 3 neue Dateien (`use-tour-tracker.ts`, `tour-report.ts`, `tour-tracker-sheet.tsx`), 3 modifizierte. QA: 12/12 ACs green (Desktop-Smoke-Test mit Chrome Sensors-Panel). **Field-Test auf echter Wanderung ausstehend** — Frank testet spätestens auf Rota Vincentina (2026-06-14–21).
 
-- Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37.
+- **PROJ-42: Storage-Optimierung & Event-Archivierung** — In Review seit 2026-05-28. Ziel: Supabase-Free-Storage länger nutzbar machen. In-App-Kamera und direkte Videoaufnahme entfernt; Wanderer nehmen Medien mit der Handy-Kamera auf und laden fertige Dateien hoch. Foto-Upload komprimiert neue Bilder auf max. 1600px / ca. 700 KB Zielgröße, Video-Dateiupload auf 15 MB begrenzt. Organizer sehen unter Event-Einstellungen eine Speicherkarte mit Kategorien, Warnungen und Dry-Run/Bestätigung für verwaiste Storage-Dateien. Neue API `GET/POST /api/events/[id]/storage`. Keine DB-Migration nötig. QA lokal: `npm run lint` PASS (bestehende Warnungen), `npx tsc --noEmit` PASS, `npm run build` PASS. Hong-Kong nach Supabase-Reaktivierung getestet: 96 Fotoeinträge / 192 Storage-Objekte mit lokalem Backup optimiert, Fotos 70,93 MB → 18,31 MB, referenzierter Event-Storage 212,91 MB → 160,25 MB, keine Datenbankzeilen gelöscht. Backup lokal unter `storage-backups/hong-kong-april-2026-2026-05-28T17-30-35-091Z` (gitignored). Offen: 6,57 MB verwaiste Dateien nur per bestätigter Bereinigung löschen; 112,08 MB Slideshows prüfen, sobald das Tagebuch final kuratiert ist.
+
+- Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, ursprünglich 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37/42. Stand 2026-05-28: 97 Content-Items, Fotos technisch optimiert; finale Tagebuch-Archivversion noch nicht kuratiert.
 
 ### Nächster Schritt
-Keine offenen Rückstand-Features. Nächstes Feature nach Bedarf mit `/requirements` starten.
+PROJ-42 im Review fortsetzen: Slideshow-Speicher prüfen, Hong-Kong-Tagebuch final kuratieren, danach erst Archiv-/Bereinigungsentscheidung treffen. Einstieg siehe `NEXTSTEPS.md`.
 
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅ ~~PROJ-40~~ ✅ ~~PROJ-41~~ ✅
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅ ~~PROJ-40~~ ✅ ~~PROJ-41~~ ✅ PROJ-42 In Review
 
 ## Product Context
 

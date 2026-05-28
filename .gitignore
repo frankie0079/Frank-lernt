@@ -55,3 +55,6 @@ public/serwist-worker-*.js.map
 # QA / debug screenshots from skill runs (not source)
 /*.png
 temp/
+
+# Local Supabase media backups created before destructive storage maintenance
+/storage-backups/
