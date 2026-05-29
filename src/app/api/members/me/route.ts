@@ -35,7 +35,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ member: null }, { status: 401 });
   }
 
-  return NextResponse.json({ member });
+  const response = NextResponse.json({ member });
+  response.cookies.set("member_token", token, {
+    path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365 * 3,
+  });
+  return response;
 }
 
 // PATCH /api/members/me — Update own profile (name, avatar_url)

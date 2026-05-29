@@ -1,6 +1,6 @@
 # Next Steps
 
-Stand: 2026-05-28
+Stand: 2026-05-29
 
 ## Als Erstes Lesen
 
@@ -12,6 +12,7 @@ Stand: 2026-05-28
 
 - Supabase-Projekt `xqopetmpzjbxksonmhjw` war pausiert und wurde am 2026-05-28 reaktiviert.
 - DNS/REST-Erreichbarkeit danach wieder OK.
+- GitHub-Push ist OK: `main` steht auf `origin/main` bei `caad2ee feat(PROJ-42): optimize storage and remove camera capture`.
 - Kamera-Feature und direkte Videoaufnahme sind aus dem Wanderer-Screen entfernt.
 - Upload bleibt: Fotos/Videos aus der Handy-Mediathek, Notiz, Tour-Tracker.
 - Neue Fotos werden auf max. 1600px / ca. 700 KB Zielgröße komprimiert.
@@ -61,36 +62,50 @@ storage-backups/hong-kong-april-2026-2026-05-28T17-30-35-091Z
 
 Das Backup ist durch `.gitignore` ausgeschlossen.
 
-## Morgen Nicht Vergessen
+## Review 2026-05-29
+
+- Lokaler Dev-Server (`npm run dev`) gestartet und Hong-Kong als Organizer geöffnet.
+- `/events` ohne Cookie leitet korrekt auf `/login?redirect=/events`.
+- Hong-Kong Event-Dashboard lädt; Erfassen-Tab zeigt nur noch `Medien hochladen`, `Notiz`, `Tour-Tracker` - keine Kamera-/Direktvideo-Buttons.
+- Sammlung lädt und zeigt optimierte Fotos/Videos.
+- Lokale Speicherkarte in `/events/[id]/settings` zeigt:
+  - Event-Speicher: 161 MB / 1 GB
+  - Fotos: 18.3 MB / 193 Dateien
+  - Videos: 29.9 MB / 1 Datei
+  - Slideshows: 112 MB / 3 Dateien
+  - Cover: 485 KB / 1 Datei
+  - Avatare: 42 KB / 1 Datei
+  - Bereinigbar: 6.6 MB / 18 Dateien
+- Dry-Run lokal ausgeführt: bestätigt 6.6 MB / 18 Dateien, keine Löschung.
+- Production-Smoke auf `https://frank-lernt.vercel.app/events/85f0339d-edac-462d-bc0e-85d448a375f1/settings`: PROJ-42-Speicherkarte ist live und zeigt dieselben Zahlen.
+- Slideshow-Speicher geprüft: genau 3 Objekte im `slideshows`-Bucket unter dem Event-Prefix, alle 3 sind in `daily_reports.slideshow_url` referenziert. Keine alten Slideshow-Varianten als offensichtlicher Müll gefunden.
+- Tagebuch-Stand geprüft:
+  - Tag 1 `Dark side of HK & Hafenlichter`: sichtbar, 2 Seiten, 6 Fotos
+  - Tag 2 `Budda, Michelin-Gans, Bar-Hopping`: sichtbar, 1 leere Seite, 0 Fotos
+  - Tag 3 `Vicoria Peak und Inselhopping`: sichtbar, 0 Seiten, 0 Fotos
+- Fazit: Archiventscheidung ist fachlich noch nicht dran. Erst Tag 2/3 im Tagebuch kuratieren.
+
+## Nicht Vergessen
 
 - Nicht einfach verwaiste Dateien löschen, bevor Frank bestätigt.
 - Nicht alle nicht-Tagebuch-Fotos löschen, weil das finale Hong-Kong-Tagebuch noch nicht kuratiert ist.
 - Slideshows sind jetzt der größte Speicherblock: 112.08 MB.
 - Fachlicher nächster Schritt: Hong-Kong-Tagebuch kuratieren und entscheiden, welche Slideshows/Fotos final ins Archiv gehören.
 
-## Empfohlene Reihenfolge Morgen
+## Empfohlene Reihenfolge
 
-1. `git status --short`
-2. Prüfen, ob GitHub-Push von heute erfolgreich ist.
-3. Lokale App starten:
+1. Hong-Kong-Tagebuch im Editor öffnen:
 
 ```powershell
-cd C:\DEV\sandbox\Frank-lernt
-npm run dev
+http://localhost:3000/events/85f0339d-edac-462d-bc0e-85d448a375f1/book/edit
 ```
 
-4. Als Organizer Hong-Kong öffnen und visuell prüfen:
-   - Sammlung lädt
-   - optimierte Fotos sehen gut genug aus
-   - Event-Einstellungen zeigen Speicherkarte
-   - Dry-Run zeigt 6.57 MB bereinigbar
+2. Tag 2 und Tag 3 kuratieren:
+   - finale Fotobuch-Seiten anlegen
+   - finale Fotos auswählen
+   - optional Kommentare/Text pro Seite setzen
 
-5. Slideshow-Speicher prüfen:
-   - Welche 3 Slideshows sind final?
-   - Sind alte Varianten vorhanden?
-   - Müssen Slideshow-Dateien neu kleiner gerendert werden?
-
-6. Danach erst Archiventscheidung:
+3. Danach erst Archiventscheidung:
    - Voll-Archiv: alle optimierten Fotos behalten, nur verwaiste Dateien löschen
    - Tagebuch-Archiv: nur finale Tagebuch-Fotos + finale Slideshows behalten
 
@@ -102,4 +117,6 @@ npx tsc --noEmit: PASS
 npm run build: PASS
 Hong-Kong Dry-Run: PASS
 Hong-Kong Fotooptimierung mit Backup: PASS
+Lokaler PROJ-42 Browser-Smoke: PASS (2026-05-29)
+Production PROJ-42 Speicherkarte: PASS (2026-05-29)
 ```

@@ -144,9 +144,10 @@ export async function POST(
   // Generate cryptographically secure token
   const token = crypto.randomBytes(24).toString("base64url"); // 32 chars
 
-  // Set expiry to 7 days from now
+  // Set expiry to 1 year from now. Invitations are typically shared ahead of
+  // travel, and short expiry caused avoidable re-generation work after pauses.
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
   // Insert new invitation
   const { data: invitation, error: insertError } = await supabase

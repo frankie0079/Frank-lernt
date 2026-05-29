@@ -61,5 +61,13 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next({ request });
+  const response = NextResponse.next({ request });
+  response.cookies.set("member_token", token, {
+    path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365 * 3,
+  });
+  return response;
 }

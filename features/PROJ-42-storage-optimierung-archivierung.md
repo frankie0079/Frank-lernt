@@ -54,3 +54,7 @@ Hong-Kong (`hong-kong-april-2026`) dient als realer Analysefall. Erlaubt sind Sp
 - Lokaler Browser-Smoke bis `/events`: PASS, leitet ohne Cookie korrekt auf `/login`.
 - Hong-Kong-Dry-Run nach Projekt-Reaktivierung: PASS.
 - Hong-Kong-Fotooptimierung: PASS. 96 Fotoeinträge / 192 Storage-Objekte wurden mit lokalem Backup optimiert. Fotos: 70,93 MB → 18,31 MB. Event-Storage referenziert: 212,91 MB → 160,25 MB. Keine Datenbankzeilen gelöscht.
+- 2026-05-29 Local Smoke: PASS. Hong-Kong Event-Dashboard lädt als Organizer, Erfassen-Tab enthält keine Kamera-/Direktvideo-Buttons, Sammlung lädt Medien, Speicherkarte zeigt 161 MB Gesamt und 6.6 MB / 18 Dateien bereinigbar. Dry-Run erneut ausgeführt, keine Löschung.
+- 2026-05-29 Production Smoke: PASS für lesenden Happy Path. Vercel-URL `/events/85f0339d-edac-462d-bc0e-85d448a375f1/settings` zeigt die PROJ-42-Speicherkarte mit denselben Zahlen.
+- 2026-05-29 Slideshow Audit: PASS. Genau 3 Slideshow-Objekte im Event-Prefix, alle 3 in `daily_reports.slideshow_url` referenziert; keine offensichtlichen alten Slideshow-Varianten zum Löschen.
+- 2026-05-29 Archiv-Handoff: Noch keine Archiventscheidung. Tagebuch ist nicht final kuratiert: Tag 1 hat 6 Fotos, Tag 2/3 haben 0 Fotos.
