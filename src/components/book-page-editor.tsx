@@ -188,7 +188,7 @@ export function BookPageEditor({
     : null;
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-4 sm:space-y-5">
       {/* Top status bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
         <SaveBadge state={saveState} tooLong={anyCommentTooLong} />
@@ -235,7 +235,7 @@ export function BookPageEditor({
         <div className="min-w-0">
           <Label
             htmlFor="book-page-visible"
-            className="cursor-pointer text-sm font-medium text-foreground"
+            className="cursor-pointer text-sm font-semibold text-foreground"
           >
             Diesen Tag zeigen
           </Label>
@@ -255,10 +255,10 @@ export function BookPageEditor({
       </div>
 
       {/* Sections list */}
-      <div className="space-y-3">
+      <div id="book-sections-top" className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <Label className="font-display text-2xl font-bold text-foreground">
-            Seitee dieses Tages
+          <Label className="text-xl font-semibold text-foreground sm:font-display sm:text-2xl sm:font-bold">
+            Seiten dieses Tages
           </Label>
           <span className="text-xs text-muted-foreground">
             {sections.length} / {MAX_SECTIONS_PER_PAGE}
@@ -269,8 +269,8 @@ export function BookPageEditor({
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>
-              Maximal {MAX_SECTIONS_PER_PAGE} Seitee pro Tag. Bitte
-              entferne einen, bevor du einen weiteren hinzufügst.
+              Maximal {MAX_SECTIONS_PER_PAGE} Seiten pro Tag. Bitte entferne
+              eine, bevor du eine weitere hinzufügst.
             </AlertDescription>
           </Alert>
         )}
@@ -304,6 +304,34 @@ export function BookPageEditor({
         >
           <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
           Seite hinzufügen
+        </Button>
+      </div>
+
+      <div className="sticky bottom-3 z-30 flex gap-2 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur md:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="flex-1"
+          onClick={() =>
+            document
+              .getElementById("book-sections-top")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        >
+          ↑ Seiten
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="flex-1"
+          onClick={() => {
+            debouncedSave.flush();
+            onOpenPreview();
+          }}
+        >
+          Vorschau
         </Button>
       </div>
     </div>

@@ -102,15 +102,12 @@ export function BookEditor({ eventId }: BookEditorProps) {
   );
 
   const handleOpenPreview = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.open(
+    router.push(
       `/events/${eventId}/book?preview=true${
         activeId ? `#day-${activeId}` : ""
-      }`,
-      "_blank",
-      "noopener,noreferrer"
+      }`
     );
-  }, [eventId, activeId]);
+  }, [router, eventId, activeId]);
 
   // ---- render branches ----
   if (authLoading || loading) {
@@ -199,10 +196,10 @@ export function BookEditor({ eventId }: BookEditorProps) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 px-4 py-6">
+    <div className="mx-auto max-w-5xl space-y-3 overflow-x-hidden px-3 py-4 sm:space-y-4 sm:px-4 sm:py-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/events/${eventId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -230,10 +227,10 @@ export function BookEditor({ eventId }: BookEditorProps) {
       </div>
 
       <div className="space-y-1">
-        <h1 className="font-display text-4xl font-bold text-foreground">
+        <h1 className="text-2xl font-semibold text-foreground sm:font-display sm:text-4xl sm:font-bold">
           Tagebuch bearbeiten
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs leading-snug text-muted-foreground sm:text-sm">
           Jeder Tag kann aus mehreren Seiten bestehen — wie in einem
           Fotobuch. Pro Seite wählst du ein Layout (1-5 Fotos oder ein
           Raster) und schreibst einen kurzen Kommentar. Alles wird
@@ -242,14 +239,14 @@ export function BookEditor({ eventId }: BookEditorProps) {
       </div>
 
       {/* Layout: sidebar + editor */}
-      <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-3 md:grid-cols-[260px_minmax(0,1fr)] md:gap-4">
         <BookDaySidebar
           pages={pages}
           activeAgendaItemId={activeId}
           onSelect={setActiveId}
         />
 
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full">
           {activePage ? (
             <BookPageEditor
               key={activePage.agenda_item_id}

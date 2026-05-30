@@ -28,7 +28,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="flex h-8 w-10 items-center justify-center rounded-sm border border-border p-0.5"
+          className="flex h-7 w-8 shrink-0 items-center justify-center rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           <div className={`h-full w-full ${boxClass}`} />
         </div>
@@ -37,7 +37,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="flex h-8 w-10 gap-0.5 rounded-sm border border-border p-0.5"
+          className="flex h-7 w-8 shrink-0 gap-0.5 rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           <div className={`h-full flex-1 ${boxClass}`} />
           <div className={`h-full flex-1 ${boxClass}`} />
@@ -47,7 +47,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="flex h-8 w-10 gap-0.5 rounded-sm border border-border p-0.5"
+          className="flex h-7 w-8 shrink-0 gap-0.5 rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           <div className={`h-full flex-1 ${boxClass}`} />
           <div className={`h-full flex-1 ${boxClass}`} />
@@ -58,7 +58,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="grid h-8 w-10 grid-cols-2 grid-rows-2 gap-0.5 rounded-sm border border-border p-0.5"
+          className="grid h-7 w-8 shrink-0 grid-cols-2 grid-rows-2 gap-0.5 rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           <div className={boxClass} />
           <div className={boxClass} />
@@ -70,7 +70,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="flex h-8 w-10 flex-col gap-0.5 rounded-sm border border-border p-0.5"
+          className="flex h-7 w-8 shrink-0 flex-col gap-0.5 rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           <div className={`h-3 w-full ${boxClass}`} />
           <div className="grid flex-1 grid-cols-2 gap-0.5">
@@ -85,7 +85,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="grid h-8 w-10 grid-cols-3 grid-rows-3 gap-[1px] rounded-sm border border-border p-0.5"
+          className="grid h-7 w-8 shrink-0 grid-cols-3 grid-rows-3 gap-[1px] rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className={boxClass} />
@@ -96,7 +96,7 @@ function LayoutPreview({ layout }: { layout: BookLayout }) {
       return (
         <div
           aria-hidden="true"
-          className="flex h-8 w-10 gap-0.5 rounded-sm border border-border p-0.5"
+          className="flex h-7 w-8 shrink-0 gap-0.5 rounded-sm border border-border p-0.5 sm:h-8 sm:w-10"
         >
           <div className="flex h-full flex-1 flex-col justify-center gap-0.5">
             <div className={`h-[2px] w-full ${boxClass}`} />
@@ -115,15 +115,15 @@ export function BookLayoutPicker({
   disabled,
 }: BookLayoutPickerProps) {
   return (
-    <div className="space-y-2">
-      <Label className="font-display text-2xl font-bold text-foreground">
+    <div className="min-w-0 space-y-2">
+      <Label className="text-base font-semibold text-foreground sm:font-display sm:text-2xl sm:font-bold">
         Layout
       </Label>
       <RadioGroup
         value={value}
         onValueChange={(v) => onChange(v as BookLayout)}
         disabled={disabled}
-        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+        className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2"
       >
         {BOOK_LAYOUTS.map((layout) => {
           const id = `book-layout-${layout}`;
@@ -132,7 +132,7 @@ export function BookLayoutPicker({
             <Label
               key={layout}
               htmlFor={id}
-              className={`group flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+              className={`group flex min-w-0 cursor-pointer items-center gap-2 rounded-lg border p-2 transition-colors sm:gap-3 sm:p-3 ${
                 selected
                   ? "border-primary bg-primary/5"
                   : "border-border hover:bg-accent"
@@ -146,10 +146,10 @@ export function BookLayoutPicker({
               />
               <LayoutPreview layout={layout} />
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-foreground">
+                <div className="truncate text-sm font-semibold leading-tight text-foreground sm:font-medium">
                   {BOOK_LAYOUT_LABELS[layout]}
                 </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
+                <div className="mt-0.5 whitespace-normal text-[11px] leading-tight text-muted-foreground sm:text-xs">
                   {BOOK_LAYOUT_DESCRIPTIONS[layout]}
                 </div>
               </div>

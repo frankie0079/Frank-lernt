@@ -178,10 +178,10 @@ export function BookSectionEditor({
   );
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+    <div className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4">
       {/* Header with section number + actions */}
       <div className="flex items-center justify-between gap-2">
-        <Label className="font-display text-xl font-bold text-foreground">
+        <Label className="text-lg font-semibold text-foreground sm:font-display sm:text-xl sm:font-bold">
           Seite {index + 1}
         </Label>
         <div className="flex gap-1">
@@ -242,8 +242,8 @@ export function BookSectionEditor({
 
       {/* Photo picker trigger + selection rail */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Label className="text-sm font-medium text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label className="text-sm font-semibold text-foreground">
             Fotos
             {section.item_ids.length > 0 && (
               <span className="ml-1 text-xs text-muted-foreground">
@@ -255,11 +255,12 @@ export function BookSectionEditor({
             type="button"
             variant="outline"
             size="sm"
+            className="w-full justify-center sm:w-auto sm:shrink-0"
             onClick={() => setPickerOpen(true)}
             disabled={!isOrganizer}
           >
             <ImagePlus className="mr-1 h-4 w-4" aria-hidden="true" />
-            Fotos wählen
+            Fotos aus Sammlung wählen
           </Button>
         </div>
         {section.item_ids.length > 0 ? (
@@ -270,9 +271,10 @@ export function BookSectionEditor({
             onRemove={handleRemove}
           />
         ) : (
-          <p className="text-xs text-muted-foreground">
-            Noch keine Fotos auf dieser Seite. Tippe{" "}
-            &bdquo;Fotos wählen&ldquo; um welche aus dem Tag hinzuzufügen.
+          <p className="text-xs leading-snug text-muted-foreground">
+            Noch keine Fotos auf dieser Seite. Neue Fotos lädst du zuerst im
+            Event über „Erfassen“ hoch. Bereits hochgeladene Fotos fügst du hier
+            aus der Sammlung hinzu.
           </p>
         )}
       </div>
@@ -286,17 +288,17 @@ export function BookSectionEditor({
 
       {/* Photo picker sheet */}
       <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
-        <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
-          <SheetHeader className="space-y-1">
-            <SheetTitle className="font-display text-2xl font-bold">
-              Fotos wählen · Seite {index + 1}
+        <SheetContent side="bottom" className="flex h-[85vh] flex-col overflow-hidden">
+          <SheetHeader className="space-y-1 border-b border-border pb-3">
+            <SheetTitle className="text-xl font-semibold sm:font-display sm:text-2xl sm:font-bold">
+              Fotos aus Sammlung wählen · Seite {index + 1}
             </SheetTitle>
             <SheetDescription>
-              Tippe auf einen Beitrag, um ihn zum Seite hinzuzufügen oder
+              Tippe auf einen Beitrag, um ihn zu dieser Seite hinzuzufügen oder
               wieder zu entfernen. Auswahl wird automatisch gespeichert.
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto py-4">
             <SelectableContentGrid
               eventId={eventId}
               userId={userId}
@@ -306,6 +308,15 @@ export function BookSectionEditor({
               onToggle={handleToggle}
               defaultAgendaItemId={dayAgendaItemId}
             />
+          </div>
+          <div className="border-t border-border bg-background pt-3">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => setPickerOpen(false)}
+            >
+              Fertig - zurück zur Seite
+            </Button>
           </div>
         </SheetContent>
       </Sheet>

@@ -13,7 +13,6 @@ import {
   AlertCircle,
   ArrowLeft,
   BookOpen,
-  Eye,
   Pencil,
 } from "lucide-react";
 import type { BookGetResponse, BookPage } from "@/lib/book-types";
@@ -172,12 +171,6 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
           </Link>
         </Button>
         <div className="flex items-center gap-2">
-          {previewActive && (
-            <Badge variant="outline" className="gap-1">
-              <Eye className="h-3 w-3" aria-hidden="true" />
-              Vorschau
-            </Badge>
-          )}
           {!previewActive && (
             <BookExportDialog
               eventId={eventId}

@@ -20,11 +20,11 @@ export function BookCommentTextarea({
   const nearLimit = length > MAX_COMMENT_LENGTH * 0.9;
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <div className="flex items-baseline justify-between">
         <Label
           htmlFor="book-page-comment"
-          className="font-display text-2xl font-bold text-foreground"
+          className="text-base font-semibold text-foreground sm:font-display sm:text-2xl sm:font-bold"
         >
           Tageskommentar
         </Label>

@@ -66,10 +66,10 @@ export function SortableTile({ item, index, onRemove }: SortableTileProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="relative shrink-0 snap-start"
+      className="relative w-full min-w-0"
     >
       <div
-        className={`relative h-[90px] w-[90px] overflow-hidden rounded-lg border ${
+        className={`relative aspect-square w-full overflow-hidden rounded-lg border ${
           item.deleted
             ? "border-dashed border-muted-foreground/40 bg-muted"
             : "border-border bg-muted"

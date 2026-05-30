@@ -44,7 +44,7 @@ function MediaTile({
         <img
           src={thumb}
           alt={item.caption || "Tagebuch-Foto"}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           loading="lazy"
         />
         {item.type === "video" && (

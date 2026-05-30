@@ -1,6 +1,5 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { EyeOff } from "lucide-react";
 import type { BookPage } from "@/lib/book-types";
@@ -21,11 +20,9 @@ export function BookDaySidebar({
   return (
     <nav
       aria-label="Tagebuch-Seiten"
-      className="md:sticky md:top-4 md:self-start"
+      className="max-w-full md:sticky md:top-4 md:self-start"
     >
-      {/* Mobile: horizontal chip list; Desktop: vertical sidebar */}
-      <ScrollArea className="md:h-[70vh]">
-        <ul className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-visible md:pb-0">
+        <ul className="grid max-w-full grid-cols-1 gap-2">
           {pages.map((p) => {
             const isActive = p.agenda_item_id === activeAgendaItemId;
             const itemDate = new Date(p.agenda_date + "T00:00:00");
@@ -35,12 +32,12 @@ export function BookDaySidebar({
             );
 
             return (
-              <li key={p.id} className="shrink-0 md:shrink">
+              <li key={p.id} className="min-w-0">
                 <button
                   type="button"
                   onClick={() => onSelect(p.agenda_item_id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                  className={`flex w-full min-w-0 items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
                     isActive
                       ? "border-primary bg-primary/10"
                       : "border-border bg-card hover:bg-accent"
@@ -58,7 +55,7 @@ export function BookDaySidebar({
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">
+                    <div className="truncate text-sm font-semibold text-foreground">
                       {p.agenda_title}
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -82,7 +79,6 @@ export function BookDaySidebar({
             );
           })}
         </ul>
-      </ScrollArea>
     </nav>
   );
 }

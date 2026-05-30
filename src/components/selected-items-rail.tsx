@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  horizontalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
 import { SortableTile, type SelectedTileItem } from "@/components/sortable-tile";
@@ -48,18 +48,15 @@ export function SelectedItemsRail({
   };
 
   return (
-    <div className="-mx-4 px-4">
+    <div className="max-w-full">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext
-          items={selectedIds}
-          strategy={horizontalListSortingStrategy}
-        >
+        <SortableContext items={selectedIds} strategy={rectSortingStrategy}>
           <div
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
+            className="grid max-w-full grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2 pb-1 sm:grid-cols-[repeat(auto-fill,minmax(90px,1fr))]"
             aria-label="Ausgewählte Beiträge"
           >
             {selectedIds.map((id, index) => {

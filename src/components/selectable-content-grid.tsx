@@ -5,7 +5,6 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +25,7 @@ import {
   type FilterValue,
 } from "@/components/content-filter-bar";
 import type { AgendaItem } from "@/lib/event-utils";
-import { LayoutGrid } from "lucide-react";
+import { Check, LayoutGrid } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -355,11 +354,16 @@ export function SelectableContentGrid({
                   }
                   aria-pressed={checked}
                 >
-                  <Checkbox
-                    checked={checked}
-                    className="h-5 w-5 pointer-events-none"
+                  <span
+                    className={`flex h-5 w-5 items-center justify-center rounded-sm border ${
+                      checked
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-primary bg-background"
+                    }`}
                     aria-hidden="true"
-                  />
+                  >
+                    {checked && <Check className="h-3.5 w-3.5" />}
+                  </span>
                 </button>
               </div>
 

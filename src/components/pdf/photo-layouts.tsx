@@ -12,7 +12,7 @@ const GAP = 6;
 const styles = StyleSheet.create({
   row: { flexDirection: "row" },
   col: { flexDirection: "column" },
-  image: { width: "100%", height: "100%", objectFit: "cover" },
+  image: { width: "100%", height: "100%", objectFit: "contain" },
   placeholder: {
     flex: 1,
     alignItems: "center",
