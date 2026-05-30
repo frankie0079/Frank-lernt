@@ -53,7 +53,11 @@ export async function GET(
     // iPhone ist so muehsam, dass Re-Login selten sein muss — 3 Jahre
     // umfassen auch Folge-Events der gleichen Gruppe.
     const url = request.nextUrl.clone();
-    url.pathname = "/events";
+    const nextPath = request.nextUrl.searchParams.get("next");
+    const isSafeInternalPath =
+      nextPath?.startsWith("/") === true && !nextPath.startsWith("//");
+
+    url.pathname = isSafeInternalPath ? nextPath : "/events";
     url.search = "";
     const response = NextResponse.redirect(url);
 
