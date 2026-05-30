@@ -10,6 +10,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/join/") ||
     pathname.startsWith("/invite/") ||
     pathname.startsWith("/e/") ||
+    pathname.startsWith("/archiv/") ||
     pathname.startsWith("/touren");
 
   if (isPublic) {
