@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress
+Deployed
 
 ## Ziel
 
@@ -58,3 +58,25 @@ Beispiele:
 - Automatisches Leeren von Supabase Storage.
 
 Diese Punkte werden separat geplant, nachdem das Archiv-Grundmodell steht.
+
+## QA / Deployment
+
+- `npx tsc --noEmit`: PASS.
+- `npm run lint`: PASS mit bestehenden Warnungen.
+- `npm run build`: PASS.
+- Supabase-Migration `20260530133000_wandervoegel_archive.sql`: angewendet und in der Remote-Migrationshistorie als applied markiert.
+- Testdaten gesetzt:
+  - Hong Kong April 2026: `private`, veröffentlicht.
+  - Rota Vincentina: `community`, veröffentlicht.
+- Lokaler Smoke-Test: PASS.
+  - Community-Archiv zeigt Rota.
+  - Private Hong-Kong-Archivseite zeigt das Tagebuch.
+  - Organizer-Settings zeigen Archiv-Sichtbarkeit, Publish-Status und Links.
+  - Keine horizontale Scrollbar bei mobiler Breite.
+  - Kein Mojibake im sichtbaren Text.
+- Production-Smoke-Test 2026-05-30: PASS.
+  - Community-Link lädt ohne App-Login.
+  - Rota ist im Community-Archiv sichtbar.
+  - Hong Kong ist nicht im Community-Archiv sichtbar.
+  - Privater Hong-Kong-Link lädt ohne App-Login und zeigt das Tagebuch.
+  - Organizer-Settings zeigen `Privat`, `Veröffentlicht`, Community-Link und privaten Link.
