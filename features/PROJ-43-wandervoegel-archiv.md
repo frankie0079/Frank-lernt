@@ -72,6 +72,7 @@ Diese Punkte werden separat geplant, nachdem das Archiv-Grundmodell steht.
   - Community-Archiv zeigt Rota.
   - Private Hong-Kong-Archivseite zeigt das Tagebuch.
   - Organizer-Settings zeigen Archiv-Sichtbarkeit, Publish-Status und Links.
+  - Organizer-Settings zeigen "Archivmedien nachreichen" mit Tagesauswahl und Datei-Upload.
   - Keine horizontale Scrollbar bei mobiler Breite.
   - Kein Mojibake im sichtbaren Text.
 - Production-Smoke-Test 2026-05-30: PASS.

@@ -7,6 +7,7 @@ import { InvitationLinkCard } from "@/components/invitation-link-card";
 import { EventMemberList } from "@/components/event-member-list";
 import { EventStorageCard } from "@/components/event-storage-card";
 import { EventArchiveCard } from "@/components/event-archive-card";
+import { ArchiveMediaUploadCard } from "@/components/archive-media-upload-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -258,6 +259,8 @@ export default function EventSettingsPage() {
         />
 
         <EventArchiveCard eventId={eventId} />
+
+        <ArchiveMediaUploadCard eventId={eventId} />
 
         <EventStorageCard eventId={eventId} />
 
