@@ -242,7 +242,7 @@ export default function EventSettingsPage() {
           <div>
             <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
               <Settings className="h-5 w-5" aria-hidden="true" />
-              Einstellungen
+              Event-Einstellungen
             </h1>
             <p className="text-sm text-muted-foreground">{event.name}</p>
           </div>
