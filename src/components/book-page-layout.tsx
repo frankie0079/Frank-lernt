@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { ImageOff, Map, Maximize2, Mic, Type, Video } from "lucide-react";
+import { ArrowLeft, ImageOff, Map, Mic, Type, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   MAX_PHOTOS_PER_PAGE,
@@ -108,23 +108,6 @@ function MediaTile({
               {isTour ? "Tour" : "Video"}
             </div>
           )}
-          {onOpen ? (
-            <button
-              type="button"
-              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white shadow-sm transition-colors hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
-              aria-label="Foto vergrößern"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpen(item);
-              }}
-              onTouchEnd={(event) => {
-                event.stopPropagation();
-                onOpen(item);
-              }}
-            >
-              <Maximize2 className="h-4 w-4" aria-hidden="true" />
-            </button>
-          ) : null}
         </div>
         {item.caption ? (
           <figcaption className="border-t border-border/40 bg-card/90 px-3 py-2 text-xs leading-relaxed text-foreground">
@@ -343,6 +326,15 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
             {lightboxItem?.caption || "Tagebuch-Foto vergrößert"}
           </DialogTitle>
           <div className="flex h-full flex-col">
+            <button
+              type="button"
+              className="absolute left-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-sm transition-colors hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+              style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+              aria-label="Zurück zum Tagebuch"
+              onClick={() => setLightboxItem(null)}
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </button>
             <div className="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6">
               {lightboxItem?.media_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
