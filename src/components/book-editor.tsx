@@ -212,10 +212,10 @@ export function BookEditor({ eventId }: BookEditorProps) {
             variant="outline"
             size="sm"
             onClick={handleOpenPreview}
-            aria-label="Vorschau im neuen Tab öffnen"
+            aria-label="Archiv-Vorschau öffnen"
           >
             <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
-            Vorschau
+            Archiv-Vorschau
           </Button>
           <Button variant="secondary" size="sm" asChild>
             <Link href={`/events/${eventId}/book`}>
@@ -232,9 +232,9 @@ export function BookEditor({ eventId }: BookEditorProps) {
         </h1>
         <p className="text-xs leading-snug text-muted-foreground sm:text-sm">
           Jeder Tag kann aus mehreren Seiten bestehen — wie in einem
-          Fotobuch. Pro Seite wählst du ein Layout (1-5 Fotos oder ein
-          Raster) und schreibst einen kurzen Kommentar. Alles wird
-          automatisch gespeichert.
+          Fotobuch. Pro Seite wählst du Fotos, Videos, Notizen oder
+          Tour-Beiträge, legst ein Layout fest und schreibst einen kurzen
+          Kommentar. Alles wird automatisch gespeichert.
         </p>
       </div>
 

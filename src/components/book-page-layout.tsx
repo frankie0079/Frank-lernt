@@ -1,6 +1,9 @@
 "use client";
 
-import { ImageOff, Mic, Type, Video } from "lucide-react";
+import type { ReactNode } from "react";
+import { useRef, useState } from "react";
+import { ImageOff, Map, Maximize2, Mic, Type, Video } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   MAX_PHOTOS_PER_PAGE,
   type BookLayout,
@@ -18,14 +21,39 @@ function isMedia(item: BookPageItem): boolean {
   return item.type === "photo" || item.type === "video";
 }
 
+function isTourItem(item: BookPageItem): boolean {
+  const text = item.caption?.toLowerCase() ?? "";
+  return text.includes("tour:") || text.includes("etappe");
+}
+
+function tileClass(size: "hero" | "regular" | "small" = "regular") {
+  if (size === "hero") return "min-h-[260px] rounded-lg sm:min-h-[360px]";
+  if (size === "small") return "min-h-[220px] rounded-md sm:min-h-[240px]";
+  return "min-h-[240px] rounded-lg sm:min-h-[260px]";
+}
+
 function MediaTile({
   item,
   className,
+  onOpen,
 }: {
   item: BookPageItem;
   className?: string;
+  onOpen?: (item: BookPageItem) => void;
 }) {
   const thumb = item.thumbnail_url || item.media_url;
+  const lastTapAt = useRef(0);
+
+  function handleDoubleTap() {
+    if (!onOpen || !isMedia(item) || !item.media_url) return;
+    const now = Date.now();
+    if (now - lastTapAt.current < 320) {
+      onOpen(item);
+      lastTapAt.current = 0;
+      return;
+    }
+    lastTapAt.current = now;
+  }
 
   if (!item.type) {
     return (
@@ -38,71 +66,114 @@ function MediaTile({
   }
 
   if (isMedia(item) && thumb) {
+    const isTour = isTourItem(item);
     return (
-      <figure className={`relative overflow-hidden bg-muted ${className ?? ""}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={thumb}
-          alt={item.caption || "Tagebuch-Foto"}
-          className="h-full w-full object-contain"
-          loading="lazy"
-        />
-        {item.type === "video" && (
-          <div
-            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white"
-            aria-label="Video"
-          >
-            <Video className="h-3 w-3" aria-hidden="true" />
-            Video
-          </div>
-        )}
-        {item.caption && (
-          <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-2 text-xs text-white line-clamp-2">
+      <figure
+        className={`flex min-h-0 flex-col overflow-hidden bg-muted ${onOpen ? "cursor-zoom-in" : ""} ${className ?? ""}`}
+        role={onOpen ? "button" : undefined}
+        tabIndex={onOpen ? 0 : undefined}
+        aria-label={onOpen ? "Foto vergrößern" : undefined}
+        onClick={() => onOpen?.(item)}
+        onDoubleClick={() => onOpen?.(item)}
+        onPointerUp={(event) => {
+          if (event.pointerType === "touch") handleDoubleTap();
+        }}
+        onTouchEnd={handleDoubleTap}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen?.(item);
+          }
+        }}
+        title="Tippen zum Vergrößern"
+      >
+        <div className="relative min-h-0 flex-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumb}
+            alt={item.caption || "Tagebuch-Foto"}
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
+          {(item.type === "video" || isTour) && (
+            <div
+              className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-medium text-white"
+              aria-label={isTour ? "Tour" : "Video"}
+            >
+              {isTour ? (
+                <Map className="h-3 w-3" aria-hidden="true" />
+              ) : (
+                <Video className="h-3 w-3" aria-hidden="true" />
+              )}
+              {isTour ? "Tour" : "Video"}
+            </div>
+          )}
+          {onOpen ? (
+            <button
+              type="button"
+              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white shadow-sm transition-colors hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+              aria-label="Foto vergrößern"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen(item);
+              }}
+              onTouchEnd={(event) => {
+                event.stopPropagation();
+                onOpen(item);
+              }}
+            >
+              <Maximize2 className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+        {item.caption ? (
+          <figcaption className="border-t border-border/40 bg-card/90 px-3 py-2 text-xs leading-relaxed text-foreground">
             {item.caption}
           </figcaption>
-        )}
+        ) : null}
       </figure>
     );
   }
 
-  // Text / audio note fallback — render as a styled quote tile
-  const Icon = item.type === "audio" ? Mic : Type;
+  if (item.type === "text" || item.type === "audio") {
+    const Icon = item.type === "audio" ? Mic : Type;
+    return (
+      <div
+        className={`flex flex-col justify-between gap-3 bg-accent/15 p-4 text-foreground ${className ?? ""}`}
+      >
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {item.type === "audio" ? "Sprachnotiz" : "Notiz"}
+        </div>
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed sm:text-base">
+          {item.caption || "(kein Text)"}
+        </p>
+        {item.author_name && (
+          <span className="text-xs text-muted-foreground">
+            {item.author_name}
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex flex-col justify-between gap-2 bg-accent/20 p-4 text-sm text-foreground ${className ?? ""}`}
+      className={`flex items-center justify-center bg-muted text-muted-foreground ${className ?? ""}`}
     >
-      <Icon
-        className="h-5 w-5 shrink-0 text-muted-foreground"
-        aria-hidden="true"
-      />
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed line-clamp-[10]">
-        {item.caption || "(kein Text)"}
-      </p>
-      {item.author_name && (
-        <span className="text-xs text-muted-foreground">
-          — {item.author_name}
-        </span>
-      )}
+      <ImageOff className="h-8 w-8" aria-hidden="true" />
     </div>
   );
 }
 
 /**
- * Renders the selected items using the configured layout. Behaviour:
- * - `single`     item[0], full width with aspect-[4/3].
- * - `two`        item[0..1] as 2-column grid.
- * - `three`      item[0..2] as 3-column grid.
- * - `four`       item[0..3] as 2×2 grid.
- * - `five-hero`  item[0] big hero + item[1..4] in a 2×2 grid below (Instagram-Style).
- * - `grid-3`     all items in a flowing 3-column square grid (up to MAX_PHOTOS_PER_PAGE).
- * - `text-left`  sideText on the left, item[0] on the right.
- * - For fixed-count layouts, any further items beyond the layout's "hero"
- *   slots are rendered below as a 3-column gallery so nothing is lost.
- * - Maximum MAX_PHOTOS_PER_PAGE items are rendered; the rest are dropped
- *   (the editor already warns when a page has too many items).
+ * Renders the selected items using the configured layout. Layouts preserve the
+ * editor's item order, but adapt column counts to the viewport so archive pages
+ * stay readable on iPhone, iPad, and desktop.
  */
 export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps) {
   const shown = items.slice(0, MAX_PHOTOS_PER_PAGE);
+  const [lightboxItem, setLightboxItem] = useState<BookPageItem | null>(null);
 
   if (shown.length === 0) {
     return (
@@ -113,7 +184,7 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
   }
 
   let hero: BookPageItem[] = [];
-  let heroGrid: React.ReactNode = null;
+  let heroGrid: ReactNode = null;
 
   switch (layout) {
     case "single": {
@@ -121,7 +192,8 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
       heroGrid = (
         <MediaTile
           item={hero[0]}
-          className="aspect-[4/3] rounded-lg sm:aspect-[16/9]"
+          className={tileClass("hero")}
+          onOpen={setLightboxItem}
         />
       );
       break;
@@ -134,7 +206,8 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
             <MediaTile
               key={item.id}
               item={item}
-              className="aspect-square rounded-lg"
+              className={tileClass()}
+              onOpen={setLightboxItem}
             />
           ))}
         </div>
@@ -144,12 +217,13 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
     case "three": {
       hero = shown.slice(0, 3);
       heroGrid = (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {hero.map((item) => (
             <MediaTile
               key={item.id}
               item={item}
-              className="aspect-square rounded-lg"
+              className={tileClass()}
+              onOpen={setLightboxItem}
             />
           ))}
         </div>
@@ -159,12 +233,13 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
     case "four": {
       hero = shown.slice(0, 4);
       heroGrid = (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {hero.map((item) => (
             <MediaTile
               key={item.id}
               item={item}
-              className="aspect-square rounded-lg"
+              className={tileClass()}
+              onOpen={setLightboxItem}
             />
           ))}
         </div>
@@ -179,16 +254,18 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
           {heroItem && (
             <MediaTile
               item={heroItem}
-              className="aspect-[4/3] rounded-lg sm:aspect-[16/9]"
+              className={tileClass("hero")}
+              onOpen={setLightboxItem}
             />
           )}
           {quad.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {quad.map((item) => (
                 <MediaTile
                   key={item.id}
                   item={item}
-                  className="aspect-square rounded-lg"
+                  className={tileClass()}
+                  onOpen={setLightboxItem}
                 />
               ))}
             </div>
@@ -198,7 +275,6 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
       break;
     }
     case "grid-3": {
-      // Flowing layout: every shown item goes into the grid, no "extras" row.
       hero = shown;
       heroGrid = (
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
@@ -207,6 +283,7 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
               key={item.id}
               item={item}
               className="aspect-square rounded-sm"
+              onOpen={setLightboxItem}
             />
           ))}
         </div>
@@ -232,7 +309,8 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
           {first && (
             <MediaTile
               item={first}
-              className="aspect-[4/3] rounded-lg md:aspect-auto md:min-h-[280px]"
+              className="min-h-[280px] rounded-lg"
+              onOpen={setLightboxItem}
             />
           )}
         </div>
@@ -254,10 +332,35 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
               key={item.id}
               item={item}
               className="aspect-square rounded-md"
+              onOpen={setLightboxItem}
             />
           ))}
         </div>
       )}
+      <Dialog open={!!lightboxItem} onOpenChange={(open) => !open && setLightboxItem(null)}>
+        <DialogContent className="h-[100dvh] w-screen max-w-[100vw] border-none bg-black/95 p-0 sm:rounded-none [&>button]:text-white">
+          <DialogTitle className="sr-only">
+            {lightboxItem?.caption || "Tagebuch-Foto vergrößert"}
+          </DialogTitle>
+          <div className="flex h-full flex-col">
+            <div className="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6">
+              {lightboxItem?.media_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={lightboxItem.media_url}
+                  alt={lightboxItem.caption || "Tagebuch-Foto"}
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : null}
+            </div>
+            {lightboxItem?.caption ? (
+              <div className="border-t border-white/10 bg-black/80 px-4 py-3 text-sm leading-relaxed text-white/85">
+                {lightboxItem.caption}
+              </div>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

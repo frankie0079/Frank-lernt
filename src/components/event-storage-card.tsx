@@ -146,7 +146,8 @@ export function EventStorageCard({ eventId }: Props) {
           <div>
             <h2 className="font-display text-2xl font-bold text-foreground">Speicher</h2>
             <p className="text-sm text-muted-foreground">
-              Medienbudget für Supabase Free im Blick behalten.
+              Supabase bleibt vorerst Arbeits- und Archivspeicher. Hier siehst du,
+              was gebraucht wird und was nach Dry-Run bereinigt werden kann.
             </p>
           </div>
         </div>
@@ -216,8 +217,22 @@ export function EventStorageCard({ eventId }: Props) {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               Verwaiste Dateien und alte Speicherreste werden erst nach Bestätigung gelöscht.
+              Fotos, Videos und Notizen mit Datenbankreferenz bleiben erhalten, weil Tagebuch
+              und Archivlink sie weiterhin brauchen.
             </p>
           </div>
+
+          {report.categories.slideshows.bytes > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription>
+                Slideshows sind WhatsApp-Tagesfilme und kein Pflichtteil des
+                Tagebuch-Archivs. Sie belegen aktuell{" "}
+                {formatBytes(report.categories.slideshows.bytes)}. Eine
+                gezielte Slideshow-Bereinigung ist separat zu entscheiden.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="flex flex-wrap gap-2">
             <Button

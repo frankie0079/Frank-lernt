@@ -169,7 +169,7 @@ async function getArchiveBookPages(eventId: string): Promise<BookPage[]> {
     await Promise.all([
       supabase
         .from("agenda_items")
-        .select("id, title, date")
+        .select("id, title, date, description, latitude, longitude")
         .in("id", agendaIds),
       updatedByIds.length
         ? supabase.from("members").select("id, name").in("id", updatedByIds)
@@ -272,6 +272,9 @@ async function getArchiveBookPages(eventId: string): Promise<BookPage[]> {
         updated_by_name: page.updated_by ? updaterById.get(page.updated_by) ?? null : null,
         agenda_title: agenda.title,
         agenda_date: agenda.date,
+        agenda_description: agenda.description ?? null,
+        agenda_latitude: agenda.latitude ?? null,
+        agenda_longitude: agenda.longitude ?? null,
         sections: sectionsByPageId.get(page.id) ?? [],
       };
     })

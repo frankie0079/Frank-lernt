@@ -55,6 +55,9 @@ export interface BookPage {
   /** Joined agenda meta */
   agenda_title: string;
   agenda_date: string;
+  agenda_description?: string | null;
+  agenda_latitude?: number | null;
+  agenda_longitude?: number | null;
   /** Ordered sections (already sorted by sort_order) */
   sections: BookSection[];
 }

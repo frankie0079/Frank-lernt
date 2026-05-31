@@ -24,6 +24,13 @@ function formatDayHeader(dateStr: string) {
   });
 }
 
+function formatLocation(page: BookPage) {
+  if (typeof page.agenda_latitude !== "number" || typeof page.agenda_longitude !== "number") {
+    return null;
+  }
+  return `${page.agenda_latitude.toFixed(4)}, ${page.agenda_longitude.toFixed(4)}`;
+}
+
 export function ArchiveBookView({
   event,
   pages,
@@ -87,7 +94,7 @@ export function ArchiveBookView({
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6 lg:px-8">
         {pages.length === 0 ? (
           <Card className="p-10 text-center">
             <BookOpen
@@ -110,19 +117,29 @@ export function ArchiveBookView({
                 key={page.id}
                 className="space-y-4 border-t border-border pt-8 first:border-t-0 first:pt-0"
               >
-                <header>
+                <header className="max-w-3xl">
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">
                     {formatDayHeader(page.agenda_date)}
                   </p>
                   <h2 className="mt-1 font-display text-4xl font-bold leading-tight text-foreground">
                     {page.agenda_title}
                   </h2>
+                  {page.agenda_description ? (
+                    <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                      {page.agenda_description}
+                    </p>
+                  ) : null}
+                  {formatLocation(page) ? (
+                    <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      Ort: {formatLocation(page)}
+                    </p>
+                  ) : null}
                 </header>
                 <div className="space-y-6">
                   {orderedSections.map((section, idx) => (
                     <article
                       key={section.id}
-                      className="relative mx-auto w-full max-w-[640px] space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6"
+                      className="relative mx-auto w-full max-w-[920px] space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6 lg:p-8"
                     >
                       <span className="absolute right-3 top-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                         Seite {idx + 1} / {orderedSections.length}

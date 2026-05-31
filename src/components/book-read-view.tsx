@@ -16,6 +16,7 @@ import {
   Pencil,
 } from "lucide-react";
 import type { BookGetResponse, BookPage } from "@/lib/book-types";
+import type { AgendaItem } from "@/lib/event-utils";
 
 interface EventMeta {
   name: string;
@@ -23,6 +24,13 @@ interface EventMeta {
   cover_url?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+}
+
+function formatLocation(page: BookPage) {
+  if (typeof page.agenda_latitude !== "number" || typeof page.agenda_longitude !== "number") {
+    return null;
+  }
+  return `${page.agenda_latitude.toFixed(4)}, ${page.agenda_longitude.toFixed(4)}`;
 }
 
 interface BookReadViewProps {
@@ -75,6 +83,20 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
       if (eventRes.ok) {
         const eventData = await eventRes.json();
         const ev = eventData.event;
+        const agendas = (eventData.agenda_items || []) as AgendaItem[];
+        const agendaById = new Map(agendas.map((agenda) => [agenda.id, agenda]));
+        setPages((current) =>
+          current.map((page) => {
+            const agenda = agendaById.get(page.agenda_item_id);
+            if (!agenda) return page;
+            return {
+              ...page,
+              agenda_description: agenda.description,
+              agenda_latitude: agenda.latitude,
+              agenda_longitude: agenda.longitude,
+            };
+          })
+        );
         if (ev) {
           setEventMeta({
             name: ev.name || "",
@@ -161,7 +183,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
   const visiblePages = pages;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" size="sm" asChild>
@@ -240,7 +262,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
             className={`space-y-3 border-t border-border pt-6 first:border-t-0 first:pt-0 ${minimal ? "opacity-60" : ""}`}
             aria-labelledby={`day-title-${page.agenda_item_id}`}
           >
-            <header className="space-y-1">
+            <header className="max-w-3xl space-y-1">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 {dayLabel}
               </p>
@@ -255,6 +277,16 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
                   versteckt — nur in der Vorschau sichtbar
                 </Badge>
               )}
+              {page.agenda_description ? (
+                <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+                  {page.agenda_description}
+                </p>
+              ) : null}
+              {formatLocation(page) ? (
+                <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  Ort: {formatLocation(page)}
+                </p>
+              ) : null}
             </header>
 
             {minimal || (page.sections ?? []).length === 0 ? (
@@ -271,7 +303,7 @@ export function BookReadView({ eventId, preview = false }: BookReadViewProps) {
                     {orderedSections.map((sec, idx) => (
                       <article
                         key={sec.id}
-                        className="relative mx-auto w-full max-w-[560px] space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6"
+                        className="relative mx-auto w-full max-w-[920px] space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6 lg:p-8"
                         aria-label={`Seite ${idx + 1} von ${orderedSections.length}`}
                       >
                         <span className="absolute right-3 top-2 text-[10px] uppercase tracking-wide text-muted-foreground">
