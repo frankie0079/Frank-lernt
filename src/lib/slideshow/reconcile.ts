@@ -4,7 +4,8 @@
 // photos after the LLM plan was generated.
 //
 // Strategy:
-//   - Keep every non-photo scene (cover, chapter-title, text-card) as-is.
+//   - Drop legacy cover scenes. The renderer already creates a fixed intro.
+//   - Keep chapter-title and text-card scenes as-is when they have content.
 //   - Keep every existing photo/video scene whose content_item_id is still
 //     in the curated selection.
 //   - Drop scenes whose content_item_id is no longer curated.
@@ -18,6 +19,7 @@ import {
   SLIDESHOW_MAX_DURATION_MS,
   SLIDESHOW_MIN_SCENE_MS,
   SLIDESHOW_MAX_SCENE_MS,
+  stripGeneratedIntroScenes,
   type Scene,
   type Storyboard,
   type StoryboardInputItem,
@@ -40,17 +42,19 @@ export function reconcileStoryboardWithItems(
   sb: Storyboard,
   items: StoryboardInputItem[]
 ): ReconcileResult {
+  const base = stripGeneratedIntroScenes(sb);
   const curated = items.filter(
     (it) => (it.type === "photo" || it.type === "video") && !!it.content_item_id
   );
   const curatedIds = new Set(curated.map((it) => it.content_item_id));
 
   // 1. Walk existing scenes, split into photo-scenes (keep if still curated)
-  //    vs non-photo scenes (always keep). Preserve source order.
+  //    vs non-photo scenes. Preserve source order. Legacy "cover" scenes are
+  //    removed because the renderer already prepends the real cover/title intro.
   const keptScenes: Scene[] = [];
   const existingPhotoIds = new Set<string>();
-  let removed = 0;
-  for (const sc of sb.scenes) {
+  let removed = sb.scenes.length - base.scenes.length;
+  for (const sc of base.scenes) {
     if (isPhotoLikeScene(sc) && sc.content_item_id) {
       if (curatedIds.has(sc.content_item_id)) {
         keptScenes.push(sc);
@@ -142,7 +146,7 @@ export function reconcileStoryboardWithItems(
   }
 
   return {
-    storyboard: { ...sb, scenes: merged },
+    storyboard: { ...base, scenes: merged },
     added,
     removed,
     rebalanced,

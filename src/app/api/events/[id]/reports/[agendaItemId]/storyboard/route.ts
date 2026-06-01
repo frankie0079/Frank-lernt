@@ -15,6 +15,7 @@ import {
   SLIDESHOW_MAX_DURATION_MS,
   SLIDESHOW_MIN_SCENE_MS,
   SLIDESHOW_MAX_SCENE_MS,
+  stripGeneratedIntroScenes,
 } from "@/lib/slideshow/storyboard-types";
 import {
   buildStoryboardSystemPrompt,
@@ -322,7 +323,15 @@ export async function POST(
         details: validation.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`),
       };
     }
-    const sb = validation.data;
+    const sb = stripGeneratedIntroScenes(validation.data);
+    if (sb.scenes.length === 0) {
+      return {
+        ok: false,
+        stage: "zod",
+        message: "Storyboard enthielt nur Intro-/Leerszenen",
+        details: ["scenes: keine verwertbare Szene nach Intro-Bereinigung"],
+      };
+    }
 
     const total = sb.scenes.reduce((s, sc) => s + sc.duration_ms, 0);
     if (total > SLIDESHOW_MAX_DURATION_MS) {

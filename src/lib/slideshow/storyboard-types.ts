@@ -83,6 +83,17 @@ export const storyboardSchema = z
   });
 export type Storyboard = z.infer<typeof storyboardSchema>;
 
+export function stripGeneratedIntroScenes(storyboard: Storyboard): Storyboard {
+  return {
+    ...storyboard,
+    scenes: storyboard.scenes.filter((scene) => {
+      if (scene.type === "cover") return false;
+      if (scene.type === "text-card" && !scene.overlay_text.trim()) return false;
+      return true;
+    }),
+  };
+}
+
 // Server -> client input shape (mirror of get_report_storyboard_input RPC).
 export interface StoryboardInputItem {
   sort_order: number;

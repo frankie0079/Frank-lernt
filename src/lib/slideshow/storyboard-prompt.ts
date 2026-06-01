@@ -28,8 +28,8 @@ export function buildStoryboardSystemPrompt(): string {
     "- Ziel-Dauer pro Szene: 4-5 s. Bei vielen Items darfst du auf 1,5 s runter, bei wenigen bis 6 s hoch.",
     `- Wichtig: Wenn du mehr Fotos hast, als bei 4 s Szenen ins Budget (${SLIDESHOW_MAX_DURATION_MS} ms) passen, reduziere die Szenendauer proportional — lasse NIEMALS Fotos weg.`,
     "- Du erfindest NICHTS. Alle Zitate, Namen, Orte stammen woertlich aus dem User-Input.",
-    "- Erste Szene ist IMMER vom Typ cover (mit chapter_id=intro, content_item_id=null).",
-    "  Die cover-Szene ist zusaetzlich zu den Foto/Video-Szenen.",
+    "- Erzeuge KEINE cover-Szene und KEINE Intro-Szene. Das Intro mit Cover, Titel und Datum",
+    "  wird automatisch vom Renderer erzeugt.",
     "- 1 bis 4 Kapitel mit kurzen, praegnanten Titeln (max. 40 Zeichen).",
     "- overlay_text ist sehr kurz (max. 80 Zeichen): entweder ein Zitat in Anfuehrungszeichen",
     "  mit Autor, oder ein Kapitel- oder Uebergangstitel. Bei Fotos ohne besonderen Kommentar: leer lassen.",
@@ -47,7 +47,7 @@ export function buildStoryboardSystemPrompt(): string {
         chapters: [{ id: "string", title: "string" }],
         scenes: [
           {
-            type: "cover|photo|video|text-card|chapter-title",
+            type: "photo|video|text-card|chapter-title",
             content_item_id: "uuid|null",
             chapter_id: "string",
             duration_ms: "number",

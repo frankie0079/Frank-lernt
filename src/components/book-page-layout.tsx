@@ -321,11 +321,11 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
         </div>
       )}
       <Dialog open={!!lightboxItem} onOpenChange={(open) => !open && setLightboxItem(null)}>
-        <DialogContent className="h-[100dvh] w-screen max-w-[100vw] border-none bg-black/95 p-0 sm:rounded-none [&>button]:text-white">
+        <DialogContent className="!left-0 !top-0 h-[100svh] max-h-[100svh] w-[100svw] max-w-[100svw] !translate-x-0 !translate-y-0 gap-0 overflow-hidden border-none bg-black/95 p-0 sm:rounded-none [&>button]:text-white">
           <DialogTitle className="sr-only">
             {lightboxItem?.caption || "Tagebuch-Foto vergrößert"}
           </DialogTitle>
-          <div className="flex h-full flex-col">
+          <div className="flex h-full min-h-0 flex-col">
             <button
               type="button"
               className="absolute left-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-sm transition-colors hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
@@ -335,13 +335,13 @@ export function BookPageLayout({ layout, items, sideText }: BookPageLayoutProps)
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
-            <div className="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6">
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6">
               {lightboxItem?.media_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={lightboxItem.media_url}
                   alt={lightboxItem.caption || "Tagebuch-Foto"}
-                  className="max-h-full max-w-full object-contain"
+                  className="h-full w-full object-contain"
                 />
               ) : null}
             </div>
