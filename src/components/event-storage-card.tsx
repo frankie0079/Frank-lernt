@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -15,7 +13,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { HardDrive, Loader2, RefreshCw, Trash2, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { AlertTriangle, Film, HardDrive, Loader2, RefreshCw, Trash2, Video } from "lucide-react";
 
 type StorageCategory =
   | "photos"
@@ -43,11 +43,21 @@ interface StorageReport {
   warnings: string[];
   cleanupCandidates: Array<{ bucket: string; path: string; size: number; reason?: string }>;
   largePhotos: Array<{ bucket: string; path: string; size: number }>;
+  actions: {
+    cleanup: StorageSummary;
+    slideshows: StorageSummary;
+    videos: StorageSummary & {
+      protectedFiles: number;
+      protectedBytes: number;
+    };
+  };
 }
 
 interface Props {
   eventId: string;
 }
+
+type StorageAction = "cleanup" | "delete_slideshows" | "delete_videos";
 
 const categoryLabels: Record<StorageCategory, string> = {
   photos: "Fotos",
@@ -60,6 +70,42 @@ const categoryLabels: Record<StorageCategory, string> = {
   other: "Sonstiges",
 };
 
+const actionCopy: Record<
+  StorageAction,
+  {
+    title: string;
+    button: string;
+    confirmTitle: string;
+    confirmDescription: (bytes: string) => string;
+    success: (deleted: number, bytes: string) => string;
+  }
+> = {
+  cleanup: {
+    title: "Bereinigbare Dateien",
+    button: "Bereinigbare löschen",
+    confirmTitle: "Bereinigbare Dateien löschen?",
+    confirmDescription: (bytes) =>
+      `Es werden nur Dateien gelöscht, die keine Datenbankreferenz mehr haben. Erwartete Ersparnis: ${bytes}.`,
+    success: (deleted, bytes) => `${deleted} Dateien gelöscht (${bytes} frei).`,
+  },
+  delete_slideshows: {
+    title: "Slideshows",
+    button: "Slideshows löschen",
+    confirmTitle: "Slideshows löschen?",
+    confirmDescription: (bytes) =>
+      `Die WhatsApp-Tagesfilme werden entfernt. Tagebuch, Fotos, Notizen und Kuratierung bleiben erhalten. Erwartete Ersparnis: ${bytes}.`,
+    success: (deleted, bytes) => `${deleted} Slideshow-Dateien gelöscht (${bytes} frei).`,
+  },
+  delete_videos: {
+    title: "Videos",
+    button: "Videos löschen",
+    confirmTitle: "Videos löschen?",
+    confirmDescription: (bytes) =>
+      `Es werden nur Video-Uploads gelöscht, die nicht im Tagebuch verwendet werden. Fotos, Notizen und Tagebuch-Videos bleiben erhalten. Erwartete Ersparnis: ${bytes}.`,
+    success: (deleted, bytes) => `${deleted} Videos gelöscht (${bytes} frei).`,
+  },
+};
+
 function formatBytes(bytes: number): string {
   if (!bytes) return "0 MB";
   const mb = bytes / 1024 / 1024;
@@ -70,9 +116,9 @@ function formatBytes(bytes: number): string {
 export function EventStorageCard({ eventId }: Props) {
   const [report, setReport] = useState<StorageReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cleaning, setCleaning] = useState(false);
+  const [runningAction, setRunningAction] = useState<StorageAction | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<StorageAction | null>(null);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -103,38 +149,77 @@ export function EventStorageCard({ eventId }: Props) {
       .filter((item) => item.files > 0 || item.bytes > 0);
   }, [report]);
 
+  const actionCards = useMemo(() => {
+    if (!report) return [];
+    return [
+      {
+        action: "cleanup" as const,
+        icon: Trash2,
+        title: actionCopy.cleanup.title,
+        bytes: report.actions.cleanup.bytes,
+        files: report.actions.cleanup.files,
+        description: "Verwaiste Dateien ohne Datenbankreferenz.",
+      },
+      {
+        action: "delete_slideshows" as const,
+        icon: Film,
+        title: actionCopy.delete_slideshows.title,
+        bytes: report.actions.slideshows.bytes,
+        files: report.actions.slideshows.files,
+        description: "Generierte WhatsApp-Tagesfilme. Das Tagebuch bleibt erhalten.",
+      },
+      {
+        action: "delete_videos" as const,
+        icon: Video,
+        title: actionCopy.delete_videos.title,
+        bytes: report.actions.videos.bytes,
+        files: report.actions.videos.files,
+        description:
+          report.actions.videos.protectedFiles > 0
+            ? `${report.actions.videos.protectedFiles} Tagebuch-Dateien bleiben geschützt.`
+            : "Video-Uploads, die nicht im Tagebuch stecken.",
+      },
+    ];
+  }, [report]);
+
   const freeStoragePct = report
     ? Math.min(100, Math.round((report.totals.referencedBytes / (1024 * 1024 * 1024)) * 100))
     : 0;
 
-  const runCleanup = useCallback(async (execute: boolean) => {
-    setCleaning(true);
-    try {
-      const res = await fetch(`/api/events/${eventId}/storage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cleanup", execute }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "Bereinigung fehlgeschlagen.");
+  const confirmBytes =
+    confirmAction === "cleanup"
+      ? report?.actions.cleanup.bytes ?? 0
+      : confirmAction === "delete_slideshows"
+        ? report?.actions.slideshows.bytes ?? 0
+        : confirmAction === "delete_videos"
+          ? report?.actions.videos.bytes ?? 0
+          : 0;
+
+  const runAction = useCallback(
+    async (action: StorageAction) => {
+      setRunningAction(action);
+      try {
+        const res = await fetch(`/api/events/${eventId}/storage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "Bereinigung fehlgeschlagen.");
+        }
+        const data = (await res.json()) as { result: { deleted: number; bytes: number } };
+        toast.success(actionCopy[action].success(data.result.deleted, formatBytes(data.result.bytes)));
+        await fetchReport();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Bereinigung fehlgeschlagen.");
+      } finally {
+        setRunningAction(null);
+        setConfirmAction(null);
       }
-      const data = (await res.json()) as {
-        cleanup: { execute: boolean; deleted: number; bytes: number; candidates: unknown[] };
-      };
-      if (execute) {
-        toast.success(`${data.cleanup.deleted} Dateien gelöscht (${formatBytes(data.cleanup.bytes)} frei).`);
-      } else {
-        toast.info(`${data.cleanup.candidates.length} Dateien würden bereinigt (${formatBytes(data.cleanup.bytes)}).`);
-      }
-      await fetchReport();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Bereinigung fehlgeschlagen.");
-    } finally {
-      setCleaning(false);
-      setConfirmOpen(false);
-    }
-  }, [eventId, fetchReport]);
+    },
+    [eventId, fetchReport]
+  );
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -146,12 +231,12 @@ export function EventStorageCard({ eventId }: Props) {
           <div>
             <h2 className="font-display text-2xl font-bold text-foreground">Speicher</h2>
             <p className="text-sm text-muted-foreground">
-              Supabase bleibt vorerst Arbeits- und Archivspeicher. Hier siehst du,
-              was gebraucht wird und was nach Dry-Run bereinigt werden kann.
+              Supabase bleibt Arbeits- und Archivspeicher. Hier kannst du gezielt Platz freimachen,
+              ohne das Tagebuch zu zerlegen.
             </p>
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading || cleaning}>
+        <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading || !!runningAction}>
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           ) : (
@@ -210,49 +295,44 @@ export function EventStorageCard({ eventId }: Props) {
             ))}
           </div>
 
-          <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span>Bereinigbar</span>
-              <span className="font-medium">{formatBytes(report.totals.cleanupBytes)}</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Verwaiste Dateien und alte Speicherreste werden erst nach Bestätigung gelöscht.
-              Fotos, Videos und Notizen mit Datenbankreferenz bleiben erhalten, weil Tagebuch
-              und Archivlink sie weiterhin brauchen.
-            </p>
-          </div>
-
-          {report.categories.slideshows.bytes > 0 && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-              <AlertDescription>
-                Slideshows sind WhatsApp-Tagesfilme und kein Pflichtteil des
-                Tagebuch-Archivs. Sie belegen aktuell{" "}
-                {formatBytes(report.categories.slideshows.bytes)}. Eine
-                gezielte Slideshow-Bereinigung ist separat zu entscheiden.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => runCleanup(false)}
-              disabled={cleaning || report.cleanupCandidates.length === 0}
-            >
-              {cleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Dry-Run
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setConfirmOpen(true)}
-              disabled={cleaning || report.cleanupCandidates.length === 0}
-            >
-              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-              Speicher bereinigen
-            </Button>
+          <div className="grid gap-2">
+            {actionCards.map((item) => {
+              const Icon = item.icon;
+              const disabled = item.files === 0 || !!runningAction;
+              return (
+                <div
+                  key={item.action}
+                  className="flex flex-col gap-3 rounded-md border border-border bg-background p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{item.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatBytes(item.bytes)} · {item.files} Dateien
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setConfirmAction(item.action)}
+                    disabled={disabled}
+                    className="shrink-0"
+                  >
+                    {runningAction === item.action ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                    )}
+                    {actionCopy[item.action].button}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
 
           {report.largePhotos.length > 0 && (
@@ -264,18 +344,17 @@ export function EventStorageCard({ eventId }: Props) {
         </div>
       )}
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Speicher wirklich bereinigen?</AlertDialogTitle>
+            <AlertDialogTitle>{confirmAction ? actionCopy[confirmAction].confirmTitle : ""}</AlertDialogTitle>
             <AlertDialogDescription>
-              Es werden nur Dateien gelöscht, die für dieses Event keine Datenbankreferenz mehr haben. Erwartete
-              Ersparnis: {formatBytes(report?.totals.cleanupBytes ?? 0)}.
+              {confirmAction ? actionCopy[confirmAction].confirmDescription(formatBytes(confirmBytes)) : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={() => runCleanup(true)}>Löschen</AlertDialogAction>
+            <AlertDialogAction onClick={() => confirmAction && runAction(confirmAction)}>Löschen</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

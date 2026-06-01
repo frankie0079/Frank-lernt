@@ -41,6 +41,14 @@ export interface EventStorageReport {
   warnings: string[];
   cleanupCandidates: StorageFileInfo[];
   largePhotos: StorageFileInfo[];
+  actions: {
+    cleanup: StorageBucketSummary;
+    slideshows: StorageBucketSummary;
+    videos: StorageBucketSummary & {
+      protectedFiles: number;
+      protectedBytes: number;
+    };
+  };
   files: StorageFileInfo[];
 }
 
@@ -70,6 +78,11 @@ function addSummary(
 ) {
   categories[category].files += 1;
   categories[category].bytes += bytes;
+}
+
+function addFileSummary(summary: StorageBucketSummary, file: Pick<StorageFileInfo, "size">) {
+  summary.files += 1;
+  summary.bytes += file.size;
 }
 
 function categoryFromPath(bucket: string, path: string): StorageCategory {
@@ -131,6 +144,87 @@ async function headSize(url: string | null | undefined): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+async function getBookContentIds(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  eventId: string
+): Promise<Set<string>> {
+  const { data: pages } = await supabase
+    .from("book_pages")
+    .select("id")
+    .eq("event_id", eventId);
+
+  const pageIds = (pages ?? []).map((page: { id: string }) => page.id);
+  if (pageIds.length === 0) return new Set();
+
+  const [oldItems, sections] = await Promise.all([
+    supabase
+      .from("book_page_items")
+      .select("content_item_id")
+      .in("page_id", pageIds),
+    supabase
+      .from("book_sections")
+      .select("id")
+      .in("page_id", pageIds),
+  ]);
+
+  const contentIds = new Set<string>();
+  for (const item of oldItems.data ?? []) {
+    const id = (item as { content_item_id: string | null }).content_item_id;
+    if (id) contentIds.add(id);
+  }
+
+  const sectionIds = (sections.data ?? []).map((section: { id: string }) => section.id);
+  if (sectionIds.length > 0) {
+    const { data: sectionItems } = await supabase
+      .from("book_section_items")
+      .select("content_item_id")
+      .in("section_id", sectionIds);
+    for (const item of sectionItems ?? []) {
+      const id = (item as { content_item_id: string | null }).content_item_id;
+      if (id) contentIds.add(id);
+    }
+  }
+
+  return contentIds;
+}
+
+function refsForContentItem(item: { media_url: string | null; thumbnail_url: string | null }) {
+  return uniqueStoragePaths([item.media_url, item.thumbnail_url]);
+}
+
+async function getVideoStorageAction(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  eventId: string,
+  files: StorageFileInfo[]
+) {
+  const { data: videos } = await supabase
+    .from("content_items")
+    .select("id, media_url, thumbnail_url")
+    .eq("event_id", eventId)
+    .eq("type", "video");
+
+  const bookContentIds = await getBookContentIds(supabase, eventId);
+  const fileByKey = new Map(files.map((file) => [`${file.bucket}/${file.path}`, file]));
+  const deletable = { files: 0, bytes: 0 };
+  const protectedSummary = { files: 0, bytes: 0 };
+
+  for (const video of videos ?? []) {
+    const item = video as { id: string; media_url: string | null; thumbnail_url: string | null };
+    const summary = bookContentIds.has(item.id) ? protectedSummary : deletable;
+    for (const ref of refsForContentItem(item)) {
+      const file = fileByKey.get(`${ref.bucket}/${ref.path}`);
+      if (file) addFileSummary(summary, file);
+    }
+  }
+
+  return {
+    files: deletable.files,
+    bytes: deletable.bytes,
+    protectedFiles: protectedSummary.files,
+    protectedBytes: protectedSummary.bytes,
+  };
 }
 
 export async function buildEventStorageReport(eventId: string): Promise<EventStorageReport | null> {
@@ -219,6 +313,13 @@ export async function buildEventStorageReport(eventId: string): Promise<EventSto
   }
 
   const cleanupCandidates = files.filter((file) => !file.referenced);
+  const slideshowSummary = files
+    .filter((file) => file.category === "slideshows")
+    .reduce<StorageBucketSummary>((sum, file) => {
+      addFileSummary(sum, file);
+      return sum;
+    }, { files: 0, bytes: 0 });
+  const videoAction = await getVideoStorageAction(supabase, eventId, files);
   const largePhotos = files.filter(
     (file) => file.category === "photos" && file.referenced && file.size > 900 * 1024 && file.path.endsWith("-full.jpg")
   );
@@ -249,32 +350,44 @@ export async function buildEventStorageReport(eventId: string): Promise<EventSto
     warnings,
     cleanupCandidates,
     largePhotos,
+    actions: {
+      cleanup: {
+        files: cleanupCandidates.length,
+        bytes: cleanupBytes,
+      },
+      slideshows: slideshowSummary,
+      videos: videoAction,
+    },
     files,
   };
 }
 
-export async function cleanupEventStorage(eventId: string, execute: boolean) {
+async function removeStorageFiles(files: Array<Pick<StorageFileInfo, "bucket" | "path">>) {
   const supabase = getSupabaseAdmin();
-  const report = await buildEventStorageReport(eventId);
-  if (!report) return null;
-
   const byBucket = new Map<string, string[]>();
-  for (const file of report.cleanupCandidates) {
+  for (const file of files) {
     const paths = byBucket.get(file.bucket) ?? [];
     paths.push(file.path);
     byBucket.set(file.bucket, paths);
   }
 
-  if (execute) {
-    for (const [bucket, paths] of byBucket) {
-      for (let i = 0; i < paths.length; i += 100) {
-        const chunk = paths.slice(i, i + 100);
-        if (chunk.length > 0) {
-          const { error } = await supabase.storage.from(bucket).remove(chunk);
-          if (error) throw error;
-        }
+  for (const [bucket, paths] of byBucket) {
+    for (let i = 0; i < paths.length; i += 100) {
+      const chunk = paths.slice(i, i + 100);
+      if (chunk.length > 0) {
+        const { error } = await supabase.storage.from(bucket).remove(chunk);
+        if (error) throw error;
       }
     }
+  }
+}
+
+export async function cleanupEventStorage(eventId: string, execute: boolean) {
+  const report = await buildEventStorageReport(eventId);
+  if (!report) return null;
+
+  if (execute) {
+    await removeStorageFiles(report.cleanupCandidates);
   }
 
   return {
@@ -282,5 +395,73 @@ export async function cleanupEventStorage(eventId: string, execute: boolean) {
     deleted: execute ? report.cleanupCandidates.length : 0,
     candidates: report.cleanupCandidates,
     bytes: report.totals.cleanupBytes,
+  };
+}
+
+export async function deleteEventSlideshows(eventId: string) {
+  const supabase = getSupabaseAdmin();
+  const report = await buildEventStorageReport(eventId);
+  if (!report) return null;
+
+  const candidates = report.files.filter((file) => file.category === "slideshows");
+  const { error } = await supabase
+    .from("daily_reports")
+    .update({
+      slideshow_url: null,
+      slideshow_published_at: null,
+      slideshow_duration_sec: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("event_id", eventId);
+  if (error) throw error;
+
+  await removeStorageFiles(candidates);
+
+  return {
+    deleted: candidates.length,
+    bytes: candidates.reduce((sum, file) => sum + file.size, 0),
+  };
+}
+
+export async function deleteEventVideosNotInBook(eventId: string) {
+  const supabase = getSupabaseAdmin();
+  const report = await buildEventStorageReport(eventId);
+  if (!report) return null;
+
+  const bookContentIds = await getBookContentIds(supabase, eventId);
+  const { data: videos } = await supabase
+    .from("content_items")
+    .select("id, media_url, thumbnail_url")
+    .eq("event_id", eventId)
+    .eq("type", "video");
+
+  const deletable = (videos ?? []).filter((video: { id: string }) => !bookContentIds.has(video.id));
+  const storageRefs = deletable.flatMap((video: { media_url: string | null; thumbnail_url: string | null }) =>
+    refsForContentItem(video)
+  );
+
+  const fileByKey = new Map(report.files.map((file) => [`${file.bucket}/${file.path}`, file]));
+  const storageFiles = storageRefs
+    .map((ref) => fileByKey.get(`${ref.bucket}/${ref.path}`) ?? ref)
+    .filter((file): file is StorageFileInfo | { bucket: string; path: string } => Boolean(file));
+
+  await removeStorageFiles(storageFiles);
+
+  if (deletable.length > 0) {
+    const ids = deletable.map((video: { id: string }) => video.id);
+    const { error } = await supabase
+      .from("content_items")
+      .delete()
+      .in("id", ids)
+      .eq("event_id", eventId)
+      .eq("type", "video");
+    if (error) throw error;
+  }
+
+  return {
+    deleted: deletable.length,
+    files: storageFiles.length,
+    bytes: storageFiles.reduce((sum, file) => sum + ("size" in file ? file.size : 0), 0),
+    protected: videos ? videos.length - deletable.length : 0,
   };
 }

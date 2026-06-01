@@ -2,7 +2,7 @@
 
 ## Status: Planned
 **Created:** 2026-05-31
-**Last Updated:** 2026-05-31
+**Last Updated:** 2026-06-01
 
 ## Ziel
 
@@ -60,6 +60,9 @@ PROJ-44 ist ein pragmatischer Verbesserungs-Pass fuer die aktuelle Loesung:
 - Als Betreiber moechte ich die aktuelle Speicherlage nach Eventabschluss
   verstaendlich sehen, damit ich entscheiden kann, ob ich Slideshows oder
   verwaiste Dateien bereinige.
+- Als Organisator moechte ich nach Eventabschluss einzelne Speicherbereiche
+  gezielt loeschen koennen, damit ich Supabase fuer das naechste Event
+  freihalte, ohne das Tagebuch zu beschaedigen.
 
 ## Acceptance Criteria
 
@@ -83,6 +86,11 @@ PROJ-44 ist ein pragmatischer Verbesserungs-Pass fuer die aktuelle Loesung:
       pruefen.
 - [ ] Die Speicherkarte erklaert nach Eventabschluss verstaendlich, welche
       Daten sicher noetig sind und welche Kandidaten fuer Bereinigung sind.
+- [ ] Die Speicherkarte bietet getrennte Aktionen fuer verwaiste Dateien,
+      Slideshows und loeschbare Videos.
+- [ ] Videos, die im Tagebuch verwendet werden, werden von der Video-Loeschung
+      ausgenommen.
+- [ ] Die Dry-Run-Schaltflaeche ist nicht mehr Teil der UI.
 - [ ] Keine Medien werden automatisch geloescht.
 - [ ] Build, TypeScript, Lint und Production-Smoke laufen ohne Fehler.
 
@@ -98,6 +106,9 @@ PROJ-44 ist ein pragmatischer Verbesserungs-Pass fuer die aktuelle Loesung:
 - Ein Desktop-Browser ist sehr breit; die Seite darf nicht verloren wirken.
 - Ein bestehendes Hong-Kong-Tagebuch muss nach dem Update weiterhin dieselben
   Tage und Seiten anzeigen.
+- Video-Uploads koennen in alten Tagesfilmen kuratiert sein; die
+  Speicheroptimierung darf deshalb die Tagebuchauswahl nicht implizit
+  veraendern.
 
 ## Non-Goals
 
@@ -238,3 +249,26 @@ Production:
 
 ## Deployment
 _To be added by /deploy_
+
+### Local QA Round 2 — 2026-06-01
+
+Scope: Speicherkarte unter Event-Einstellungen.
+
+Checks:
+
+- `npx tsc --noEmit`: PASS.
+- `npm run lint`: PASS mit bestehenden Warnungen.
+- `npm run build`: PASS.
+
+Acceptance Criteria:
+
+- Getrennte Aktionen fuer verwaiste Dateien, Slideshows und Videos:
+  IMPLEMENTIERT.
+- Dry-Run-Schaltflaeche entfernt: IMPLEMENTIERT.
+- Slideshow-Loeschung entfernt Storage-Dateien und setzt `slideshow_url`,
+  `slideshow_published_at` und `slideshow_duration_sec` zurueck, ohne
+  Tagebuchseiten, Fotos oder Notizen zu loeschen: IMPLEMENTIERT.
+- Video-Loeschung entfernt nur Video-Content, der nicht in `book_page_items`
+  oder `book_section_items` verwendet wird: IMPLEMENTIERT.
+- Keine Medien werden automatisch geloescht; jede Aktion hat eine
+  Bestaetigung: PASS.

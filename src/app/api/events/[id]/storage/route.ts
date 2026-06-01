@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { serverError } from "@/lib/api-error";
-import { buildEventStorageReport, cleanupEventStorage } from "@/lib/storage-report";
+import {
+  buildEventStorageReport,
+  cleanupEventStorage,
+  deleteEventSlideshows,
+  deleteEventVideosNotInBook,
+} from "@/lib/storage-report";
 import { isRateLimited, getRateLimitIp } from "@/lib/rate-limit";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -73,8 +78,8 @@ export async function GET(
 }
 
 const postSchema = z.object({
-  action: z.literal("cleanup"),
-  execute: z.boolean().default(false),
+  action: z.enum(["cleanup", "delete_slideshows", "delete_videos"]),
+  execute: z.boolean().default(true),
 });
 
 export async function POST(
@@ -108,11 +113,27 @@ export async function POST(
   }
 
   try {
-    const cleanup = await cleanupEventStorage(id, parsed.data.execute);
-    if (!cleanup) {
+    if (parsed.data.action === "delete_slideshows") {
+      const result = await deleteEventSlideshows(id);
+      if (!result) {
+        return NextResponse.json({ error: "Event nicht gefunden" }, { status: 404 });
+      }
+      return NextResponse.json({ result });
+    }
+
+    if (parsed.data.action === "delete_videos") {
+      const result = await deleteEventVideosNotInBook(id);
+      if (!result) {
+        return NextResponse.json({ error: "Event nicht gefunden" }, { status: 404 });
+      }
+      return NextResponse.json({ result });
+    }
+
+    const result = await cleanupEventStorage(id, parsed.data.execute);
+    if (!result) {
       return NextResponse.json({ error: "Event nicht gefunden" }, { status: 404 });
     }
-    return NextResponse.json({ cleanup });
+    return NextResponse.json({ result });
   } catch (error) {
     return serverError("events/[id]/storage:cleanup", error);
   }
