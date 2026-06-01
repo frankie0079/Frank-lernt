@@ -38,7 +38,7 @@
 | PROJ-41 | Tour-Tracker | Deployed | [PROJ-41-tour-tracker.md](PROJ-41-tour-tracker.md) | 2026-04-23 |
 | PROJ-42 | Storage-Optimierung & Event-Archivierung | In Review | [PROJ-42-storage-optimierung-archivierung.md](PROJ-42-storage-optimierung-archivierung.md) | 2026-05-28 |
 | PROJ-43 | Die Wandervögel Event-Archiv | Deployed | [PROJ-43-wandervoegel-archiv.md](PROJ-43-wandervoegel-archiv.md) | 2026-05-30 |
-| PROJ-44 | Tagebuch- und Archivdarstellung verbessern | In Review | [PROJ-44-tagebuch-archiv-ux.md](PROJ-44-tagebuch-archiv-ux.md) | 2026-05-31 |
+| PROJ-44 | Tagebuch- und Archivdarstellung verbessern | Deployed | [PROJ-44-tagebuch-archiv-ux.md](PROJ-44-tagebuch-archiv-ux.md) | 2026-05-31 |
 
 ## Next Available ID: PROJ-45
 

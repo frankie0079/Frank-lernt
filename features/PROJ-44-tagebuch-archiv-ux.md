@@ -1,6 +1,6 @@
 # PROJ-44: Tagebuch- und Archivdarstellung verbessern
 
-## Status: Planned
+## Status: Deployed
 **Created:** 2026-05-31
 **Last Updated:** 2026-06-01
 
@@ -241,15 +241,6 @@ Security / Data:
 - Keine Loeschoperationen wurden ausgefuehrt.
 - Archivansicht liest weiterhin nur veroeffentlichte/private Archivdaten.
 
-Production:
-
-- Ausstehend nach Deploy. Nach Projektregel darf PROJ-44 erst nach
-  Production-Smoke gegen `https://frank-lernt.vercel.app` auf `Deployed`
-  gesetzt werden.
-
-## Deployment
-_To be added by /deploy_
-
 ### Local QA Round 2 — 2026-06-01
 
 Scope: Speicherkarte unter Event-Einstellungen.
@@ -272,3 +263,50 @@ Acceptance Criteria:
   oder `book_section_items` verwendet wird: IMPLEMENTIERT.
 - Keine Medien werden automatisch geloescht; jede Aktion hat eine
   Bestaetigung: PASS.
+
+### Local QA Round 3 — 2026-06-01
+
+Scope: Lightbox-Rotation und Slideshow-Storyboard-Intro.
+
+Checks:
+
+- `npx tsc --noEmit`: PASS.
+- `npm run lint`: PASS mit bestehenden Warnungen.
+- `npm run build`: PASS.
+- Lokaler Browser-Smoke auf
+  `/archiv/privat/a21e6d9e87b00f6685531b104ce9dae0`: PASS.
+
+Acceptance Criteria:
+
+- Lightbox oeffnet als echter Fullscreen-Dialog statt als zentriertes
+  Desktop-Modal: PASS.
+- Foto bleibt bei Querformat-Resize voll sichtbar und nutzt `object-fit:
+  contain`: PASS.
+- Storyboard-Prompt fordert keine `cover`-/Intro-Szene mehr an: PASS.
+- Legacy-Storyboards werden vor Render/Reconcile um `cover`-Szenen und leere
+  Textkarten bereinigt: PASS.
+
+### Production QA — 2026-06-01
+
+- Production-Smoke Archiv-Lightbox gegen
+  `https://frank-lernt.vercel.app/archiv/privat/...`: PASS.
+  - Dialog-Bounding-Box beginnt bei `x=0`, `y=0`.
+  - Bild liegt voll im Viewport.
+  - CSS `object-fit` ist `contain`.
+- Production-Smoke Hong-Kong-Speicherkarte unter `/events/.../settings`: PASS.
+  - `Dry-Run` nicht mehr sichtbar.
+  - Buttons `Bereinigbare loeschen`, `Slideshows loeschen`, `Videos loeschen`
+    sichtbar.
+  - Werte sichtbar: ca. 6,6 MB bereinigbar, 112 MB Slideshows, 29,9 MB
+    loeschbare Videos.
+- Production-Smoke Admin-Seite `/events/.../admin`: PASS, aktuelle Seite laedt.
+- Keine produktive Loeschaktion ausgefuehrt.
+
+## Deployment
+
+- Deployed via GitHub/Vercel am 2026-06-01.
+- Commits:
+  - `82fa0f2 feat(PROJ-44): improve diary archive reading experience`
+  - `84564e3 fix(PROJ-44): simplify diary photo lightbox controls`
+  - `48a7cf9 feat(PROJ-44): add targeted storage cleanup actions`
+  - `44fad99 fix(PROJ-44): prevent cropped lightbox and duplicate slideshow intro`

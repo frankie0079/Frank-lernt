@@ -1,71 +1,86 @@
 # Next Steps
 
-Stand: 2026-05-31
+Stand: 2026-06-01
 
-## Heute Geprueft
+## Aktueller Stand
 
-PROJ-43 "Die Wandervoegel Event-Archiv" ist live verifiziert.
+PROJ-43 und PROJ-44 sind deployed und in Production geprüft.
 
-- Production-Direktlink mit `next=/events/.../settings`: PASS.
-- Zielseite: Hong-Kong-Event-Einstellungen statt Rueckfall auf `/events`: PASS.
-- Nutzerkontext: `Frank (Du)` als Organisator sichtbar: PASS.
-- Event-Uebersicht fuer Frank zeigt Rota Vincentina und Hong Kong April 2026: PASS.
-- Gemeinsames Wandervoegel-Archiv zeigt Rota Vincentina: PASS.
-- Rota-Archivdetail zeigt den erwarteten Zustand "Noch kein Tagebuch": PASS.
-- Privates Hong-Kong-Archiv rendert die veroeffentlichten Tagebuchseiten: PASS.
-- Rota-Einstellungen: Sichtbarkeit `Wandervoegel-Archiv`, Status `Veroeffentlicht`: PASS.
-- Hong-Kong-Einstellungen: Sichtbarkeit `Privat`, Status `Veroeffentlicht`: PASS.
+- PROJ-43: Wandervögel-Archiv, private Archivlinks und direkte Admin-Join-Redirects funktionieren.
+- PROJ-44: Tagebuch-/Archivdarstellung ist breiter, responsiver und tagebuchartiger.
+- Hong-Kong-Tagebuch ist gefüllt und privat veröffentlicht.
+- Archiv und interne Tagebuchansicht verwenden denselben Layout-Kern.
+- Foto-Captions, Notizen, Tour-Tracker-Fotos und Tagesinformationen haben Platz im Tagebuch.
+- Foto-Lightbox öffnet fullscreen und bleibt bei Querformat-Rotation `object-fit: contain`.
+- Speicherkarte unter Event-Einstellungen hat getrennte Aktionen für bereinigbare Dateien, Slideshows und loeschbare Videos.
+- Slideshow-Storyboard erzeugt künftig keine doppelte Intro-/Cover-Szene mehr; alte `cover`-Szenen und leere Textkarten werden vor dem Rendern entfernt.
 
-## Was Als Naechstes Ansteht
+## Production-Verifikation
 
-1. UI-Copy-Pass fertigstellen und deployen:
-   - Seitentitel wurde lokal von "Einstellungen" auf "Event-Einstellungen" geaendert.
-   - Lokale Checks sind gruen: `npx tsc --noEmit`, `npm run lint` (nur bestehende Warnungen), `npm run build`.
-   - Noch offen: Commit, Push, Production-Verifikation nach Vercel-Deployment.
+Verifiziert gegen `https://frank-lernt.vercel.app`:
 
-2. Nachreich-Upload nur bei echtem Bedarf testen:
-   - Nicht mit Dummy-Dateien in Production testen.
-   - Wenn eine echte Datei fehlt: ueber Event-Einstellungen hochladen, danach im Tagebuch/Archiv uebernehmen und kontrollieren.
+- Privates Hong-Kong-Archiv rendert die Tagebuchseiten.
+- Archiv-Lightbox: Foto passt im Querformat vollständig in den Viewport.
+- Hong-Kong-Speicherkarte:
+  - `Dry-Run` ist nicht mehr sichtbar.
+  - `Bereinigbare löschen`, `Slideshows löschen`, `Videos löschen` sind sichtbar.
+  - Anzeige ca. 6,6 MB bereinigbar, 112 MB Slideshows, 29,9 MB loeschbare Videos.
+- Admin-Seite Hong-Kong lädt.
 
-3. Speicher-Thema spaeter separat planen:
-   - Rota/Hong-Kong zeigen bereits relevante Storage-Nutzung.
-   - Keine Produktionsdaten loeschen, ohne vorher explizit zu fragen.
-   - Vor einer Bereinigung erst Dry-Run auswerten.
+Nicht ausgeführt:
+
+- Keine produktive Löschaktion.
+- Keine alten Slideshow-MP4s überschrieben.
+
+## Wichtige Produktentscheidung
+
+Wir archivieren aktuell nicht extern und übertragen keine Originale in einen zweiten Speicher. Supabase bleibt vorerst Arbeits- und Archivspeicher.
+
+Der Ablauf ist damit:
+
+1. Während des Events werden Fotos/Videos/Notizen in der PWA gesammelt.
+2. Der Admin kuratiert pro Tag.
+3. Das Tagebuch übernimmt genau diese Auswahl als Quelle der Wahrheit.
+4. Nach Eventabschluss wird nicht nochmal in einer zweiten Archivdatenbank kuratiert.
+5. Speicher wird nur gezielt optimiert:
+   - verwaiste Dateien löschen,
+   - generierte Slideshows löschen,
+   - Videos löschen, sofern sie nicht im Tagebuch verwendet werden.
+
+## Was Als Nächstes Ansteht
+
+1. Bei Bedarf Hong-Kong-Slideshows neu rendern:
+   - nötig, wenn die vorhandenen MP4s den doppelten Titel und die rosa Leerszene noch enthalten.
+   - Der Code-Fix wirkt erst auf neu gerenderte Videos.
+
+2. Bei Bedarf Speicher in Hong-Kong bereinigen:
+   - nur über die neuen Einzelbuttons in den Event-Einstellungen.
+   - Vorher bewusst entscheiden, welche Kategorie gelöscht wird.
+   - Keine Löschung ohne explizite Bestätigung.
+
+3. Neues Feature nur mit neuer Spec starten:
+   - Nächste ID: PROJ-45.
+   - Workflow: `/requirements` → `/architecture` → `/frontend` → `/backend` → `/qa` → `/deploy`.
 
 ## Technischer Stand
 
-Commits auf `main`:
+Letzte relevante Commits auf `main`:
 
-- `7e6c3ce feat(PROJ-43): add Wandervoegel archive`
-- `102318d docs(PROJ-43): mark archive deployed`
-- `deb394e feat(PROJ-43): allow organizer archive media uploads`
-- `452d97b fix(PROJ-43): support direct admin join redirects`
+- `4db6446 fix(PROJ-43): clarify event settings title`
+- `82fa0f2 feat(PROJ-44): improve diary archive reading experience`
+- `84564e3 fix(PROJ-44): simplify diary photo lightbox controls`
+- `48a7cf9 feat(PROJ-44): add targeted storage cleanup actions`
+- `44fad99 fix(PROJ-44): prevent cropped lightbox and duplicate slideshow intro`
 
-Supabase:
+Checks zuletzt grün:
 
-- Migration `20260530133000_wandervoegel_archive.sql` angewendet.
-- Migration History remote repariert: `20260530133000` ist applied.
-- Keine manuelle Schema-Aenderung im Dashboard.
-
-Verifikation:
-
-- `npx tsc --noEmit`: PASS.
-- `npm run lint`: PASS mit bestehenden Warnungen.
-- `npm run build`: PASS.
-- Lokaler Direktlink mit `?next=`: PASS.
-- Production-Archivseiten: PASS.
-- Production-Settings nach Direktlink-Fix: PASS.
-
-## Spaeter Separat Planen
-
-- Canvas-/Layout-Studio fuer finale Archivseiten.
-- PDF-Export aus dem Archiv.
-- ZIP-/Event-Download.
-- Auslagerung von Originaldateien aus Supabase in externen Speicher.
-- Kontrolliertes Leeren von Supabase nach Archivierung.
+- `npx tsc --noEmit`
+- `npm run lint` mit bestehenden Warnungen
+- `npm run build`
 
 ## Nicht Vergessen
 
-- Keine Passwoerter, Tokens oder Service-Keys in Chat oder Doku wiederholen.
+- Keine Passwörter, Tokens oder Service-Keys in Chat oder Doku wiederholen.
 - Keine untracked Ordner `.agents/`, `.codex/`, `supabase/.temp/` committen.
-- Keine Produktionsdaten loeschen, ohne vorher explizit zu fragen.
+- Keine Produktionsdaten löschen, ohne vorher explizit zu fragen.
+- Bestehende MP4s ändern sich nicht durch Code-Deploy; sie müssen neu gerendert werden.
