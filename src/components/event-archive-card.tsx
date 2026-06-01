@@ -179,9 +179,12 @@ export function EventArchiveCard({ eventId }: Props) {
             </div>
           </div>
 
-          {communityUrl ? (
+          {settings.archive_visibility === "community" && communityUrl ? (
             <div className="rounded-lg border border-border p-3">
               <p className="text-sm font-semibold">Gemeinsamer Archivlink</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Zeigt alle veröffentlichten Events im Wandervögel-Archiv.
+              </p>
               <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                 {communityUrl}
               </p>
@@ -198,11 +201,23 @@ export function EventArchiveCard({ eventId }: Props) {
                 </Button>
               </div>
             </div>
+          ) : settings.archive_visibility === "private" ? (
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-sm font-semibold">Gemeinsames Wandervögel-Archiv</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Dieses Event ist privat. Es erscheint deshalb nicht im gemeinsamen Archiv.
+                Teile für Hong Kong den privaten Eventlink unten.
+              </p>
+            </div>
           ) : null}
 
           {activeUrl ? (
             <div className="rounded-lg border border-border p-3">
-              <p className="text-sm font-semibold">Link zu diesem Event</p>
+              <p className="text-sm font-semibold">
+                {settings.archive_visibility === "private"
+                  ? "Privater Link zu diesem Event"
+                  : "Link zu diesem Event"}
+              </p>
               <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                 {activeUrl}
               </p>
