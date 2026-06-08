@@ -1,6 +1,6 @@
 # PROJ-45: Agenda jederzeit sicher bearbeiten
 
-## Status: Ready for Deploy
+## Status: Deployed
 **Created:** 2026-06-08
 **Last Updated:** 2026-06-08
 
@@ -107,3 +107,5 @@ umgestellt.
 - Unveraendertes Speichern erfolgreich; bestehende Agenda-IDs bleiben erhalten.
 - Versuch, einen verwendeten Agenda-Punkt zu entfernen, liefert `409
   agenda_in_use`; Event und Verknuepfungen bleiben unveraendert.
+- Production-Smoke-Test auf `frank-lernt.vercel.app` bestanden: Editor sichtbar,
+  unveraendertes Speichern erfolgreich, Loeschschutz erfolgreich.

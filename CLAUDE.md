@@ -78,7 +78,7 @@ API:
 
 ## Feature Tracking
 
-Alle Features in `features/INDEX.md`. Features: PROJ-24 bis PROJ-44. v1 (PROJ-1–23) wurde gelöscht.
+Alle Features in `features/INDEX.md`. Features: PROJ-24 bis PROJ-45. v1 (PROJ-1–23) wurde gelöscht.
 
 ## Key Conventions
 
@@ -170,13 +170,15 @@ npm run start      # Production server
   - **Slideshow-Fix:** Prompt erzeugt keine zusätzliche `cover`-/Intro-Szene mehr, weil der Renderer bereits ein festes 6s-Cover-Intro erzeugt. `stripGeneratedIntroScenes()` entfernt alte `cover`-Szenen und leere Textkarten beim Generieren/Reconcile/Rendern. Neue gerenderte Videos sollen dadurch keinen doppelten Titel und keine rosa Leerszene mehr haben; bestehende MP4s ändern sich erst nach erneutem Rendern.
   - **Verification:** `npx tsc --noEmit`, `npm run lint` (nur bestehende Warnungen), `npm run build` PASS. Production-Smoke gegen `https://frank-lernt.vercel.app`: Archiv-Lightbox fullscreen und `object-fit: contain`; Admin-/Settings-Seiten laden mit aktueller Version. Keine DB-Migration, keine neuen Buckets.
 
+- **PROJ-45: Agenda jederzeit sicher bearbeiten** — Deployed 2026-06-08. Organisatoren können bestehende Agenda-Punkte auch nach Eventende und Tagebuch-Erstellung bearbeiten, neu sortieren und ergänzen. Bestehende `agenda_items.id` bleiben erhalten, damit Foto-, Kuratierungs-, Tagebuch- und Archiv-Zuordnungen stabil bleiben. Die Tagebuch-Reihenfolge wird synchronisiert. Verwendete Agenda-Punkte sind gegen versehentliches Löschen geschützt. Production-Smoke mit Hongkong: Editor sichtbar, unverändertes Speichern erfolgreich, Löschschutz erfolgreich.
+
 - Frank hat ein echtes Hong-Kong-Event angelegt (slug: `hong-kong-april-2026`, 3 Tage, ursprünglich 104 Fotos hochgeladen, alle Agenda-Tage mit Hong-Kong-Orten verknüpft) — Testdaten für PROJ-36/37/42/44. Stand 2026-06-01: Tagebuch/Archiv ist gefüllt und privat veröffentlicht; Speicherkarte zeigt weiterhin bereinigbare Dateien, Slideshows und loeschbare Videos. Bestehende Slideshow-MP4s müssen neu gerendert werden, wenn der PROJ-44-Intro-Fix sichtbar werden soll.
 
 ### Nächster Schritt
-Nächster fachlicher Schritt nach Bedarf: entweder Hong-Kong-Speicher gezielt bereinigen (nur nach expliziter Bestätigung in der UI) oder ein neues Feature als PROJ-45 mit `/requirements` starten. Bestehende Hong-Kong-Slideshows bei Bedarf neu rendern, damit der doppelte Titel und die rosa Leerszene verschwinden.
+Nächster fachlicher Schritt nach Bedarf: entweder Hong-Kong-Speicher gezielt bereinigen (nur nach expliziter Bestätigung in der UI) oder ein neues Feature als PROJ-46 mit `/requirements` starten. Bestehende Hong-Kong-Slideshows bei Bedarf neu rendern, damit der doppelte Titel und die rosa Leerszene verschwinden.
 
 ### Build-Reihenfolge
-1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅ ~~PROJ-40~~ ✅ ~~PROJ-41~~ ✅ PROJ-42 In Review ~~PROJ-43~~ ✅ ~~PROJ-44~~ ✅
+1. ~~PROJ-24~~ ✅ ~~PROJ-25~~ ✅ ~~PROJ-26~~ ✅ ~~PROJ-27~~ ✅ ~~PROJ-28~~ ✅ ~~PROJ-29~~ ✅ ~~PROJ-30~~ ✅ ~~PROJ-31~~ ✅ ~~PROJ-32~~ ✅ ~~PROJ-33~~ ✅ ~~PROJ-34~~ ✅ ~~PROJ-35~~ ✅ ~~PROJ-36~~ ✅ ~~PROJ-37~~ ✅ ~~PROJ-38~~ ✅ ~~PROJ-39~~ ✅ ~~PROJ-40~~ ✅ ~~PROJ-41~~ ✅ PROJ-42 In Review ~~PROJ-43~~ ✅ ~~PROJ-44~~ ✅ ~~PROJ-45~~ ✅
 
 ## Product Context
 

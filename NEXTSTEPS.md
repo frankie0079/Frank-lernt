@@ -1,10 +1,10 @@
 # Next Steps
 
-Stand: 2026-06-01
+Stand: 2026-06-08
 
 ## Aktueller Stand
 
-PROJ-43 und PROJ-44 sind deployed und in Production geprüft.
+PROJ-43 bis PROJ-45 sind deployed und in Production geprüft.
 
 - PROJ-43: Wandervögel-Archiv, private Archivlinks und direkte Admin-Join-Redirects funktionieren.
 - PROJ-44: Tagebuch-/Archivdarstellung ist breiter, responsiver und tagebuchartiger.
@@ -14,6 +14,7 @@ PROJ-43 und PROJ-44 sind deployed und in Production geprüft.
 - Foto-Lightbox öffnet fullscreen und bleibt bei Querformat-Rotation `object-fit: contain`.
 - Speicherkarte unter Event-Einstellungen hat getrennte Aktionen für bereinigbare Dateien, Slideshows und loeschbare Videos.
 - Slideshow-Storyboard erzeugt künftig keine doppelte Intro-/Cover-Szene mehr; alte `cover`-Szenen und leere Textkarten werden vor dem Rendern entfernt.
+- Organisatoren können die Agenda jederzeit bearbeiten; bestehende Zuordnungen bleiben durch stabile Agenda-IDs erhalten.
 
 ## Production-Verifikation
 
@@ -26,6 +27,7 @@ Verifiziert gegen `https://frank-lernt.vercel.app`:
   - `Bereinigbare löschen`, `Slideshows löschen`, `Videos löschen` sind sichtbar.
   - Anzeige ca. 6,6 MB bereinigbar, 112 MB Slideshows, 29,9 MB loeschbare Videos.
 - Admin-Seite Hong-Kong lädt.
+- Agenda-Editor Hong-Kong lädt, unverändertes Speichern funktioniert und der Löschschutz blockiert verwendete Agenda-Punkte.
 
 Nicht ausgeführt:
 
@@ -59,7 +61,7 @@ Der Ablauf ist damit:
    - Keine Löschung ohne explizite Bestätigung.
 
 3. Neues Feature nur mit neuer Spec starten:
-   - Nächste ID: PROJ-45.
+   - Nächste ID: PROJ-46.
    - Workflow: `/requirements` → `/architecture` → `/frontend` → `/backend` → `/qa` → `/deploy`.
 
 ## Technischer Stand
@@ -71,6 +73,7 @@ Letzte relevante Commits auf `main`:
 - `84564e3 fix(PROJ-44): simplify diary photo lightbox controls`
 - `48a7cf9 feat(PROJ-44): add targeted storage cleanup actions`
 - `44fad99 fix(PROJ-44): prevent cropped lightbox and duplicate slideshow intro`
+- `f7e7259 feat(PROJ-45): allow safe agenda editing`
 
 Checks zuletzt grün:
 

@@ -39,7 +39,7 @@
 | PROJ-42 | Storage-Optimierung & Event-Archivierung | In Review | [PROJ-42-storage-optimierung-archivierung.md](PROJ-42-storage-optimierung-archivierung.md) | 2026-05-28 |
 | PROJ-43 | Die Wandervögel Event-Archiv | Deployed | [PROJ-43-wandervoegel-archiv.md](PROJ-43-wandervoegel-archiv.md) | 2026-05-30 |
 | PROJ-44 | Tagebuch- und Archivdarstellung verbessern | Deployed | [PROJ-44-tagebuch-archiv-ux.md](PROJ-44-tagebuch-archiv-ux.md) | 2026-05-31 |
-| PROJ-45 | Agenda jederzeit sicher bearbeiten | In Progress | [PROJ-45-agenda-nachtraeglich-bearbeiten.md](PROJ-45-agenda-nachtraeglich-bearbeiten.md) | 2026-06-08 |
+| PROJ-45 | Agenda jederzeit sicher bearbeiten | Deployed | [PROJ-45-agenda-nachtraeglich-bearbeiten.md](PROJ-45-agenda-nachtraeglich-bearbeiten.md) | 2026-06-08 |
 
 ## Next Available ID: PROJ-46
 
