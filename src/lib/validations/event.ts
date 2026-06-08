@@ -32,6 +32,7 @@ export type EventFormValues = z.infer<typeof eventSchema>;
 // --- Agenda Item Schema ---
 
 export const agendaItemSchema = z.object({
+  id: z.string().uuid("Ungültige Agenda-ID").optional(),
   date: z.string().min(1, "Datum ist erforderlich"),
   title: z
     .string()

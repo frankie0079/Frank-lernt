@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,6 +58,8 @@ import {
   AlertCircle,
   Archive,
   MapPin,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 const LocationPickerOverlay = lazy(() =>
@@ -148,14 +150,38 @@ export function EventEditSheet({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: "agenda_items",
+    keyName: "fieldKey",
   });
 
   const watchStartDate = form.watch("start_date");
   const watchEndDate = form.watch("end_date");
   const watchName = form.watch("name");
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset({
+      name: event.name,
+      description: event.description || "",
+      start_date: new Date(event.start_date + "T00:00:00"),
+      end_date: new Date(event.end_date + "T00:00:00"),
+      agenda_items: agendaItems.map((item) => ({
+        id: item.id,
+        date: new Date(item.date + "T00:00:00"),
+        title: item.title,
+        description: item.description || "",
+        latitude: item.latitude ?? null,
+        longitude: item.longitude ?? null,
+      })),
+    });
+    setCoverUrl(event.cover_url);
+    setCoverPosition(event.cover_position || "center");
+    setCoverScale(event.cover_scale || 1);
+    setLocationPickerIndex(null);
+    setSaveError(null);
+  }, [open, event, agendaItems, form]);
 
   const handleSave = useCallback(
     async (values: EditFormValues) => {
@@ -203,7 +229,7 @@ export function EventEditSheet({
         setSaving(false);
       }
     },
-    [coverUrl, event.id, onEventUpdated, onOpenChange]
+    [coverUrl, coverPosition, coverScale, event.id, onEventUpdated, onOpenChange]
   );
 
   const handleArchive = useCallback(async () => {
@@ -432,6 +458,11 @@ export function EventEditSheet({
                 <h3 className="mb-3 font-display text-3xl font-bold leading-none">
                   Agenda
                 </h3>
+                <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                  Änderungen an Titel, Text, Datum, Ort und Reihenfolge bleiben mit Fotos,
+                  Kuratierung, Tagebuch und Archiv verbunden. Verwendete Abschnitte können
+                  nicht versehentlich gelöscht werden.
+                </p>
 
                 <div className="space-y-3">
                   {fields.length === 0 && (
@@ -442,7 +473,7 @@ export function EventEditSheet({
 
                   {fields.map((field, index) => (
                     <div
-                      key={field.id}
+                      key={field.fieldKey}
                       className="rounded-lg border border-border p-3 space-y-2"
                     >
                       <div className="flex items-center justify-between">
@@ -453,6 +484,28 @@ export function EventEditSheet({
                           )}
                         </span>
                         <div className="flex gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => move(index, index - 1)}
+                            disabled={index === 0}
+                            aria-label={`Abschnitt ${index + 1} nach oben verschieben`}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => move(index, index + 1)}
+                            disabled={index === fields.length - 1}
+                            aria-label={`Abschnitt ${index + 1} nach unten verschieben`}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
                           <Button
                             type="button"
                             variant="ghost"

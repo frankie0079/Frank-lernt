@@ -250,6 +250,14 @@ export default function EventDashboardPage() {
         {/* Agenda Panel — collapsible */}
         {agendaOpen && (
           <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+            {isOrganizer && (
+              <div className="mb-3 flex justify-end">
+                <Button type="button" size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                  <Pencil className="mr-1 h-4 w-4" aria-hidden="true" />
+                  Agenda bearbeiten
+                </Button>
+              </div>
+            )}
             {agendaItems.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Agenda ist noch zu erstellen

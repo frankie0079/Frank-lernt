@@ -97,7 +97,7 @@ export async function GET(
   });
 }
 
-// PATCH /api/events/[id] — Update event + replace agenda items (organizer only)
+// PATCH /api/events/[id] — Update event + synchronize agenda items (organizer only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -153,6 +153,69 @@ export async function PATCH(
       { error: parsed.error.issues[0].message },
       { status: 400 }
     );
+  }
+
+  const agendaItems = parsed.data.agenda_items;
+  let removedAgendaIds: string[] = [];
+
+  if (agendaItems !== undefined) {
+    const { data: existingAgenda, error: agendaReadError } = await supabase
+      .from("agenda_items")
+      .select("id")
+      .eq("event_id", id);
+    if (agendaReadError) return serverError("events/[id]:agenda-read", agendaReadError);
+
+    const existingIds = new Set((existingAgenda ?? []).map((item) => item.id));
+    const submittedIds = agendaItems
+      .map((item) => item.id)
+      .filter((itemId): itemId is string => Boolean(itemId));
+
+    if (new Set(submittedIds).size !== submittedIds.length) {
+      return NextResponse.json({ error: "Agenda enthält doppelte Einträge" }, { status: 400 });
+    }
+    if (submittedIds.some((itemId) => !existingIds.has(itemId))) {
+      return NextResponse.json(
+        { error: "Ein Agenda-Punkt gehört nicht zu diesem Event" },
+        { status: 400 }
+      );
+    }
+
+    const submittedIdSet = new Set(submittedIds);
+    removedAgendaIds = [...existingIds].filter((itemId) => !submittedIdSet.has(itemId));
+
+    if (removedAgendaIds.length > 0) {
+      const [content, reports, pages] = await Promise.all([
+        supabase
+          .from("content_items")
+          .select("agenda_item_id", { count: "exact", head: true })
+          .in("agenda_item_id", removedAgendaIds),
+        supabase
+          .from("daily_reports")
+          .select("agenda_item_id", { count: "exact", head: true })
+          .in("agenda_item_id", removedAgendaIds),
+        supabase
+          .from("book_pages")
+          .select("agenda_item_id", { count: "exact", head: true })
+          .in("agenda_item_id", removedAgendaIds),
+      ]);
+      if (content.error || reports.error || pages.error) {
+        return serverError(
+          "events/[id]:agenda-dependency-check",
+          content.error ?? reports.error ?? pages.error
+        );
+      }
+      const linkedCount = (content.count ?? 0) + (reports.count ?? 0) + (pages.count ?? 0);
+      if (linkedCount > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Dieser Agenda-Punkt wird bereits von Fotos, Kuratierung oder Tagebuch verwendet. Benenne ihn um oder ordne die Inhalte zuerst neu zu.",
+            code: "agenda_in_use",
+          },
+          { status: 409 }
+        );
+      }
+    }
   }
 
   // Re-generate slug if name changed
@@ -213,51 +276,67 @@ export async function PATCH(
     return serverError("events/[id]:update", updateError);
   }
 
-  // Only replace agenda items if explicitly provided in the payload
-  const agendaItems = parsed.data.agenda_items;
+  // Synchronize agenda items without replacing IDs. Existing IDs are stable
+  // links used by content, daily reports, book pages and archives.
   let newAgendaItems: unknown[] = [];
 
   if (agendaItems !== undefined) {
-    const { error: deleteAgendaError } = await supabase
-      .from("agenda_items")
-      .delete()
-      .eq("event_id", id);
+    for (const [index, item] of agendaItems.entries()) {
+      if (!item.id) continue;
+      const { error } = await supabase
+        .from("agenda_items")
+        .update({
+          date: item.date,
+          title: item.title,
+          description: item.description || null,
+          sort_order: item.sort_order ?? index,
+          latitude: item.latitude ?? null,
+          longitude: item.longitude ?? null,
+        })
+        .eq("id", item.id)
+        .eq("event_id", id);
+      if (error) return serverError("events/[id]:agenda-update", error);
 
-    if (deleteAgendaError) {
-      console.error("Failed to delete agenda items:", deleteAgendaError.message);
+      const { error: bookOrderError } = await supabase
+        .from("book_pages")
+        .update({ sort_order: item.sort_order ?? index })
+        .eq("agenda_item_id", item.id)
+        .eq("event_id", id);
+      if (bookOrderError) return serverError("events/[id]:book-order-update", bookOrderError);
     }
 
-    if (agendaItems && agendaItems.length > 0) {
-      const agendaRows = agendaItems.map((item, index) => ({
+    const addedItems = agendaItems.filter((item) => !item.id);
+    if (addedItems.length > 0) {
+      const agendaRows = addedItems.map((item, index) => ({
         event_id: id,
         date: item.date,
         title: item.title,
         description: item.description || null,
-        sort_order: item.sort_order ?? index,
+        sort_order: item.sort_order ?? agendaItems.length - addedItems.length + index,
         latitude: item.latitude ?? null,
         longitude: item.longitude ?? null,
       }));
-
-      const { data: insertedAgenda, error: agendaError } = await supabase
-        .from("agenda_items")
-        .insert(agendaRows)
-        .select("id, event_id, date, title, description, admin_member_id, sort_order, latitude, longitude");
-
-      if (agendaError) {
-        console.error("Failed to insert agenda items:", agendaError.message);
-      } else {
-        newAgendaItems = insertedAgenda || [];
-      }
+      const { error } = await supabase.from("agenda_items").insert(agendaRows);
+      if (error) return serverError("events/[id]:agenda-insert", error);
     }
-  } else {
-    // agenda_items not in payload — fetch existing ones to return
-    const { data: existingAgenda } = await supabase
-      .from("agenda_items")
-      .select("id, event_id, date, title, description, admin_member_id, sort_order, latitude, longitude")
-      .eq("event_id", id)
-      .order("sort_order", { ascending: true });
-    newAgendaItems = existingAgenda || [];
+
+    if (removedAgendaIds.length > 0) {
+      const { error } = await supabase
+        .from("agenda_items")
+        .delete()
+        .eq("event_id", id)
+        .in("id", removedAgendaIds);
+      if (error) return serverError("events/[id]:agenda-delete", error);
+    }
   }
+
+  const { data: currentAgenda, error: currentAgendaError } = await supabase
+    .from("agenda_items")
+    .select("id, event_id, date, title, description, admin_member_id, sort_order, latitude, longitude")
+    .eq("event_id", id)
+    .order("sort_order", { ascending: true });
+  if (currentAgendaError) return serverError("events/[id]:agenda-read-updated", currentAgendaError);
+  newAgendaItems = currentAgenda || [];
 
   return NextResponse.json({
     event: updatedEvent,
