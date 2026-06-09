@@ -1,6 +1,6 @@
 # PROJ-46: MP4-Filmstruktur neu
 
-## Status: Ready for Deploy
+## Status: Deployed
 **Created:** 2026-06-09
 **Last Updated:** 2026-06-09
 
@@ -109,3 +109,13 @@ Server, Editor und Renderer pruefen unabhaengig voneinander:
   - alle neun Fotoszenen zeigen 4,0 Sekunden;
   - Start- und Schlussseite zeigen Bildvorschau, Bildwahl und Textfeld.
 - Kein bestehender Tirana-MP4 wurde neu gerendert oder ueberschrieben.
+- Production-Smoke-Test mit Tirana bestanden:
+  - Player zeigt Posterbild statt schwarzer Flaeche;
+  - Start- und Schlussseite sind editierbar;
+  - neun reine Fotoszenen mit jeweils 4,0 Sekunden;
+  - keine Kapitel-, Wort- oder Leerszene sichtbar.
+
+## Deployment
+
+- Deployed und in Produktion verifiziert am 2026-06-09.
+- Feature-Commit: `bb92234 feat(PROJ-46): rebuild slideshow film structure`

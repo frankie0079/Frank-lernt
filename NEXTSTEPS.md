@@ -1,10 +1,10 @@
 # Next Steps
 
-Stand: 2026-06-08
+Stand: 2026-06-09
 
 ## Aktueller Stand
 
-PROJ-43 bis PROJ-45 sind deployed und in Production geprüft.
+PROJ-43 bis PROJ-46 sind deployed und in Production geprüft.
 
 - PROJ-43: Wandervögel-Archiv, private Archivlinks und direkte Admin-Join-Redirects funktionieren.
 - PROJ-44: Tagebuch-/Archivdarstellung ist breiter, responsiver und tagebuchartiger.
@@ -15,6 +15,7 @@ PROJ-43 bis PROJ-45 sind deployed und in Production geprüft.
 - Speicherkarte unter Event-Einstellungen hat getrennte Aktionen für bereinigbare Dateien, Slideshows und loeschbare Videos.
 - Slideshow-Storyboard erzeugt künftig keine doppelte Intro-/Cover-Szene mehr; alte `cover`-Szenen und leere Textkarten werden vor dem Rendern entfernt.
 - Organisatoren können die Agenda jederzeit bearbeiten; bestehende Zuordnungen bleiben durch stabile Agenda-IDs erhalten.
+- Tagesfilme haben editierbare Start-/Schlussseiten, maximal 12 Medien und keine schwarzen Wort-/Kapitelkarten mehr.
 
 ## Production-Verifikation
 
@@ -28,6 +29,7 @@ Verifiziert gegen `https://frank-lernt.vercel.app`:
   - Anzeige ca. 6,6 MB bereinigbar, 112 MB Slideshows, 29,9 MB loeschbare Videos.
 - Admin-Seite Hong-Kong lädt.
 - Agenda-Editor Hong-Kong lädt, unverändertes Speichern funktioniert und der Löschschutz blockiert verwendete Agenda-Punkte.
+- Tirana-Filmplayer zeigt ein Posterbild; Editor zeigt neun reine Fotoszenen à 4,0 Sekunden sowie editierbare Start-/Schlussseite.
 
 Nicht ausgeführt:
 
@@ -51,9 +53,9 @@ Der Ablauf ist damit:
 
 ## Was Als Nächstes Ansteht
 
-1. Bei Bedarf Hong-Kong-Slideshows neu rendern:
-   - nötig, wenn die vorhandenen MP4s den doppelten Titel und die rosa Leerszene noch enthalten.
-   - Der Code-Fix wirkt erst auf neu gerenderte Videos.
+1. Bei Bedarf Tirana- oder Hong-Kong-Slideshows neu rendern:
+   - nötig, damit vorhandene MP4s die neue Start-/Schlussseite und reine Medienstruktur erhalten.
+   - Bestehende MP4-Dateien ändern sich nicht automatisch.
 
 2. Bei Bedarf Speicher in Hong-Kong bereinigen:
    - nur über die neuen Einzelbuttons in den Event-Einstellungen.
@@ -61,7 +63,7 @@ Der Ablauf ist damit:
    - Keine Löschung ohne explizite Bestätigung.
 
 3. Neues Feature nur mit neuer Spec starten:
-   - Nächste ID: PROJ-46.
+   - Nächste ID: PROJ-47.
    - Workflow: `/requirements` → `/architecture` → `/frontend` → `/backend` → `/qa` → `/deploy`.
 
 ## Technischer Stand
@@ -74,6 +76,7 @@ Letzte relevante Commits auf `main`:
 - `48a7cf9 feat(PROJ-44): add targeted storage cleanup actions`
 - `44fad99 fix(PROJ-44): prevent cropped lightbox and duplicate slideshow intro`
 - `f7e7259 feat(PROJ-45): allow safe agenda editing`
+- `bb92234 feat(PROJ-46): rebuild slideshow film structure`
 
 Checks zuletzt grün:
 
