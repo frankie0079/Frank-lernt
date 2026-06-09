@@ -4,8 +4,7 @@ Stand: 2026-06-09
 
 ## Aktueller Stand
 
-PROJ-43 bis PROJ-46 sind deployed und in Production geprüft. PROJ-47 ist
-implementiert und wartet auf Production-Verifikation.
+PROJ-43 bis PROJ-47 sind deployed und in Production geprüft.
 
 - PROJ-43: Wandervögel-Archiv, private Archivlinks und direkte Admin-Join-Redirects funktionieren.
 - PROJ-44: Tagebuch-/Archivdarstellung ist breiter, responsiver und tagebuchartiger.
@@ -33,6 +32,8 @@ Verifiziert gegen `https://frank-lernt.vercel.app`:
 - Admin-Seite Hong-Kong lädt.
 - Agenda-Editor Hong-Kong lädt, unverändertes Speichern funktioniert und der Löschschutz blockiert verwendete Agenda-Punkte.
 - Tirana-Filmplayer zeigt ein Posterbild; Editor zeigt neun reine Fotoszenen à 4,0 Sekunden sowie editierbare Start-/Schlussseite.
+- Tirana-Filmstil `Tagesrückblick` gespeichert und neu geladen; anschließend
+  wieder auf `Postkarte` zurückgesetzt.
 
 Nicht ausgeführt:
 

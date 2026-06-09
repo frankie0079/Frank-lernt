@@ -41,7 +41,7 @@
 | PROJ-44 | Tagebuch- und Archivdarstellung verbessern | Deployed | [PROJ-44-tagebuch-archiv-ux.md](PROJ-44-tagebuch-archiv-ux.md) | 2026-05-31 |
 | PROJ-45 | Agenda jederzeit sicher bearbeiten | Deployed | [PROJ-45-agenda-nachtraeglich-bearbeiten.md](PROJ-45-agenda-nachtraeglich-bearbeiten.md) | 2026-06-08 |
 | PROJ-46 | MP4-Filmstruktur neu | Deployed | [PROJ-46-mp4-filmstruktur-neu.md](PROJ-46-mp4-filmstruktur-neu.md) | 2026-06-09 |
-| PROJ-47 | Abwechslungsreiche Tagesfilm-Stile | In Review | [PROJ-47-tagesfilm-stile.md](PROJ-47-tagesfilm-stile.md) | 2026-06-09 |
+| PROJ-47 | Abwechslungsreiche Tagesfilm-Stile | Deployed | [PROJ-47-tagesfilm-stile.md](PROJ-47-tagesfilm-stile.md) | 2026-06-09 |
 
 ## Next Available ID: PROJ-48
 

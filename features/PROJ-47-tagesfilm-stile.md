@@ -1,6 +1,6 @@
 # PROJ-47: Abwechslungsreiche Tagesfilm-Stile
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-06-09
 **Last Updated:** 2026-06-09
 
@@ -117,8 +117,15 @@ Rendern.
   - `Reisetagebuch` verwendet Papierfläche, Fotorahmen und Kommentarbereich.
   - Alle Stile verwenden weiterhin dieselben Szenen und Zeitlimits.
 
-## Offene Production-Verifikation
+## Production-Verifikation
 
-- Nach Deployment: Filmstil in Tirana speichern, neu laden und anschließend
-  wieder auf `Postkarte` zurücksetzen.
-- Kein produktives MP4 automatisch überschreiben.
+- Deployed und gegen `https://frank-lernt.vercel.app` geprüft am 2026-06-09.
+- Tirana-Storyboard von `Postkarte` auf `Tagesrückblick` gestellt und
+  gespeichert.
+- Frische Sitzung lud `Tagesrückblick` korrekt wieder.
+- Tirana anschließend wieder auf `Postkarte` zurückgesetzt und in einer
+  weiteren frischen Sitzung verifiziert.
+- Kein produktives MP4 wurde neu gerendert oder überschrieben.
+- Eine bereits während des Deployments geöffnete Browser-Sitzung zeigte
+  einmalig eine clientseitige Fehlerseite; der Fehler war in zwei frischen
+  Sitzungen nicht reproduzierbar.
