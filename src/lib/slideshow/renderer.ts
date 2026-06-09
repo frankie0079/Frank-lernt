@@ -9,7 +9,7 @@
 
 import { createAudioMixer, combineStreams, type AudioMixerHandle } from "./audio-mixer";
 import { findTrack, snapToBeat, pickDefaultTrack } from "./music-library";
-import type { Scene, Storyboard } from "./storyboard-types";
+import { SLIDESHOW_MIN_SCENE_MS, type Scene, type Storyboard } from "./storyboard-types";
 
 export interface RenderProgress {
   phase: "preloading" | "rendering" | "finalizing";
@@ -320,7 +320,7 @@ function findSceneAt(sb: Storyboard, t_ms: number): { scene: Scene; index: numbe
 }
 
 const INTRO_MS = 6000; // cover shown alone 0-3s, title fades in 3-4.5s, holds 4.5-6s
-const END_MS = 3500;   // "Ende" screen, music fades out during this phase
+const END_MS = 5000;
 
 /** Deterministic PRNG so re-renders of the same storyboard produce the same pacing. */
 function scenePseudoDuration(sceneIndex: number): number {
@@ -331,7 +331,7 @@ function scenePseudoDuration(sceneIndex: number): number {
 }
 
 export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult> {
-  const { storyboard: originalStoryboard, format, itemMeta, onProgress, signal, eventName, agendaTitle, agendaDate, eventCoverUrl } = opts;
+  const { storyboard: originalStoryboard, format, itemMeta, onProgress, signal, eventCoverUrl } = opts;
   const { width: W, height: H } = dimensionsFor(format);
 
   // Override scene durations: user wants each scene to last 4-6s (random,
@@ -349,13 +349,29 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
     if (signal?.aborted) throw new Error("Abgebrochen");
   };
 
-  // Preload dedicated cover image for intro (from event.cover_url)
+  const resolveTitleCardUrl = (contentItemId: string | null) => {
+    if (!contentItemId) return eventCoverUrl ?? null;
+    const meta = itemMeta.get(contentItemId);
+    return meta?.url || meta?.thumbnail_url || eventCoverUrl || null;
+  };
+
+  // Preload editable start and end page images.
   let introCoverImg: LoadedImage | null = null;
-  if (eventCoverUrl) {
+  const introUrl = resolveTitleCardUrl(storyboard.intro.content_item_id);
+  if (introUrl) {
     try {
-      introCoverImg = await loadImage(eventCoverUrl);
+      introCoverImg = await loadImage(introUrl);
     } catch (e) {
       console.warn("[slideshow] event cover load failed, falling back to gradient:", e);
+    }
+  }
+  let outroCoverImg: LoadedImage | null = null;
+  const outroUrl = resolveTitleCardUrl(storyboard.outro.content_item_id);
+  if (outroUrl) {
+    try {
+      outroCoverImg = await loadImage(outroUrl);
+    } catch (e) {
+      console.warn("[slideshow] outro image load failed, falling back to gradient:", e);
     }
   }
 
@@ -552,11 +568,7 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
         const titleAlpha = elapsed < 3000 ? 0 : elapsed < 4500 ? (elapsed - 3000) / 1500 : 1;
         if (titleAlpha > 0) {
           ctx.globalAlpha = titleAlpha;
-          drawCenteredText(ctx, storyboard.title, W, H * 0.42, format === "portrait" ? 92 : 80, "800");
-          drawCenteredText(ctx, agendaTitle, W, H * 0.55, format === "portrait" ? 52 : 44, "500");
-          drawCenteredText(ctx, new Date(agendaDate + "T00:00:00").toLocaleDateString("de-DE", {
-            weekday: "long", day: "numeric", month: "long", year: "numeric",
-          }), W, H * 0.62, format === "portrait" ? 36 : 30, "400");
+          drawCenteredText(ctx, storyboard.intro.text, W, H * 0.5, format === "portrait" ? 92 : 80, "800");
           ctx.globalAlpha = 1;
         }
         // Crossfade out in the last 300ms of the intro
@@ -572,14 +584,20 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
       // --- PHASE 3: End screen (after storyboard) ---
       if (elapsed >= INTRO_MS + storyboardMs) {
         const endElapsed = elapsed - INTRO_MS - storyboardMs;
+        if (outroCoverImg) {
+          drawCoverImage(ctx, outroCoverImg, W, H, "static", 0);
+          ctx.filter = "none";
+          drawDarkOverlay(ctx, W, H, 0.45);
+        } else {
+          drawGradient(ctx, W, H, storyboard.mood);
+        }
         // Fade-in "Ende" for the first 800ms, then hold, then fade to black in last 800ms
         const fadeInAlpha = Math.min(endElapsed / 800, 1);
         const fadeOutAlpha = endElapsed > END_MS - 800 ? (END_MS - endElapsed) / 800 : 1;
         const alpha = Math.max(0, Math.min(fadeInAlpha, fadeOutAlpha));
         if (alpha > 0) {
           ctx.globalAlpha = alpha;
-          drawCenteredText(ctx, "Ende", W, H / 2 - 20, format === "portrait" ? 120 : 100, "800");
-          drawCenteredText(ctx, eventName, W, H / 2 + 60, format === "portrait" ? 44 : 36, "400");
+          drawCenteredText(ctx, storyboard.outro.text, W, H / 2, format === "portrait" ? 100 : 84, "800");
           ctx.globalAlpha = 1;
         }
         await new Promise((r) => setTimeout(r, 1000 / fps));
@@ -719,8 +737,9 @@ export function snapStoryboardToBeats(sb: Storyboard): Storyboard {
   for (const sc of sb.scenes) {
     const target = cursor + sc.duration_ms;
     const snapped = snapToBeat(track, target, cursor + 1500);
-    newScenes.push({ ...sc, duration_ms: Math.max(1500, snapped - cursor) });
-    cursor = snapped;
+    const durationMs = Math.max(SLIDESHOW_MIN_SCENE_MS, snapped - cursor);
+    newScenes.push({ ...sc, duration_ms: durationMs });
+    cursor += durationMs;
   }
   return { ...sb, scenes: newScenes };
 }

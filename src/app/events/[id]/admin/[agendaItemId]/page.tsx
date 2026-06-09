@@ -115,6 +115,7 @@ export default function CurationPage() {
           isOrganizer={isOrganizer}
           agendaItems={agendaItems}
           agendaTitle={agendaItem?.title}
+          eventCoverUrl={event.cover_url}
         />
       </div>
     </div>

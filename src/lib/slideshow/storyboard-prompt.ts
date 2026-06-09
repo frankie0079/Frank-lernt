@@ -1,55 +1,44 @@
-// PROJ-34: Prompt builder for the storyboard LLM call (Claude Haiku 4.5).
-//
-// Inputs are wrapped in <user_content> tags so the LLM cannot interpret
-// caption/comment text as instructions. We instruct it to quote ONLY from
-// the provided material — never invent.
-
 import {
   SLIDESHOW_MAX_DURATION_MS,
   SLIDESHOW_MIN_SCENE_MS,
   SLIDESHOW_MAX_SCENE_MS,
+  SLIDESHOW_MAX_MEDIA_ITEMS,
   type StoryboardInput,
 } from "./storyboard-types";
 
 export function buildStoryboardSystemPrompt(): string {
   return [
-    "Du bist Filmemacher und Cutter für eine private Event-Dokumentations-Plattform.",
-    "Deine Aufgabe: Aus den kuratierten Beiträgen eines Tages (Fotos, Videos, Texte, Sprachnotizen,",
-    "Kommentare) ein STORYBOARD für einen 60-Sekunden-Film zu erstellen.",
-    "Der Renderer setzt automatisch ein festes 6-s-Intro mit dem Event-Cover davor und ein 3,5-s-",
-    "Outro (\"Ende\") danach. Dein Storyboard liefert also NUR die Szenen dazwischen.",
+    "Du bist Cutter fuer eine private Event-Dokumentations-Plattform.",
+    "Erstelle aus den kuratierten Fotos und Videos ein ruhiges Storyboard.",
+    "Start- und Schlussseite werden separat im Editor gepflegt.",
     "",
     "Harte Regeln:",
-    `- Gesamtdauer aller Szenen: Ziel ca. 50 s, maximal ${SLIDESHOW_MAX_DURATION_MS} ms.`,
+    `- Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Foto-/Video-Szenen.`,
+    `- Gesamtdauer der Medienszenen maximal ${SLIDESHOW_MAX_DURATION_MS} ms.`,
     `- Jede Szene zwischen ${SLIDESHOW_MIN_SCENE_MS} und ${SLIDESHOW_MAX_SCENE_MS} ms.`,
-    "- Jedes content_item aus <user_content> vom Typ photo oder video MUSS in genau einer Szene",
-    "  verwendet werden (als Szenentyp photo oder video mit passender content_item_id).",
-    "  Kuratiert = muss in den Film. Niemals Fotos oder Videos weglassen.",
-    "- Ziel-Dauer pro Szene: 4-5 s. Bei vielen Items darfst du auf 1,5 s runter, bei wenigen bis 6 s hoch.",
-    `- Wichtig: Wenn du mehr Fotos hast, als bei 4 s Szenen ins Budget (${SLIDESHOW_MAX_DURATION_MS} ms) passen, reduziere die Szenendauer proportional — lasse NIEMALS Fotos weg.`,
-    "- Du erfindest NICHTS. Alle Zitate, Namen, Orte stammen woertlich aus dem User-Input.",
-    "- Erzeuge KEINE cover-Szene und KEINE Intro-Szene. Das Intro mit Cover, Titel und Datum",
-    "  wird automatisch vom Renderer erzeugt.",
-    "- 1 bis 4 Kapitel mit kurzen, praegnanten Titeln (max. 40 Zeichen).",
-    "- overlay_text ist sehr kurz (max. 80 Zeichen): entweder ein Zitat in Anfuehrungszeichen",
-    "  mit Autor, oder ein Kapitel- oder Uebergangstitel. Bei Fotos ohne besonderen Kommentar: leer lassen.",
-    "- Text- und Audio-Items aus <user_content> darfst du als Zitate in overlay_text anderer Szenen",
-    "  verarbeiten; sie brauchen keine eigene Szene.",
-    "- Wechsle effects ab, damit es lebendig wirkt (kenburns-* statt static, wenn moeglich).",
-    "- Waehle music_track_id passend zur Stimmung (siehe verfuegbare Tracks).",
+    "- Jedes kuratierte Foto oder Video muss genau einmal verwendet werden.",
+    "- Erzeuge ausschliesslich photo- und video-Szenen.",
+    "- Erzeuge keine cover-, text-card-, chapter-title-, Intro- oder Schluss-Szene.",
+    "- Verwende genau ein technisches Kapitel mit id \"film\" und title \"Film\".",
+    "- overlay_text ist optional und enthaelt nur einen kurzen vorhandenen Kommentar.",
+    "- Text- und Audio-Items erzeugen niemals eigene Szenen.",
+    "- Erfinde keine Texte, Namen oder Orte.",
+    "- Waehle music_track_id passend zur Stimmung.",
     "",
-    "Antworte AUSSCHLIESSLICH mit gültigem JSON nach diesem Schema:",
+    "Antworte ausschliesslich mit gueltigem JSON nach diesem Schema:",
     JSON.stringify(
       {
         title: "string (1-120)",
         mood: "epic|chill|joyful|reflective",
         music_track_id: "string|null",
-        chapters: [{ id: "string", title: "string" }],
+        chapters: [{ id: "film", title: "Film" }],
+        intro: { content_item_id: null, text: "string" },
+        outro: { content_item_id: null, text: "string" },
         scenes: [
           {
-            type: "photo|video|text-card|chapter-title",
-            content_item_id: "uuid|null",
-            chapter_id: "string",
+            type: "photo|video",
+            content_item_id: "uuid",
+            chapter_id: "film",
             duration_ms: "number",
             overlay_text: "string",
             effect: "kenburns-zoom-in|kenburns-zoom-out|kenburns-pan-left|kenburns-pan-right|static",
@@ -60,28 +49,22 @@ export function buildStoryboardSystemPrompt(): string {
       null,
       2
     ),
-    "",
-    "KEIN Markdown, KEINE Erklärungen, KEINE Code-Fences. NUR das JSON-Objekt.",
+    "Kein Markdown, keine Erklaerungen, nur das JSON-Objekt.",
   ].join("\n");
 }
 
 export function buildStoryboardUserPrompt(input: StoryboardInput, availableTrackIds: string[]): string {
   const { event, agenda_item, items } = input;
-
   const itemsBlock = items
     .map((it, idx) => {
-      const lines: string[] = [
+      const lines = [
         `[item ${idx + 1}] (id=${it.content_item_id})`,
         `  type: ${it.type}`,
         `  author: ${it.author_name ?? "anonym"}`,
-        `  created: ${it.created_at}`,
       ];
       if (it.caption) lines.push(`  caption: ${it.caption.slice(0, 600)}`);
-      if (it.comments.length > 0) {
-        lines.push(`  comments:`);
-        for (const c of it.comments.slice(0, 5)) {
-          lines.push(`    - ${c.author ?? "anonym"}: ${c.text.slice(0, 120)}`);
-        }
+      for (const comment of it.comments.slice(0, 5)) {
+        lines.push(`  comment: ${comment.author ?? "anonym"}: ${comment.text.slice(0, 120)}`);
       }
       return lines.join("\n");
     })
@@ -89,25 +72,18 @@ export function buildStoryboardUserPrompt(input: StoryboardInput, availableTrack
 
   return [
     `<event>`,
-    `  name: ${event.name}`,
-    event.description ? `  description: ${event.description}` : "",
+    `name: ${event.name}`,
     `</event>`,
-    "",
     `<agenda_item>`,
-    `  title: ${agenda_item.title}`,
-    `  date: ${agenda_item.date}`,
+    `title: ${agenda_item.title}`,
+    `date: ${agenda_item.date}`,
     `</agenda_item>`,
-    "",
     `<available_music_tracks>`,
-    availableTrackIds.map((id) => `  - ${id}`).join("\n"),
+    availableTrackIds.join(", "),
     `</available_music_tracks>`,
-    "",
     `<user_content>`,
     itemsBlock,
     `</user_content>`,
-    "",
     "Erstelle das Storyboard als JSON.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].join("\n");
 }

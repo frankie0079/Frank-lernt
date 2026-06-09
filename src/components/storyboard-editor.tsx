@@ -31,6 +31,7 @@ interface MusicTrackOption {
 interface SceneThumb {
   thumbnail_url: string | null;
   media_url: string | null;
+  type?: "photo" | "video" | "text" | "audio";
 }
 
 interface Props {
@@ -39,9 +40,10 @@ interface Props {
   onChange: (next: Storyboard) => void;
   /** Optional map of content_item_id → thumbnail/media URL for preview in the scene list */
   sceneThumbnails?: Map<string, SceneThumb>;
+  eventCoverUrl?: string | null;
 }
 
-export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumbnails }: Props) {
+export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumbnails, eventCoverUrl }: Props) {
   const totalMs = useMemo(
     () => storyboard.scenes.reduce((s, sc) => s + sc.duration_ms, 0),
     [storyboard.scenes]
@@ -61,6 +63,62 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
     onChange({ ...storyboard, scenes: next });
   };
 
+  const photoOptions = storyboard.scenes
+    .filter((scene) => scene.type === "photo" && scene.content_item_id)
+    .map((scene, index) => ({
+      id: scene.content_item_id!,
+      label: `Foto ${index + 1}`,
+    }));
+
+  const renderTitleCardEditor = (kind: "intro" | "outro", label: string) => {
+    const card = storyboard[kind];
+    const selectedUrl = card.content_item_id
+      ? sceneThumbnails?.get(card.content_item_id)?.thumbnail_url ||
+        sceneThumbnails?.get(card.content_item_id)?.media_url ||
+        null
+      : eventCoverUrl;
+    return (
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <Label>{label}</Label>
+        {selectedUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={selectedUrl} alt={`${label} Vorschau`} className="aspect-video w-full rounded object-cover" />
+        )}
+        <Select
+          value={card.content_item_id ?? "__event_cover__"}
+          onValueChange={(value) =>
+            onChange({
+              ...storyboard,
+              [kind]: { ...card, content_item_id: value === "__event_cover__" ? null : value },
+            })
+          }
+        >
+          <SelectTrigger aria-label={`${label} Bild wählen`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__event_cover__">Event-Titelbild</SelectItem>
+            {photoOptions.map((photo) => (
+              <SelectItem key={photo.id} value={photo.id}>{photo.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Textarea
+          value={card.text}
+          onChange={(event) =>
+            onChange({
+              ...storyboard,
+              [kind]: { ...card, text: event.target.value.slice(0, 160) },
+            })
+          }
+          placeholder={`${label} Text`}
+          rows={2}
+          maxLength={160}
+        />
+      </div>
+    );
+  };
+
 
   return (
     <div className="space-y-4">
@@ -73,6 +131,9 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
           maxLength={120}
         />
       </div>
+
+      {renderTitleCardEditor("intro", "Startseite")}
+      {renderTitleCardEditor("outro", "Schlussseite")}
 
       <div className="space-y-2">
         <Label htmlFor="sb-music">Musik</Label>
@@ -106,7 +167,6 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
       <div className="space-y-3">
         <Label>Szenen</Label>
         {storyboard.scenes.map((sc, i) => {
-          const chapter = storyboard.chapters.find((c) => c.id === sc.chapter_id);
           const thumb = sc.content_item_id ? sceneThumbnails?.get(sc.content_item_id) : null;
           const thumbUrl = thumb?.thumbnail_url || thumb?.media_url || null;
           return (
@@ -126,7 +186,7 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-muted-foreground">
-                  #{i + 1} · {sc.type} · {chapter?.title ?? sc.chapter_id} · {(sc.duration_ms / 1000).toFixed(1)}s
+                  #{i + 1} · {sc.type === "photo" ? "Foto" : "Video"} · {(sc.duration_ms / 1000).toFixed(1)}s
                 </div>
                 <div className="flex gap-1">
                   <Button

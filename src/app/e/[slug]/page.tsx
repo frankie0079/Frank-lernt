@@ -208,7 +208,10 @@ export default async function PublicEventPage({
             {sortedReports.map((r) => {
               const firstPhoto = r.items.find((it) => it.type === "photo");
               const posterUrl =
-                firstPhoto?.thumbnail_url ?? firstPhoto?.media_url ?? null;
+                event.cover_url ??
+                firstPhoto?.thumbnail_url ??
+                firstPhoto?.media_url ??
+                null;
               return (
                 <PublicDayReportCard
                   key={r.report_id}

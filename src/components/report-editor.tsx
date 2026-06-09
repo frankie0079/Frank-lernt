@@ -30,7 +30,7 @@ interface ReportShape {
   slideshow_url: string | null;
   slideshow_duration_sec: number | null;
   slideshow_published_at: string | null;
-  storyboard: { title?: string } | null;
+  storyboard: { title?: string; intro?: { content_item_id?: string | null } } | null;
 }
 
 interface ReportItemShape {
@@ -100,6 +100,7 @@ interface ReportEditorProps {
   isOrganizer: boolean;
   agendaItems: AgendaItem[];
   agendaTitle?: string;
+  eventCoverUrl?: string | null;
 }
 
 export function ReportEditor({
@@ -109,6 +110,7 @@ export function ReportEditor({
   isOrganizer,
   agendaItems,
   agendaTitle,
+  eventCoverUrl,
 }: ReportEditorProps) {
   const router = useRouter();
   const isOnline = useOnlineStatus();
@@ -135,6 +137,7 @@ export function ReportEditor({
     null
   );
   const [slideshowTitle, setSlideshowTitle] = useState<string | null>(null);
+  const [slideshowPosterId, setSlideshowPosterId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
 
   // Track the "last known" status to detect demotion on save
@@ -261,6 +264,7 @@ export function ReportEditor({
       setSlideshowUrl(data.report?.slideshow_url ?? null);
       setSlideshowDurationSec(data.report?.slideshow_duration_sec ?? null);
       setSlideshowTitle(data.report?.storyboard?.title ?? null);
+      setSlideshowPosterId(data.report?.storyboard?.intro?.content_item_id ?? null);
 
       setLoadError(null);
       // Server is source of truth — clear any stale localStorage draft.
@@ -583,9 +587,10 @@ export function ReportEditor({
 
   // --- Slideshow display + edit mode handlers ---
   const handleSlideshowPublished = useCallback(
-    (url: string, durationSec: number) => {
+    (url: string, durationSec: number, posterId: string | null) => {
       setSlideshowUrl(url);
       setSlideshowDurationSec(durationSec);
+      setSlideshowPosterId(posterId);
       // Return to display mode so the freshly-rendered film pins to the top.
       setEditMode(false);
     },
@@ -648,6 +653,19 @@ export function ReportEditor({
           slideshowUrl={slideshowUrl!}
           durationSec={slideshowDurationSec}
           title={slideshowTitle}
+          posterUrl={
+            slideshowPosterId
+              ? itemsById.get(slideshowPosterId)?.thumbnail_url ||
+                itemsById.get(slideshowPosterId)?.media_url ||
+                null
+              : selectedIds
+                  .map((id) => itemsById.get(id))
+                  .find((item) => item?.type === "photo")?.thumbnail_url ||
+                selectedIds
+                  .map((id) => itemsById.get(id))
+                  .find((item) => item?.type === "photo")?.media_url ||
+                eventCoverUrl
+          }
           onEdit={handleEditSlideshow}
           onDeleted={handleSlideshowDeleted}
         />

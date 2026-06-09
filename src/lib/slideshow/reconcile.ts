@@ -19,6 +19,7 @@ import {
   SLIDESHOW_MAX_DURATION_MS,
   SLIDESHOW_MIN_SCENE_MS,
   SLIDESHOW_MAX_SCENE_MS,
+  SLIDESHOW_MAX_MEDIA_ITEMS,
   stripGeneratedIntroScenes,
   type Scene,
   type Storyboard,
@@ -45,7 +46,7 @@ export function reconcileStoryboardWithItems(
   const base = stripGeneratedIntroScenes(sb);
   const curated = items.filter(
     (it) => (it.type === "photo" || it.type === "video") && !!it.content_item_id
-  );
+  ).slice(0, SLIDESHOW_MAX_MEDIA_ITEMS);
   const curatedIds = new Set(curated.map((it) => it.content_item_id));
 
   // 1. Walk existing scenes, split into photo-scenes (keep if still curated)
@@ -63,7 +64,7 @@ export function reconcileStoryboardWithItems(
         removed++;
       }
     } else {
-      keptScenes.push(sc);
+      removed++;
     }
   }
 
@@ -86,7 +87,7 @@ export function reconcileStoryboardWithItems(
   }
   const added = appended.length;
 
-  const merged: Scene[] = [...keptScenes, ...appended];
+  const merged: Scene[] = [...keptScenes, ...appended].slice(0, SLIDESHOW_MAX_MEDIA_ITEMS);
 
   // 3. Fit to budget — bulletproof. Three stages:
   //    a) Shrink only photo/video scenes first (preserves LLM pacing for

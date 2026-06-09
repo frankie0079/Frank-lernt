@@ -32,6 +32,7 @@ interface Props {
   slideshowUrl: string;
   durationSec: number | null;
   title: string | null;
+  posterUrl?: string | null;
   onEdit: () => void;
   onDeleted: () => void;
 }
@@ -42,6 +43,7 @@ export function SlideshowDisplayCard({
   slideshowUrl,
   durationSec,
   title,
+  posterUrl,
   onEdit,
   onDeleted,
 }: Props) {
@@ -139,7 +141,7 @@ export function SlideshowDisplayCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex justify-center">
-          <SlideshowPreviewPlayer src={slideshowUrl} format="portrait" />
+          <SlideshowPreviewPlayer src={slideshowUrl} format="portrait" poster={posterUrl} />
         </div>
         {durationSec != null && (
           <div className="text-center text-xs text-muted-foreground">

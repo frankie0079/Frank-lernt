@@ -6,11 +6,12 @@
 
 import { z } from "zod";
 
-export const SLIDESHOW_MAX_DURATION_MS = 50_500;
+export const SLIDESHOW_MAX_MEDIA_ITEMS = 12;
+export const SLIDESHOW_MAX_DURATION_MS = 72_000;
 // Min scene length is 1.5 s so films with many curated photos (up to ~33)
 // still fit in the 50.5 s scene budget. The LLM is instructed to prefer
 // 4–5 s and only drop below when the budget is tight.
-export const SLIDESHOW_MIN_SCENE_MS = 1_500;
+export const SLIDESHOW_MIN_SCENE_MS = 4_000;
 export const SLIDESHOW_MAX_SCENE_MS = 6_000;
 
 export const STORYBOARD_MOODS = ["epic", "chill", "joyful", "reflective"] as const;
@@ -55,13 +56,21 @@ export const chapterSchema = z.object({
 });
 export type Chapter = z.infer<typeof chapterSchema>;
 
+export const titleCardSchema = z.object({
+  content_item_id: z.string().uuid().nullable().default(null),
+  text: z.string().max(160).default(""),
+});
+export type TitleCard = z.infer<typeof titleCardSchema>;
+
 export const storyboardSchema = z
   .object({
     title: z.string().min(1).max(120),
     mood: z.enum(STORYBOARD_MOODS),
     music_track_id: z.string().min(1).max(64).nullable().default(null),
     chapters: z.array(chapterSchema).min(1).max(8),
-    scenes: z.array(sceneSchema).min(1).max(40),
+    intro: titleCardSchema.default({ content_item_id: null, text: "" }),
+    outro: titleCardSchema.default({ content_item_id: null, text: "Ende" }),
+    scenes: z.array(sceneSchema).min(1).max(SLIDESHOW_MAX_MEDIA_ITEMS),
   })
   .superRefine((sb, ctx) => {
     const total = sb.scenes.reduce((sum, s) => sum + s.duration_ms, 0);
@@ -73,6 +82,12 @@ export const storyboardSchema = z
     }
     const chapterIds = new Set(sb.chapters.map((c) => c.id));
     for (const sc of sb.scenes) {
+      if (sc.type !== "photo" && sc.type !== "video") {
+        ctx.addIssue({
+          code: "custom",
+          message: `Nicht erlaubter Szenentyp: ${sc.type}`,
+        });
+      }
       if (!chapterIds.has(sc.chapter_id)) {
         ctx.addIssue({
           code: "custom",
@@ -84,13 +99,35 @@ export const storyboardSchema = z
 export type Storyboard = z.infer<typeof storyboardSchema>;
 
 export function stripGeneratedIntroScenes(storyboard: Storyboard): Storyboard {
+  const mediaScenes = storyboard.scenes
+    .filter((scene) => scene.type === "photo" || scene.type === "video")
+    .slice(0, SLIDESHOW_MAX_MEDIA_ITEMS)
+    .map((scene) => ({
+      ...scene,
+      duration_ms: Math.max(
+        SLIDESHOW_MIN_SCENE_MS,
+        Math.min(SLIDESHOW_MAX_SCENE_MS, scene.duration_ms)
+      ),
+    }));
+  const photoIds = new Set(
+    mediaScenes
+      .filter((scene) => scene.type === "photo" && scene.content_item_id)
+      .map((scene) => scene.content_item_id)
+  );
+  const introId = storyboard.intro?.content_item_id ?? null;
+  const outroId = storyboard.outro?.content_item_id ?? null;
+
   return {
     ...storyboard,
-    scenes: storyboard.scenes.filter((scene) => {
-      if (scene.type === "cover") return false;
-      if (scene.type === "text-card" && !scene.overlay_text.trim()) return false;
-      return true;
-    }),
+    intro: {
+      content_item_id: introId && photoIds.has(introId) ? introId : null,
+      text: storyboard.intro?.text?.trim() || storyboard.title,
+    },
+    outro: {
+      content_item_id: outroId && photoIds.has(outroId) ? outroId : null,
+      text: storyboard.outro?.text?.trim() || "Ende",
+    },
+    scenes: mediaScenes,
   };
 }
 

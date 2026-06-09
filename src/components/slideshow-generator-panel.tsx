@@ -19,7 +19,12 @@ import {
   type RenderProgress,
 } from "@/lib/slideshow/renderer";
 import { reconcileStoryboardWithItems } from "@/lib/slideshow/reconcile";
-import type { Storyboard, StoryboardInputItem } from "@/lib/slideshow/storyboard-types";
+import {
+  SLIDESHOW_MAX_MEDIA_ITEMS,
+  stripGeneratedIntroScenes,
+  type Storyboard,
+  type StoryboardInputItem,
+} from "@/lib/slideshow/storyboard-types";
 
 interface MusicTrackOption {
   id: string;
@@ -45,7 +50,11 @@ interface Props {
   // Called when a fresh render + upload has just completed. ReportEditor
   // uses this to switch the page back to "display mode" with the new
   // slideshow_url pinned at the top.
-  onSlideshowPublished?: (slideshowUrl: string, durationSec: number) => void;
+  onSlideshowPublished?: (
+    slideshowUrl: string,
+    durationSec: number,
+    posterId: string | null
+  ) => void;
 }
 
 export function SlideshowGeneratorPanel({
@@ -120,7 +129,9 @@ export function SlideshowGeneratorPanel({
         // truth. Whatever's curated there must appear in the storyboard;
         // whatever's uncurated must not. Scene-delete in the editor was
         // removed (PROJ-34, 2026-04-21) exactly so this invariant holds.
-        let serverSb = data.input.existing_storyboard;
+        let serverSb = data.input.existing_storyboard
+          ? stripGeneratedIntroScenes(data.input.existing_storyboard)
+          : null;
         if (serverSb) {
           const rec = reconcileStoryboardWithItems(serverSb, data.input.items);
           if (rec.added > 0 || rec.removed > 0) {
@@ -187,6 +198,13 @@ export function SlideshowGeneratorPanel({
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    const mediaCount = input?.items.filter(
+      (item) => item.type === "photo" || item.type === "video"
+    ).length ?? 0;
+    if (mediaCount > SLIDESHOW_MAX_MEDIA_ITEMS) {
+      toast.error(`Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.`);
+      return;
+    }
     setGenerating(true);
     try {
       const res = await fetch(
@@ -212,7 +230,7 @@ export function SlideshowGeneratorPanel({
     } finally {
       setGenerating(false);
     }
-  }, [eventId, agendaItemId]);
+  }, [eventId, agendaItemId, input]);
 
   const handleStoryboardChange = useCallback(
     async (next: Storyboard) => {
@@ -224,6 +242,13 @@ export function SlideshowGeneratorPanel({
 
   const handleSave = useCallback(async () => {
     if (!storyboard) return;
+    const mediaCount = input?.items.filter(
+      (item) => item.type === "photo" || item.type === "video"
+    ).length ?? 0;
+    if (mediaCount > SLIDESHOW_MAX_MEDIA_ITEMS) {
+      toast.error(`Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.`);
+      return;
+    }
     setSaving(true);
     try {
       await saveStoryboard(storyboard);
@@ -233,10 +258,17 @@ export function SlideshowGeneratorPanel({
     } finally {
       setSaving(false);
     }
-  }, [storyboard, saveStoryboard]);
+  }, [storyboard, saveStoryboard, input]);
 
   const handleRender = useCallback(async () => {
     if (!storyboard || !input) return;
+    const mediaCount = input.items.filter(
+      (item) => item.type === "photo" || item.type === "video"
+    ).length;
+    if (mediaCount > SLIDESHOW_MAX_MEDIA_ITEMS) {
+      toast.error(`Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.`);
+      return;
+    }
     setRendering(true);
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
@@ -265,6 +297,15 @@ export function SlideshowGeneratorPanel({
       /* non-fatal — fall back to cached input */
     }
 
+    const freshMediaCount = freshInput.items.filter(
+      (item) => item.type === "photo" || item.type === "video"
+    ).length;
+    if (freshMediaCount > SLIDESHOW_MAX_MEDIA_ITEMS) {
+      toast.error(`Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.`);
+      setRendering(false);
+      return;
+    }
+
     // Reconcile storyboard against the CURRENT curated selection. This
     // is the final safety net: the photo grid is the source of truth, so
     // every marked photo must have a scene and no scene may reference an
@@ -286,10 +327,10 @@ export function SlideshowGeneratorPanel({
     // exceeded the 50 MB storage limit at upload time.
     {
       const total = renderSb.scenes.reduce((sum, s) => sum + s.duration_ms, 0);
-      if (total > 50500) {
-        const scale = 50500 / total;
+      if (total > 72000) {
+        const scale = 72000 / total;
         for (const s of renderSb.scenes) {
-          s.duration_ms = Math.max(1500, Math.min(6000, Math.floor(s.duration_ms * scale)));
+          s.duration_ms = Math.max(4000, Math.min(6000, Math.floor(s.duration_ms * scale)));
         }
         console.warn("[slideshow] hard-capped storyboard from", total, "to", renderSb.scenes.reduce((sum, s) => sum + s.duration_ms, 0));
       }
@@ -427,7 +468,11 @@ export function SlideshowGeneratorPanel({
       }
 
       toast.success("Film fertig!");
-      onSlideshowPublished?.(cacheBustedUrl, durationSec);
+      onSlideshowPublished?.(
+        cacheBustedUrl,
+        durationSec,
+        renderSb.intro.content_item_id
+      );
     } catch (err) {
       if (err instanceof Error && err.message === "Abgebrochen") {
         toast.message("Rendering abgebrochen");
@@ -492,11 +537,21 @@ export function SlideshowGeneratorPanel({
           </Alert>
         )}
 
+        {(input?.items.filter((item) => item.type === "photo" || item.type === "video").length ?? 0) >
+          SLIDESHOW_MAX_MEDIA_ITEMS && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Maximal {SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {hasItems && !storyboard && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              KI plant aus deinen kuratierten Beiträgen einen 60-Sekunden-Film mit
-              Kapiteln, Übergängen und Musik.
+              KI plant aus maximal 12 kuratierten Fotos oder Videos einen Film mit
+              editierbarer Start- und Schlussseite.
             </p>
             <Button onClick={handleGenerate} disabled={generating} className="w-full">
               {generating ? (
@@ -525,11 +580,12 @@ export function SlideshowGeneratorPanel({
                   ? new Map(
                       input.items.map((it) => [
                         it.content_item_id,
-                        { thumbnail_url: it.thumbnail_url, media_url: it.media_url },
+                        { thumbnail_url: it.thumbnail_url, media_url: it.media_url, type: it.type },
                       ])
                     )
                   : undefined
               }
+              eventCoverUrl={input?.event.cover_url}
             />
             <div className="flex flex-wrap gap-2">
               <Button

@@ -15,6 +15,7 @@ import {
   SLIDESHOW_MAX_DURATION_MS,
   SLIDESHOW_MIN_SCENE_MS,
   SLIDESHOW_MAX_SCENE_MS,
+  SLIDESHOW_MAX_MEDIA_ITEMS,
   stripGeneratedIntroScenes,
 } from "@/lib/slideshow/storyboard-types";
 import {
@@ -34,6 +35,37 @@ function isValidUUID(id: string) {
 
 function createSupabase() {
   return getSupabaseAdmin();
+}
+
+function sanitizeStoryboardCandidate(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+  const storyboard = value as Record<string, unknown>;
+  const title = typeof storyboard.title === "string" ? storyboard.title.slice(0, 120) : "Tagesfilm";
+  const scenes = Array.isArray(storyboard.scenes)
+    ? storyboard.scenes
+        .filter((scene) => {
+          if (!scene || typeof scene !== "object") return false;
+          const type = (scene as Record<string, unknown>).type;
+          return type === "photo" || type === "video";
+        })
+        .slice(0, SLIDESHOW_MAX_MEDIA_ITEMS)
+        .map((scene) => ({ ...(scene as Record<string, unknown>), chapter_id: "film" }))
+    : [];
+
+  return {
+    ...storyboard,
+    title,
+    chapters: [{ id: "film", title: "Film" }],
+    intro:
+      storyboard.intro && typeof storyboard.intro === "object"
+        ? storyboard.intro
+        : { content_item_id: null, text: title },
+    outro:
+      storyboard.outro && typeof storyboard.outro === "object"
+        ? storyboard.outro
+        : { content_item_id: null, text: "Ende" },
+    scenes,
+  };
 }
 
 function mapRpcError(code: string | undefined): { status: number; error: string } {
@@ -178,6 +210,24 @@ export async function POST(
     );
   }
 
+  const mediaItemCount = input.items.filter(
+    (item) => item.type === "photo" || item.type === "video"
+  ).length;
+  if (mediaItemCount === 0) {
+    return NextResponse.json(
+      { error: "Mindestens ein Foto oder Video für den Film auswählen." },
+      { status: 400 }
+    );
+  }
+  if (mediaItemCount > SLIDESHOW_MAX_MEDIA_ITEMS) {
+    return NextResponse.json(
+      {
+        error: `Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.`,
+      },
+      { status: 400 }
+    );
+  }
+
   // 2. Build prompts and call Claude Haiku 4.5
   const system = buildStoryboardSystemPrompt();
   const user = buildStoryboardUserPrompt(
@@ -314,6 +364,7 @@ export async function POST(
       }
     }
 
+    parsed = sanitizeStoryboardCandidate(parsed);
     const validation = storyboardSchema.safeParse(parsed);
     if (!validation.success) {
       return {
@@ -397,6 +448,14 @@ export async function POST(
   }
 
   const storyboard = attempt.storyboard;
+  storyboard.intro = {
+    content_item_id: null,
+    text: input.agenda_item.title,
+  };
+  storyboard.outro = {
+    content_item_id: null,
+    text: "Ende",
+  };
 
   // Default music_track_id if LLM left it null
   if (!storyboard.music_track_id) {
@@ -421,7 +480,7 @@ export async function POST(
 // ----------------------------------------------------------------------------
 // PUT — save user-edited storyboard
 // ----------------------------------------------------------------------------
-const putBodySchema = z.object({ storyboard: storyboardSchema });
+const putBodySchema = z.object({ storyboard: z.unknown() });
 
 export async function PUT(
   request: NextRequest,
@@ -451,11 +510,42 @@ export async function PUT(
     );
   }
 
+  const storyboardResult = storyboardSchema.safeParse(
+    sanitizeStoryboardCandidate(parsed.data.storyboard)
+  );
+  if (!storyboardResult.success) {
+    return NextResponse.json(
+      { error: storyboardResult.error.issues[0]?.message ?? "Ungültige Storyboard-Daten" },
+      { status: 400 }
+    );
+  }
+
   const supabase = createSupabase();
+  const { data: inputData, error: inputError } = await supabase.rpc(
+    "get_report_storyboard_input",
+    { p_token: token, p_agenda_item_id: agendaItemId }
+  );
+  if (inputError) return serverError("storyboard:put-input", inputError);
+  const inputResult = inputData as { ok: boolean; error?: string; items?: StoryboardInput["items"] };
+  if (!inputResult?.ok) {
+    const mapped = mapRpcError(inputResult?.error);
+    return NextResponse.json({ error: mapped.error }, { status: mapped.status });
+  }
+  const mediaItemCount = (inputResult.items ?? []).filter(
+    (item) => item.type === "photo" || item.type === "video"
+  ).length;
+  if (mediaItemCount > SLIDESHOW_MAX_MEDIA_ITEMS) {
+    return NextResponse.json(
+      { error: `Maximal ${SLIDESHOW_MAX_MEDIA_ITEMS} Fotos oder Videos pro Film. Bitte reduziere die Auswahl.` },
+      { status: 400 }
+    );
+  }
+
+  const cleanedStoryboard = stripGeneratedIntroScenes(storyboardResult.data);
   const { data, error } = await supabase.rpc("save_report_storyboard", {
     p_token: token,
     p_agenda_item_id: agendaItemId,
-    p_storyboard: parsed.data.storyboard,
+    p_storyboard: cleanedStoryboard,
   });
   if (error) return serverError("storyboard:put", error);
   const result = data as { ok: boolean; error?: string };
@@ -464,5 +554,5 @@ export async function PUT(
     return NextResponse.json({ error: m.error }, { status: m.status });
   }
 
-  return NextResponse.json({ storyboard: parsed.data.storyboard });
+  return NextResponse.json({ storyboard: cleanedStoryboard });
 }
