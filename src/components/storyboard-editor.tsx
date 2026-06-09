@@ -16,8 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Images, Zap } from "lucide-react";
 import {
+  type FilmStyle,
   SLIDESHOW_MAX_DURATION_MS,
   type Storyboard,
 } from "@/lib/slideshow/storyboard-types";
@@ -49,6 +50,31 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
     [storyboard.scenes]
   );
   const overBudget = totalMs > SLIDESHOW_MAX_DURATION_MS;
+  const styles: Array<{
+    id: FilmStyle;
+    title: string;
+    description: string;
+    icon: typeof Images;
+  }> = [
+    {
+      id: "postcard",
+      title: "Postkarte",
+      description: "Ruhig, persönlich und mit weichen Übergängen.",
+      icon: Images,
+    },
+    {
+      id: "recap",
+      title: "Tagesrückblick",
+      description: "Lebhafter mit Tagesmarker und Szenenzähler.",
+      icon: Zap,
+    },
+    {
+      id: "journal",
+      title: "Reisetagebuch",
+      description: "Helle Papieroptik mit gut lesbaren Kommentaren.",
+      icon: BookOpen,
+    },
+  ];
 
   const updateScene = (idx: number, patch: Partial<Storyboard["scenes"][number]>) => {
     const next = { ...storyboard, scenes: storyboard.scenes.map((s, i) => (i === idx ? { ...s, ...patch } : s)) };
@@ -122,6 +148,40 @@ export function StoryboardEditor({ storyboard, musicTracks, onChange, sceneThumb
 
   return (
     <div className="space-y-4">
+      <fieldset className="space-y-2">
+        <Label asChild>
+          <legend>Filmstil</legend>
+        </Label>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {styles.map((style) => {
+            const Icon = style.icon;
+            const selected = storyboard.film_style === style.id;
+            return (
+              <button
+                key={style.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onChange({ ...storyboard, film_style: style.id })}
+                className={`min-h-28 rounded-md border p-3 text-left transition-colors ${
+                  selected
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-card hover:bg-muted/50"
+                }`}
+              >
+                <Icon
+                  className={`mb-2 h-5 w-5 ${selected ? "text-primary" : "text-muted-foreground"}`}
+                  aria-hidden="true"
+                />
+                <span className="block font-semibold">{style.title}</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                  {style.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
       <div className="space-y-2">
         <Label htmlFor="sb-title">Filmtitel</Label>
         <Input

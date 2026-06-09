@@ -221,7 +221,11 @@ export function SlideshowGeneratorPanel({
         console.error("[storyboard] POST failed", { status: res.status, data });
         throw new Error(full);
       }
-      const sb = data.storyboard as Storyboard;
+      const generated = data.storyboard as Storyboard;
+      const sb: Storyboard = {
+        ...generated,
+        film_style: storyboard?.film_style ?? generated.film_style ?? "postcard",
+      };
       setStoryboard(sb);
       syncedStoryboardJsonRef.current = JSON.stringify(sb);
       toast.success("Storyboard erstellt");
@@ -230,7 +234,7 @@ export function SlideshowGeneratorPanel({
     } finally {
       setGenerating(false);
     }
-  }, [eventId, agendaItemId, input]);
+  }, [eventId, agendaItemId, input, storyboard?.film_style]);
 
   const handleStoryboardChange = useCallback(
     async (next: Storyboard) => {

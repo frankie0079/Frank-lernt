@@ -4,7 +4,8 @@ Stand: 2026-06-09
 
 ## Aktueller Stand
 
-PROJ-43 bis PROJ-46 sind deployed und in Production geprüft.
+PROJ-43 bis PROJ-46 sind deployed und in Production geprüft. PROJ-47 ist
+implementiert und wartet auf Production-Verifikation.
 
 - PROJ-43: Wandervögel-Archiv, private Archivlinks und direkte Admin-Join-Redirects funktionieren.
 - PROJ-44: Tagebuch-/Archivdarstellung ist breiter, responsiver und tagebuchartiger.
@@ -16,6 +17,8 @@ PROJ-43 bis PROJ-46 sind deployed und in Production geprüft.
 - Slideshow-Storyboard erzeugt künftig keine doppelte Intro-/Cover-Szene mehr; alte `cover`-Szenen und leere Textkarten werden vor dem Rendern entfernt.
 - Organisatoren können die Agenda jederzeit bearbeiten; bestehende Zuordnungen bleiben durch stabile Agenda-IDs erhalten.
 - Tagesfilme haben editierbare Start-/Schlussseiten, maximal 12 Medien und keine schwarzen Wort-/Kapitelkarten mehr.
+- Tagesfilme können vor dem Rendern als Postkarte, Tagesrückblick oder
+  Reisetagebuch gestaltet werden.
 
 ## Production-Verifikation
 
@@ -62,8 +65,10 @@ Der Ablauf ist damit:
    - Vorher bewusst entscheiden, welche Kategorie gelöscht wird.
    - Keine Löschung ohne explizite Bestätigung.
 
-3. Neues Feature nur mit neuer Spec starten:
-   - Nächste ID: PROJ-47.
+3. Persönliche Video- oder Audio-Begrüßung als mögliches Folgefeature prüfen.
+
+4. Neues Feature nur mit neuer Spec starten:
+   - Nächste ID: PROJ-48.
    - Workflow: `/requirements` → `/architecture` → `/frontend` → `/backend` → `/qa` → `/deploy`.
 
 ## Technischer Stand

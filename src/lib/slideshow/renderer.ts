@@ -61,6 +61,11 @@ function dimensionsFor(format: "portrait" | "landscape") {
     : { width: 1920, height: 1080 };
 }
 
+function formatAgendaDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
 async function loadImageOnce(url: string, timeoutMs: number): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -203,6 +208,138 @@ function drawCoverImage(
   ctx.restore();
 }
 
+function drawContainedImageInRect(
+  ctx: CanvasRenderingContext2D,
+  img: LoadedImage,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  const imageRatio = img.width / img.height;
+  const rectRatio = width / height;
+  let drawWidth = width;
+  let drawHeight = height;
+  if (imageRatio > rectRatio) {
+    drawHeight = width / imageRatio;
+  } else {
+    drawWidth = height * imageRatio;
+  }
+  ctx.drawImage(
+    img,
+    x + (width - drawWidth) / 2,
+    y + (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight
+  );
+}
+
+function drawRecapChrome(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  agendaTitle: string,
+  agendaDate: string,
+  sceneIndex: number,
+  sceneCount: number,
+  localT: number
+) {
+  const accent = "#e9b63a";
+  const edge = Math.max(12, Math.round(W * 0.018));
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, 0, W, edge);
+  ctx.fillRect(0, H - edge, W, edge);
+
+  ctx.fillStyle = "rgba(0,0,0,0.72)";
+  ctx.fillRect(0, 0, W, Math.round(H * 0.09));
+  ctx.font = `700 ${Math.round(W * 0.035)}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(agendaTitle.slice(0, 42), Math.round(W * 0.05), Math.round(H * 0.045));
+  ctx.textAlign = "right";
+  ctx.fillStyle = accent;
+  ctx.fillText(
+    `${String(sceneIndex + 1).padStart(2, "0")} / ${String(sceneCount).padStart(2, "0")}`,
+    Math.round(W * 0.95),
+    Math.round(H * 0.045)
+  );
+
+  if (localT < 0.12) {
+    const reveal = 1 - localT / 0.12;
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, W * reveal, H);
+    ctx.fillStyle = "#111111";
+    ctx.font = `800 ${Math.round(W * 0.05)}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = "right";
+    ctx.fillText(agendaDate, Math.max(W * 0.2, W * reveal - W * 0.05), H * 0.5);
+  }
+}
+
+function drawJournalScene(
+  ctx: CanvasRenderingContext2D,
+  img: LoadedImage,
+  W: number,
+  H: number,
+  caption: string,
+  agendaTitle: string,
+  agendaDate: string
+) {
+  ctx.filter = "none";
+  ctx.fillStyle = "#f2e7ce";
+  ctx.fillRect(0, 0, W, H);
+  const margin = Math.round(W * 0.07);
+  const photoY = Math.round(H * 0.12);
+  const photoH = Math.round(H * 0.57);
+  ctx.fillStyle = "#fffdf7";
+  ctx.shadowColor = "rgba(34,27,18,0.22)";
+  ctx.shadowBlur = 24;
+  ctx.fillRect(margin, photoY, W - margin * 2, photoH);
+  ctx.shadowBlur = 0;
+  drawContainedImageInRect(
+    ctx,
+    img,
+    margin + 18,
+    photoY + 18,
+    W - margin * 2 - 36,
+    photoH - 36
+  );
+  ctx.fillStyle = "#c94a2b";
+  ctx.fillRect(margin, Math.round(H * 0.075), Math.round(W * 0.16), 10);
+  ctx.fillStyle = "#1e4a3c";
+  ctx.font = `700 ${Math.round(W * 0.038)}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(agendaTitle.slice(0, 46), margin, Math.round(H * 0.06));
+  ctx.fillStyle = "#6b6256";
+  ctx.font = `600 ${Math.round(W * 0.026)}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = "right";
+  ctx.fillText(agendaDate, W - margin, Math.round(H * 0.06));
+  if (caption) {
+    ctx.fillStyle = "#24312e";
+    ctx.font = `600 ${Math.round(W * 0.038)}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const words = caption.split(" ");
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > W * 0.78 && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    const shown = lines.slice(0, 4);
+    const lineHeight = Math.round(W * 0.052);
+    const startY = H * 0.79 - ((shown.length - 1) * lineHeight) / 2;
+    shown.forEach((text, index) => ctx.fillText(text, W / 2, startY + index * lineHeight));
+  }
+}
+
 function drawGradient(ctx: CanvasRenderingContext2D, W: number, H: number, mood: string) {
   const palette: Record<string, [string, string]> = {
     epic: ["#1a1a2e", "#e94560"],
@@ -331,8 +468,18 @@ function scenePseudoDuration(sceneIndex: number): number {
 }
 
 export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult> {
-  const { storyboard: originalStoryboard, format, itemMeta, onProgress, signal, eventCoverUrl } = opts;
+  const {
+    storyboard: originalStoryboard,
+    format,
+    itemMeta,
+    onProgress,
+    signal,
+    eventCoverUrl,
+    agendaTitle,
+    agendaDate,
+  } = opts;
   const { width: W, height: H } = dimensionsFor(format);
+  const agendaDateLabel = formatAgendaDate(agendaDate);
 
   // Override scene durations: user wants each scene to last 4-6s (random,
   // deterministic by scene index). Clone the storyboard so we don't mutate
@@ -558,11 +705,19 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
       // --- PHASE 1: Intro cover (0..INTRO_MS) ---
       if (elapsed < INTRO_MS) {
         if (introCoverImg) {
-          drawCoverImage(ctx, introCoverImg, W, H, "static", 0);
-          ctx.filter = "none";
-          drawDarkOverlay(ctx, W, H, 0.45);
+          if (storyboard.film_style === "journal") {
+            drawJournalScene(ctx, introCoverImg, W, H, "", agendaTitle, agendaDateLabel);
+            drawDarkOverlay(ctx, W, H, 0.16);
+          } else {
+            drawCoverImage(ctx, introCoverImg, W, H, "static", 0);
+            ctx.filter = "none";
+            drawDarkOverlay(ctx, W, H, storyboard.film_style === "recap" ? 0.3 : 0.45);
+          }
         } else {
           drawGradient(ctx, W, H, storyboard.mood);
+        }
+        if (storyboard.film_style === "recap") {
+          drawRecapChrome(ctx, W, H, agendaTitle, agendaDateLabel, 0, storyboard.scenes.length, 1);
         }
         // Title animation: cover alone 0-3s, fade in 3.0-4.5s, hold 4.5-6s
         const titleAlpha = elapsed < 3000 ? 0 : elapsed < 4500 ? (elapsed - 3000) / 1500 : 1;
@@ -585,11 +740,28 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
       if (elapsed >= INTRO_MS + storyboardMs) {
         const endElapsed = elapsed - INTRO_MS - storyboardMs;
         if (outroCoverImg) {
-          drawCoverImage(ctx, outroCoverImg, W, H, "static", 0);
-          ctx.filter = "none";
-          drawDarkOverlay(ctx, W, H, 0.45);
+          if (storyboard.film_style === "journal") {
+            drawJournalScene(ctx, outroCoverImg, W, H, "", agendaTitle, agendaDateLabel);
+            drawDarkOverlay(ctx, W, H, 0.16);
+          } else {
+            drawCoverImage(ctx, outroCoverImg, W, H, "static", 0);
+            ctx.filter = "none";
+            drawDarkOverlay(ctx, W, H, storyboard.film_style === "recap" ? 0.3 : 0.45);
+          }
         } else {
           drawGradient(ctx, W, H, storyboard.mood);
+        }
+        if (storyboard.film_style === "recap") {
+          drawRecapChrome(
+            ctx,
+            W,
+            H,
+            agendaTitle,
+            agendaDateLabel,
+            storyboard.scenes.length - 1,
+            storyboard.scenes.length,
+            1
+          );
         }
         // Fade-in "Ende" for the first 800ms, then hold, then fade to black in last 800ms
         const fadeInAlpha = Math.min(endElapsed / 800, 1);
@@ -643,13 +815,37 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
         }
       } else if (scene.type === "photo" || scene.type === "video") {
         if (img) {
-          applyColorGrade(ctx, scene.color_grade);
-          drawCoverImage(ctx, img, W, H, scene.effect, localT);
-          ctx.filter = "none";
+          if (storyboard.film_style === "journal") {
+            drawJournalScene(
+              ctx,
+              img,
+              W,
+              H,
+              scene.overlay_text,
+              agendaTitle,
+              agendaDateLabel
+            );
+          } else {
+            applyColorGrade(ctx, scene.color_grade);
+            drawCoverImage(ctx, img, W, H, scene.effect, localT);
+            ctx.filter = "none";
+          }
         } else {
           drawGradient(ctx, W, H, storyboard.mood);
         }
-        if (scene.type === "video") {
+        if (storyboard.film_style === "recap") {
+          drawRecapChrome(
+            ctx,
+            W,
+            H,
+            agendaTitle,
+            agendaDateLabel,
+            index,
+            storyboard.scenes.length,
+            localT
+          );
+        }
+        if (scene.type === "video" && storyboard.film_style !== "journal") {
           // Play icon overlay top-right
           ctx.fillStyle = "rgba(0,0,0,0.55)";
           ctx.beginPath();
@@ -663,19 +859,24 @@ export async function renderSlideshow(opts: RenderOptions): Promise<RenderResult
           ctx.closePath();
           ctx.fill();
         }
-        // Bottom gradient for legibility
-        const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
-        grad.addColorStop(0, "rgba(0,0,0,0)");
-        grad.addColorStop(1, "rgba(0,0,0,0.7)");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, H * 0.55, W, H * 0.45);
-        // Overlay text (caption / quote)
-        if (scene.overlay_text) {
-          drawCenteredText(ctx, scene.overlay_text, W, H * 0.78, format === "portrait" ? 44 : 36, "600");
+        if (storyboard.film_style !== "journal") {
+          // Bottom gradient for legibility
+          const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+          grad.addColorStop(0, "rgba(0,0,0,0)");
+          grad.addColorStop(1, "rgba(0,0,0,0.7)");
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, H * 0.55, W, H * 0.45);
+          // Overlay text (caption / quote)
+          if (scene.overlay_text) {
+            drawCenteredText(ctx, scene.overlay_text, W, H * 0.78, format === "portrait" ? 44 : 36, "600");
+          }
+          // Author badge is part of the personal postcard style. The recap
+          // keeps the frame cleaner and uses its persistent day marker.
+          if (storyboard.film_style === "postcard") {
+            const avatar = meta?.author_avatar_url ? avatarImages.get(meta.author_avatar_url) ?? null : null;
+            drawAuthorBadge(ctx, W, H, meta?.author_name ?? null, avatar);
+          }
         }
-        // Author badge
-        const avatar = meta?.author_avatar_url ? avatarImages.get(meta.author_avatar_url) ?? null : null;
-        drawAuthorBadge(ctx, W, H, meta?.author_name ?? null, avatar);
       } else if (scene.type === "text-card") {
         drawGradient(ctx, W, H, storyboard.mood);
         drawCenteredText(ctx, scene.overlay_text || "", W, H / 2, format === "portrait" ? 64 : 56, "700");

@@ -55,6 +55,10 @@ function sanitizeStoryboardCandidate(value: unknown): unknown {
   return {
     ...storyboard,
     title,
+    film_style:
+      storyboard.film_style === "recap" || storyboard.film_style === "journal"
+        ? storyboard.film_style
+        : "postcard",
     chapters: [{ id: "film", title: "Film" }],
     intro:
       storyboard.intro && typeof storyboard.intro === "object"

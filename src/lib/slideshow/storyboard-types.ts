@@ -17,6 +17,9 @@ export const SLIDESHOW_MAX_SCENE_MS = 6_000;
 export const STORYBOARD_MOODS = ["epic", "chill", "joyful", "reflective"] as const;
 export type StoryboardMood = (typeof STORYBOARD_MOODS)[number];
 
+export const FILM_STYLES = ["postcard", "recap", "journal"] as const;
+export type FilmStyle = (typeof FILM_STYLES)[number];
+
 export const SCENE_TYPES = [
   "cover",
   "photo",
@@ -65,6 +68,7 @@ export type TitleCard = z.infer<typeof titleCardSchema>;
 export const storyboardSchema = z
   .object({
     title: z.string().min(1).max(120),
+    film_style: z.enum(FILM_STYLES).default("postcard"),
     mood: z.enum(STORYBOARD_MOODS),
     music_track_id: z.string().min(1).max(64).nullable().default(null),
     chapters: z.array(chapterSchema).min(1).max(8),
@@ -119,6 +123,7 @@ export function stripGeneratedIntroScenes(storyboard: Storyboard): Storyboard {
 
   return {
     ...storyboard,
+    film_style: storyboard.film_style ?? "postcard",
     intro: {
       content_item_id: introId && photoIds.has(introId) ? introId : null,
       text: storyboard.intro?.text?.trim() || storyboard.title,

@@ -29,6 +29,7 @@ export function buildStoryboardSystemPrompt(): string {
     JSON.stringify(
       {
         title: "string (1-120)",
+        film_style: "postcard",
         mood: "epic|chill|joyful|reflective",
         music_track_id: "string|null",
         chapters: [{ id: "film", title: "Film" }],
