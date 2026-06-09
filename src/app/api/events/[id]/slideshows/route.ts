@@ -54,5 +54,58 @@ export async function GET(
     return NextResponse.json({ error: m.error }, { status: m.status });
   }
 
-  return NextResponse.json({ slideshows: result.slideshows ?? [] });
+  const slideshows = Array.isArray(result.slideshows)
+    ? (result.slideshows as Array<Record<string, unknown>>)
+    : [];
+
+  const [{ data: event }, { data: reports }] = await Promise.all([
+    supabase.from("events").select("cover_url").eq("id", id).maybeSingle(),
+    supabase
+      .from("daily_reports")
+      .select("agenda_item_id, storyboard")
+      .eq("event_id", id),
+  ]);
+
+  const introItemByAgenda = new Map<string, string>();
+  for (const report of reports ?? []) {
+    const storyboard = report.storyboard as {
+      intro?: { content_item_id?: unknown };
+    } | null;
+    const introItemId = storyboard?.intro?.content_item_id;
+    if (typeof introItemId === "string") {
+      introItemByAgenda.set(report.agenda_item_id, introItemId);
+    }
+  }
+
+  const introItemIds = [...new Set(introItemByAgenda.values())];
+  const { data: introItems } = introItemIds.length
+    ? await supabase
+        .from("content_items")
+        .select("id, media_url, thumbnail_url")
+        .in("id", introItemIds)
+        .eq("event_id", id)
+    : { data: [] };
+  const posterByItem = new Map(
+    (introItems ?? []).map((item) => [
+      item.id,
+      item.thumbnail_url || item.media_url || null,
+    ])
+  );
+
+  const enrichedSlideshows = slideshows.map((slideshow) => {
+    const agendaItemId =
+      typeof slideshow.agenda_item_id === "string"
+        ? slideshow.agenda_item_id
+        : "";
+    const introItemId = introItemByAgenda.get(agendaItemId);
+    return {
+      ...slideshow,
+      poster_url:
+        (introItemId ? posterByItem.get(introItemId) : null) ??
+        event?.cover_url ??
+        null,
+    };
+  });
+
+  return NextResponse.json({ slideshows: enrichedSlideshows });
 }

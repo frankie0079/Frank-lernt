@@ -17,6 +17,7 @@ export interface PublishedSlideshow {
   published_at: string;
   duration_sec: number | null;
   title: string;
+  poster_url: string | null;
 }
 
 interface Props {
@@ -80,6 +81,7 @@ export function SlideshowCard({ slideshow }: Props) {
           controls
           playsInline
           preload="metadata"
+          poster={slideshow.poster_url ?? undefined}
           className="h-full w-full object-contain"
         />
       </div>
