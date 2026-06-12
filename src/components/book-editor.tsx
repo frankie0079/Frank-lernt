@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -232,8 +232,8 @@ export function BookEditor({ eventId }: BookEditorProps) {
         </h1>
         <p className="text-xs leading-snug text-muted-foreground sm:text-sm">
           Jeder Tag kann aus mehreren Seiten bestehen — wie in einem
-          Fotobuch. Pro Seite wählst du Fotos, Videos, Notizen oder
-          Tour-Beiträge, legst ein Layout fest und schreibst einen kurzen
+          Fotobuch. Pro Seite wählst du Fotos, Videos oder Notizen,
+          legst ein Layout fest und schreibst einen kurzen
           Kommentar. Alles wird automatisch gespeichert.
         </p>
       </div>

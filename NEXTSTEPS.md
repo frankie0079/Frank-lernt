@@ -1,4 +1,4 @@
-# Next Steps
+﻿# Next Steps
 
 Stand: 2026-06-09
 
@@ -10,7 +10,9 @@ PROJ-43 bis PROJ-47 sind deployed und in Production geprüft.
 - PROJ-44: Tagebuch-/Archivdarstellung ist breiter, responsiver und tagebuchartiger.
 - Hong-Kong-Tagebuch ist gefüllt und privat veröffentlicht.
 - Archiv und interne Tagebuchansicht verwenden denselben Layout-Kern.
-- Foto-Captions, Notizen, Tour-Tracker-Fotos und Tagesinformationen haben Platz im Tagebuch.
+- Foto-Captions, Notizen und Tagesinformationen haben Platz im Tagebuch.
+- Tour-Tracking erfolgt künftig extern, z.B. über Komoot; daraus erzeugte
+  Tracking-Bilder werden wie normale Fotos hochgeladen.
 - Foto-Lightbox öffnet fullscreen und bleibt bei Querformat-Rotation `object-fit: contain`.
 - Speicherkarte unter Event-Einstellungen hat getrennte Aktionen für bereinigbare Dateien, Slideshows und loeschbare Videos.
 - Slideshow-Storyboard erzeugt künftig keine doppelte Intro-/Cover-Szene mehr; alte `cover`-Szenen und leere Textkarten werden vor dem Rendern entfernt.

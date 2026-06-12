@@ -328,7 +328,6 @@ export default function EventDashboardPage() {
           <TabsContent value="capture" className="mt-6">
             <WandererScreen
               eventId={eventId}
-              eventName={event.name}
               userId={member.id}
               agendaItems={agendaItems}
             />

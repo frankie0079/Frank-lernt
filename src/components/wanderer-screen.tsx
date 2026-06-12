@@ -11,7 +11,6 @@ import { ActionButtonGrid } from "@/components/action-button-grid";
 import { PhotoSheet } from "@/components/photo-sheet";
 import { VideoSheet } from "@/components/video-sheet";
 import { AudioSheet } from "@/components/audio-sheet";
-import { TourTrackerSheet } from "@/components/tour-tracker-sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useGeolocation } from "@/hooks/use-geolocation";
@@ -28,7 +27,6 @@ import { AlertCircle } from "lucide-react";
 
 interface WandererScreenProps {
   eventId: string;
-  eventName: string;
   userId: string;
   agendaItems: AgendaItem[];
 }
@@ -39,7 +37,6 @@ interface WandererScreenProps {
  */
 export function WandererScreen({
   eventId,
-  eventName,
   userId,
   agendaItems,
 }: WandererScreenProps) {
@@ -78,7 +75,6 @@ export function WandererScreen({
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [videoSheetOpen, setVideoSheetOpen] = useState(false);
   const [audioSheetOpen, setAudioSheetOpen] = useState(false);
-  const [tourSheetOpen, setTourSheetOpen] = useState(false);
 
   // Validate selected file — images open PhotoSheet, videos open VideoSheet
   const validateAndSetFile = useCallback((file: File | undefined) => {
@@ -123,12 +119,6 @@ export function WandererScreen({
   const handleUpload = useCallback(() => {
     setFileError(null);
     uploadInputRef.current?.click();
-  }, []);
-
-  // Tour-Tracker button handler
-  const handleTourTracker = useCallback(() => {
-    setFileError(null);
-    setTourSheetOpen(true);
   }, []);
 
   // Bulk upload: process multiple images without preview/caption.
@@ -357,13 +347,11 @@ export function WandererScreen({
       <ActionButtonGrid
         onNote={handleNote}
         onUpload={handleUpload}
-        onTourTracker={handleTourTracker}
         disabled={
           bulkUploading ||
           photoSheetOpen ||
           videoSheetOpen ||
-          audioSheetOpen ||
-          tourSheetOpen
+          audioSheetOpen
         }
       />
 
@@ -413,15 +401,6 @@ export function WandererScreen({
         onSubmitSuccess={handleSubmitSuccess}
       />
 
-      {/* Tour-Tracker Sheet */}
-      <TourTrackerSheet
-        open={tourSheetOpen}
-        onOpenChange={setTourSheetOpen}
-        eventId={eventId}
-        eventName={eventName}
-        agendaItemId={selectedAgendaId}
-        userId={userId}
-      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# Feature Index
+﻿# Feature Index
 
 > Central tracking for all features. Updated by skills automatically.
 
@@ -35,7 +35,7 @@
 | PROJ-38 | Realtime-Fix Content-Pool | Deployed | [PROJ-38-realtime-fix-content-pool.md](PROJ-38-realtime-fix-content-pool.md) | 2026-04-22 |
 | PROJ-39 | Upload-SHA-256-Dedup | Deployed | [PROJ-39-upload-sha256-dedup.md](PROJ-39-upload-sha256-dedup.md) | 2026-04-23 |
 | PROJ-40 | Event-Countdown | Deployed | [PROJ-40-event-countdown.md](PROJ-40-event-countdown.md) | 2026-04-23 |
-| PROJ-41 | Tour-Tracker | Deployed | [PROJ-41-tour-tracker.md](PROJ-41-tour-tracker.md) | 2026-04-23 |
+| PROJ-41 | Tour-Tracker | Superseded | [PROJ-41-tour-tracker.md](PROJ-41-tour-tracker.md) | 2026-04-23 |
 | PROJ-42 | Storage-Optimierung & Event-Archivierung | In Review | [PROJ-42-storage-optimierung-archivierung.md](PROJ-42-storage-optimierung-archivierung.md) | 2026-05-28 |
 | PROJ-43 | Die Wandervögel Event-Archiv | Deployed | [PROJ-43-wandervoegel-archiv.md](PROJ-43-wandervoegel-archiv.md) | 2026-05-30 |
 | PROJ-44 | Tagebuch- und Archivdarstellung verbessern | Deployed | [PROJ-44-tagebuch-archiv-ux.md](PROJ-44-tagebuch-archiv-ux.md) | 2026-05-31 |
