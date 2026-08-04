@@ -230,7 +230,7 @@ curl "https://xqopetmpzjbxksonmhjw.supabase.co/rest/v1/members?select=id,name,to
 ```
 Returns every member record in plaintext, including `token`. Example live response from prod right now:
 ```
-[{"id":"26d55bf5-...","name":"Frank","token":"0a69ae9ada9e7f0eb695a147843ab34b","role":"organizer"}]
+[{"id":"26d55bf5-...","name":"Frank","token":"REDACTED","role":"organizer"}]
 ```
 
 **Impact:** Any visitor to `/e/[slug]` (or anyone who reads the anon key from the JS bundle, which is by design `NEXT_PUBLIC_`) can dump the full members table, grab any token, and visit `https://frank-lernt.vercel.app/join/<token>` to log in as that member — including `organizer` role. Full account takeover for every user, every event, in one request.
@@ -367,7 +367,7 @@ Live anon REST dump, executed just now against `https://xqopetmpzjbxksonmhjw.sup
 
 | Table | Expected (post-lockdown) | Actual live | Verdict |
 |---|---|---|---|
-| `members` (with `token`) | 401 permission denied | **HTTP 200**, returns `[{id, name, token, role}]` incl. `token:"0a69ae9ada9e7f0eb695a147843ab34b"` | FAIL |
+| `members` (with `token`) | 401 permission denied | **HTTP 200**, returns `[{id, name, token, role}]` incl. `token:"REDACTED"` | FAIL |
 | `events` | 401 | **HTTP 200**, full rows | FAIL |
 | `event_members` | 401 | **HTTP 200**, full membership graph | FAIL |
 | `agenda_items` | 401 | **HTTP 200**, full rows | FAIL |

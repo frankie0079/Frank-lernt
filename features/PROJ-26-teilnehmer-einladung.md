@@ -30,7 +30,7 @@ Test gegen Production (`https://frank-lernt.vercel.app`) deckte 3 kritische Bugs
 
 ### Was funktioniert (verifiziert)
 - AC-1: "Noch 7 Tage gueltig" wird angezeigt
-- AC-2: Token mit 32 Zeichen generiert (Test-Token: `S1cgQF5IiUNr6pq5szjeceYQxEdpHVkq`)
+- AC-2: Token mit 32 Zeichen generiert (Test-Token: `REDACTED`)
 - AC-10/11: Kopier-, Teilen-, "Neuen Link generieren"-Buttons sichtbar in `/events/[id]/settings`
 - Cleanup: Test-Event ließ sich sauber via `DELETE /api/events/[id]` löschen
 
